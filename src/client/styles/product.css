@@ -115,16 +115,20 @@
   font-size: var(--font-size-micro);
 }
 .task-actions-menu {
-  position: relative;
+  display: contents;
+}
+.task-actions-menu > .icon-button {
+  grid-column: 3;
+  grid-row: 1;
   align-self: center;
 }
 .task-actions-popover {
-  position: absolute;
   z-index: 5;
-  inset-block-start: calc(100% + var(--space-1));
-  inset-inline-end: 0;
   display: grid;
+  grid-column: 2 / -1;
+  grid-row: 2;
   min-inline-size: 190px;
+  justify-self: end;
   padding: var(--space-1);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
@@ -791,7 +795,7 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
   }
-  .task-actions-menu {
+  .task-actions-menu > .icon-button {
     align-self: start;
   }
   .todo-layout {

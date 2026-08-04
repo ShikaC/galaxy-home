@@ -87,15 +87,24 @@ test("primary views remain readable with long content and rendered analytics", a
   if (taskBodyBox && taskActionsBox) {
     expect(taskBodyBox.x + taskBodyBox.width).toBeLessThanOrEqual(taskActionsBox.x)
   }
-  const reviewPhrase = longItem.locator(".text-phrase", { hasText: "复核" })
-  await expect(reviewPhrase).toHaveText("复核")
-  await expect(reviewPhrase).toHaveCSS("white-space", "nowrap")
+  for (const phrase of ["执行顺序", "复核节点", "紧凑桌面视口"]) {
+    const phraseGroup = longItem.locator(".text-phrase", { hasText: phrase })
+    await expect(phraseGroup).toHaveCount(1)
+    await expect(phraseGroup).toHaveCSS("white-space", "nowrap")
+  }
   await expectNoHorizontalOverflow(page)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("todos-long-content.png") })
 
   await taskActionsTrigger.click()
   const organizeTrigger = longItem.getByRole("menuitem", { name: "整理分类与项目" })
   await expect(organizeTrigger).toBeVisible()
+  const taskMenuBox = await longItem.getByRole("menu", { name: "待办操作" }).boundingBox()
+  const expandedTaskBodyBox = await longItem.locator(".task-row__body").boundingBox()
+  expect(taskMenuBox).not.toBeNull()
+  expect(expandedTaskBodyBox).not.toBeNull()
+  if (taskMenuBox && expandedTaskBodyBox) {
+    expect(taskMenuBox.y).toBeGreaterThanOrEqual(expandedTaskBodyBox.y + expandedTaskBodyBox.height)
+  }
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("task-actions-menu.png") })
   await organizeTrigger.click()
   const organizeDialog = page.getByRole("dialog", { name: "决定它接下来去哪里" })
