@@ -18,7 +18,14 @@ import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
 
 const dateSchema = z.object({ localDate: z.string() })
-const searchSchema = z.object({ q: z.string().max(200) })
+const searchSchema = z.object({
+  q: z.string().max(200),
+  type: z
+    .enum(["item", "category", "project", "habit", "gain", "review", "conversation"])
+    .optional(),
+  dateFrom: z.iso.date().optional(),
+  dateTo: z.iso.date().optional(),
+})
 const reviewSchema = z.object({ weekStart: z.string(), weekEnd: z.string() })
 const idSchema = z.object({ id: z.string().uuid() })
 const gainUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
@@ -82,7 +89,13 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
         ),
       )
   })
-  app.get("/api/search", (request) =>
-    searchWorkspace(context.database, searchSchema.parse(request.query).q),
-  )
+  app.get("/api/search", (request) => {
+    const query = searchSchema.parse(request.query)
+    return searchWorkspace(context.database, {
+      search: query.q,
+      ...(query.type === undefined ? {} : { type: query.type }),
+      ...(query.dateFrom === undefined ? {} : { dateFrom: query.dateFrom }),
+      ...(query.dateTo === undefined ? {} : { dateTo: query.dateTo }),
+    })
+  })
 }

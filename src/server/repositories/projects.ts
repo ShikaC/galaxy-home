@@ -26,42 +26,88 @@ export function listProjects(database: DatabaseSync): readonly Project[] {
     .map((row) => readProject(database, row))
 }
 
-export function createProject(database: DatabaseSync, input: CreateProjectInput): Project {
+function insertProject(database: DatabaseSync, input: CreateProjectInput, now: string): string {
   const projectId = projectIdSchema.parse(crypto.randomUUID())
   const stageId = crypto.randomUUID()
+  database
+    .prepare(
+      `INSERT INTO projects
+       (id, name, desired_outcome, reason, notes, deadline_date, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      projectId,
+      input.name,
+      input.desiredOutcome,
+      input.reason,
+      input.notes,
+      input.deadlineDate,
+      now,
+      now,
+    )
+  database
+    .prepare(
+      `INSERT INTO project_stages
+       (id, project_id, title, status, sort_order, created_at, updated_at)
+       VALUES (?, ?, ?, 'current', 0, ?, ?)`,
+    )
+    .run(stageId, projectId, input.stageTitle, now, now)
+  const task = database.prepare(
+    `INSERT INTO project_tasks
+     (id, project_id, stage_id, title, position, source, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'manual', ?, ?)`,
+  )
+  task.run(crypto.randomUUID(), projectId, stageId, input.currentTask, "current", now, now)
+  task.run(crypto.randomUUID(), projectId, stageId, input.nextTask, "next", now, now)
+  return projectId
+}
+
+export function createProject(database: DatabaseSync, input: CreateProjectInput): Project {
   const now = new Date().toISOString()
   database.exec("BEGIN IMMEDIATE")
+  let projectId = ""
   try {
-    database
-      .prepare(
-        `INSERT INTO projects
-         (id, name, desired_outcome, reason, notes, deadline_date, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        projectId,
-        input.name,
-        input.desiredOutcome,
-        input.reason,
-        input.notes,
-        input.deadlineDate,
-        now,
-        now,
-      )
-    database
-      .prepare(
-        `INSERT INTO project_stages
-         (id, project_id, title, status, sort_order, created_at, updated_at)
-         VALUES (?, ?, ?, 'current', 0, ?, ?)`,
-      )
-      .run(stageId, projectId, input.stageTitle, now, now)
-    const task = database.prepare(
-      `INSERT INTO project_tasks
-       (id, project_id, stage_id, title, position, source, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'manual', ?, ?)`,
+    projectId = insertProject(database, input, now)
+    database.exec("COMMIT")
+  } catch (error) {
+    database.exec("ROLLBACK")
+    throw error
+  }
+  return getProject(database, projectId)
+}
+
+export function convertItemToProject(database: DatabaseSync, itemId: string): Project {
+  const item = z
+    .object({ title: z.string(), notes: z.string().nullable() })
+    .parse(
+      database
+        .prepare("SELECT title, notes FROM items WHERE id = ? AND deleted_at IS NULL")
+        .get(itemId),
     )
-    task.run(crypto.randomUUID(), projectId, stageId, input.currentTask, "current", now, now)
-    task.run(crypto.randomUUID(), projectId, stageId, input.nextTask, "next", now, now)
+  const now = new Date().toISOString()
+  database.exec("BEGIN IMMEDIATE")
+  let projectId = ""
+  try {
+    projectId = insertProject(
+      database,
+      {
+        name: item.title,
+        desiredOutcome: item.notes?.trim() || `完成「${item.title}」`,
+        reason: null,
+        notes: item.notes,
+        deadlineDate: null,
+        stageTitle: "开始推进",
+        currentTask: item.title,
+        nextTask: "完成当前动作后，明确下一步",
+      },
+      now,
+    )
+    database
+      .prepare("UPDATE items SET status = 'archived', updated_at = ? WHERE id = ?")
+      .run(now, itemId)
+    database
+      .prepare("INSERT INTO item_projects (item_id, project_id) VALUES (?, ?)")
+      .run(itemId, projectId)
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")

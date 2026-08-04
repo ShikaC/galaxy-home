@@ -9,20 +9,38 @@ export const searchResultSchema = z.object({
   date: z.string().nullable(),
 })
 
-export function searchWorkspace(database: DatabaseSync, search: string) {
-  const like = `%${search.trim()}%`
-  if (search.trim() === "") return []
-  return database
+export type SearchOptions = {
+  readonly search: string
+  readonly type?: z.infer<typeof searchResultSchema>["type"]
+  readonly dateFrom?: string
+  readonly dateTo?: string
+}
+
+export function searchWorkspace(database: DatabaseSync, options: SearchOptions) {
+  const like = `%${options.search.trim()}%`
+  if (options.search.trim() === "") return []
+  const results = database
     .prepare(
       `SELECT id, 'item' AS type, title, notes AS detail, substr(created_at, 1, 10) AS date FROM items WHERE deleted_at IS NULL AND (title LIKE ? OR notes LIKE ?)
      UNION ALL SELECT id, 'category', name, NULL, substr(created_at, 1, 10) FROM categories WHERE deleted_at IS NULL AND name LIKE ?
      UNION ALL SELECT id, 'project', name, desired_outcome, substr(updated_at, 1, 10) FROM projects WHERE deleted_at IS NULL AND (name LIKE ? OR desired_outcome LIKE ?)
      UNION ALL SELECT id, 'habit', name, NULL, substr(created_at, 1, 10) FROM habits WHERE deleted_at IS NULL AND name LIKE ?
      UNION ALL SELECT id, 'gain', content, NULL, local_date FROM daily_gains WHERE deleted_at IS NULL AND content LIKE ?
-     UNION ALL SELECT id, 'review', summary, obstacles_json, week_start FROM weekly_reviews WHERE deleted_at IS NULL AND summary LIKE ?
-     UNION ALL SELECT id, 'conversation', title, NULL, substr(updated_at, 1, 10) FROM ai_conversations WHERE deleted_at IS NULL AND title LIKE ?
-     ORDER BY date DESC LIMIT 100`,
+     UNION ALL SELECT id, 'review', summary, obstacles_json, week_start FROM weekly_reviews WHERE deleted_at IS NULL AND (summary LIKE ? OR obstacles_json LIKE ? OR suggestions_json LIKE ?)
+     UNION ALL SELECT ai_conversations.id, 'conversation', ai_conversations.title,
+       (SELECT content FROM ai_messages WHERE conversation_id = ai_conversations.id AND content LIKE ? ORDER BY created_at DESC LIMIT 1),
+       substr(ai_conversations.updated_at, 1, 10)
+       FROM ai_conversations WHERE ai_conversations.deleted_at IS NULL AND
+       (ai_conversations.title LIKE ? OR EXISTS (
+         SELECT 1 FROM ai_messages WHERE conversation_id = ai_conversations.id AND content LIKE ?
+       ))
+     ORDER BY date DESC LIMIT 500`,
     )
-    .all(like, like, like, like, like, like, like, like, like)
+    .all(like, like, like, like, like, like, like, like, like, like, like, like, like)
     .map((row) => searchResultSchema.parse(row))
+  return results
+    .filter((result) => options.type === undefined || result.type === options.type)
+    .filter((result) => options.dateFrom === undefined || (result.date ?? "") >= options.dateFrom)
+    .filter((result) => options.dateTo === undefined || (result.date ?? "") <= options.dateTo)
+    .slice(0, 100)
 }

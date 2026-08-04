@@ -70,6 +70,18 @@ export function createItem(database: DatabaseSync, input: CreateItemInput): Item
   return getItem(database, id, now.slice(0, 10))
 }
 
+export function copyItem(database: DatabaseSync, itemId: string, localDate: string): Item {
+  const item = getItem(database, itemId, localDate)
+  return createItem(database, {
+    title: `${item.title} 副本`,
+    categoryIds: [...item.categoryIds],
+    projectIds: [...item.projectIds],
+    ...(item.notes === null ? {} : { notes: item.notes }),
+    ...(item.dueAt === null ? {} : { dueAt: item.dueAt }),
+    ...(item.reminderMinutes === null ? {} : { reminderMinutes: item.reminderMinutes }),
+  })
+}
+
 export function listItems(database: DatabaseSync, query: ItemQuery): readonly Item[] {
   if (query.categoryId !== undefined) {
     return readItemRows(
@@ -155,10 +167,16 @@ export function updateItem(database: DatabaseSync, itemId: string, input: Update
   const reminder =
     input.reminderMinutes === undefined ? existing.reminderMinutes : input.reminderMinutes
   const now = new Date().toISOString()
+  const convertsTutorial =
+    input.title !== undefined ||
+    input.notes !== undefined ||
+    input.dueAt !== undefined ||
+    input.reminderMinutes !== undefined
   database
     .prepare(
       `UPDATE items SET title = ?, notes = ?, due_at = ?, reminder_minutes = ?, status = ?,
-       completed_at = ?, updated_at = ? WHERE id = ?`,
+       completed_at = ?, is_tutorial = CASE WHEN ? = 1 THEN 0 ELSE is_tutorial END,
+       updated_at = ? WHERE id = ?`,
     )
     .run(
       input.title ?? existing.title,
@@ -167,6 +185,7 @@ export function updateItem(database: DatabaseSync, itemId: string, input: Update
       dueAt === null ? null : reminder,
       status,
       status === "completed" ? (existing.completedAt ?? now) : null,
+      Number(convertsTutorial),
       now,
       itemId,
     )

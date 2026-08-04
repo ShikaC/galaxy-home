@@ -7,6 +7,7 @@ import { listCategories } from "../repositories/categories.js"
 import { listConversations, listMemories } from "../repositories/conversations.js"
 import { getSettings, updateSettings } from "../repositories/settings.js"
 import { listTrash, moveToTrash, purgeTrash, restoreTrash } from "../repositories/trash.js"
+import { dismissTutorialGuide, getTutorialState } from "../repositories/tutorial.js"
 import { createManualExport, getBackupStatus, restoreManualExport } from "../services/backup.js"
 import { completeOnboarding } from "../services/onboarding.js"
 import {
@@ -36,7 +37,12 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     backup: getBackupStatus(context.backupDirectory),
     conversations: listConversations(context.database),
     memories: listMemories(context.database),
+    tutorial: getTutorialState(context.database),
   }))
+  app.post("/api/tutorial/dismiss", (_request, reply) => {
+    dismissTutorialGuide(context.database)
+    return reply.code(204).send()
+  })
   app.get("/api/notifications", () => listDueNotifications(context.database))
   app.post("/api/notifications/:id/snooze", (request, reply) => {
     const { id } = idSchema.parse(request.params)

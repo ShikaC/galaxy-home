@@ -6,6 +6,7 @@ import { gainSchema, quoteSchema } from "../../shared/app.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { HabitRow } from "../components/HabitRow.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
+import { QuickStartGuide } from "../components/QuickStartGuide.js"
 import { TaskRow } from "../components/TaskRow.js"
 import { TodayTaskList } from "../components/TodayTaskList.js"
 import { Button } from "../components/ui/Button.js"
@@ -14,10 +15,19 @@ import { ProgressBar } from "../components/ui/Status.js"
 import { YesterdayReview } from "../components/YesterdayReview.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { useHabitMutation, useItemStatusMutation } from "../lib/mutations.js"
-import { queryKeys, useGains, useHabits, useItems, useProjects, useQuote } from "../lib/queries.js"
+import {
+  queryKeys,
+  useGains,
+  useHabits,
+  useItems,
+  useMeta,
+  useProjects,
+  useQuote,
+} from "../lib/queries.js"
 
 export function HomePage() {
   const actions = useAppActions()
+  const meta = useMeta()
   const { timezone, today: localToday } = useAppTime()
   const client = useQueryClient()
   const today = useItems("today")
@@ -72,6 +82,7 @@ export function HomePage() {
         subtitle="把注意力留给此刻真正重要的事。"
         title="今日空间"
       />
+      {meta.data?.tutorial.guideDismissed === false ? <QuickStartGuide /> : null}
       <section className="quote-band">
         <Sparkles size={18} />
         <blockquote>{quote.data?.content ?? "先记下一件小事，今天就从这里开始。"}</blockquote>

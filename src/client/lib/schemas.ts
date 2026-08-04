@@ -44,6 +44,7 @@ export const metaSchema = z.object({
   backup: z.object({ latestAt: z.string().nullable(), sizeBytes: z.number() }),
   conversations: z.array(conversationSchema).readonly(),
   memories: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))).readonly(),
+  tutorial: z.object({ guideDismissed: z.boolean() }),
 })
 
 export const searchResultsSchema = z

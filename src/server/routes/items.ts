@@ -9,11 +9,13 @@ import {
 import type { AppContext } from "../context.js"
 import {
   createCategory,
+  reorderCategoryItems,
   replaceItemCategories,
   updateCategory,
 } from "../repositories/categories.js"
-import { createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
+import { copyItem, createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
 import { replaceItemProjects } from "../repositories/projectRelations.js"
+import { convertItemToProject } from "../repositories/projects.js"
 import { reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 
@@ -33,6 +35,7 @@ const categoriesSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
 const projectsSchema = z.object({ projectIds: z.array(z.string().uuid()) })
 const reorderSchema = z.object({ localDate: z.string(), itemIds: z.array(z.string().uuid()) })
 const categoryReorderSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
+const itemReorderSchema = z.object({ itemIds: z.array(z.string().uuid()) })
 const localDateSchema = z.object({ localDate: z.string() })
 
 export function registerItemRoutes(app: FastifyInstance, context: AppContext): void {
@@ -56,6 +59,20 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     const { id } = idSchema.parse(request.params)
     return updateItem(context.database, id, updateItemInputSchema.parse(request.body))
   })
+  app.post("/api/items/:id/copy", (request, reply) =>
+    reply
+      .code(201)
+      .send(
+        copyItem(
+          context.database,
+          idSchema.parse(request.params).id,
+          new Date().toISOString().slice(0, 10),
+        ),
+      ),
+  )
+  app.post("/api/items/:id/convert-to-project", (request, reply) =>
+    reply.code(201).send(convertItemToProject(context.database, idSchema.parse(request.params).id)),
+  )
   app.put("/api/items/:id/categories", (request, reply) => {
     const { id } = idSchema.parse(request.params)
     const body = categoriesSchema.parse(request.body)
@@ -116,6 +133,14 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     body.categoryIds.forEach((categoryId, index) => {
       statement.run(index, now, categoryId)
     })
+    return reply.code(204).send()
+  })
+  app.put("/api/categories/:id/items/reorder", (request, reply) => {
+    reorderCategoryItems(
+      context.database,
+      idSchema.parse(request.params).id,
+      itemReorderSchema.parse(request.body).itemIds,
+    )
     return reply.code(204).send()
   })
   app.delete("/api/categories/:id", (request, reply) => {

@@ -1,5 +1,15 @@
-import { Archive, CalendarPlus, Focus, ListPlus, MoreHorizontal, Trash2 } from "lucide-react"
+import {
+  Archive,
+  CalendarPlus,
+  Copy,
+  Focus,
+  FolderPlus,
+  ListPlus,
+  MoreHorizontal,
+  Trash2,
+} from "lucide-react"
 import type { Item } from "../../shared/items.js"
+import { useAppTime } from "./AppContext.js"
 import { IconButton } from "./ui/IconButton.js"
 import { Badge } from "./ui/Status.js"
 
@@ -7,6 +17,8 @@ export function TaskRow({
   item,
   onArchive,
   onComplete,
+  onConvertProject,
+  onCopy,
   onDelete,
   onFocus,
   onOrganize,
@@ -16,12 +28,15 @@ export function TaskRow({
   readonly item: Item
   readonly onArchive?: (() => void) | undefined
   readonly onComplete: () => void
+  readonly onConvertProject?: (() => void) | undefined
+  readonly onCopy?: (() => void) | undefined
   readonly onDelete?: (() => void) | undefined
   readonly onFocus?: (() => void) | undefined
   readonly onOrganize?: (() => void) | undefined
   readonly onSecondary?: (() => void) | undefined
   readonly onToday?: (() => void) | undefined
 }) {
+  const { timezone } = useAppTime()
   return (
     <article className={`task-row${item.status === "completed" ? " task-row--completed" : ""}`}>
       <button
@@ -41,6 +56,7 @@ export function TaskRow({
           {item.dueAt ? (
             <time>
               {new Date(item.dueAt).toLocaleString("zh-CN", {
+                timeZone: timezone,
                 month: "numeric",
                 day: "numeric",
                 hour: "2-digit",
@@ -70,6 +86,16 @@ export function TaskRow({
         {onOrganize ? (
           <IconButton label="整理分类与项目" onClick={onOrganize}>
             <MoreHorizontal size={18} />
+          </IconButton>
+        ) : null}
+        {onCopy ? (
+          <IconButton label="复制待办" onClick={onCopy}>
+            <Copy size={17} />
+          </IconButton>
+        ) : null}
+        {onConvertProject ? (
+          <IconButton label="转为新项目" onClick={onConvertProject}>
+            <FolderPlus size={17} />
           </IconButton>
         ) : null}
         {onArchive ? (

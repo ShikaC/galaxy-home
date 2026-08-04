@@ -95,3 +95,23 @@ export function replaceItemCategories(
     throw error
   }
 }
+
+export function reorderCategoryItems(
+  database: DatabaseSync,
+  categoryId: string,
+  itemIds: readonly string[],
+): void {
+  database.exec("BEGIN IMMEDIATE")
+  try {
+    const statement = database.prepare(
+      "UPDATE item_categories SET sort_order = ? WHERE category_id = ? AND item_id = ?",
+    )
+    itemIds.forEach((itemId, index) => {
+      statement.run(index, categoryId, itemId)
+    })
+    database.exec("COMMIT")
+  } catch (error) {
+    database.exec("ROLLBACK")
+    throw error
+  }
+}
