@@ -7,6 +7,7 @@ import {
   weeklyReviewSchema,
 } from "../../shared/app.js"
 import { localDateTimeToInstant, shiftCalendarDate } from "../services/time.js"
+import { identifyReviewSuggestions } from "./reviewSuggestionIdentity.js"
 import { listReviewSuggestionConversions } from "./reviewSuggestions.js"
 
 const reviewRowSchema = z.object({
@@ -18,6 +19,15 @@ const reviewRowSchema = z.object({
   suggestions_json: z.string(),
   source: z.enum(["manual", "ai"]),
 })
+const reviewIdentitySchema = z.object({ id: z.string().uuid() }).optional()
+
+function reviewIdForWeek(database: DatabaseSync, weekStart: string): string {
+  return (
+    reviewIdentitySchema.parse(
+      database.prepare("SELECT id FROM weekly_reviews WHERE week_start = ?").get(weekStart),
+    )?.id ?? crypto.randomUUID()
+  )
+}
 
 function parseReview(database: DatabaseSync, raw: unknown): WeeklyReview {
   const row = reviewRowSchema.parse(raw)
@@ -58,12 +68,9 @@ export function saveAiReview(
   completed: readonly string[],
   result: AiWeeklyReviewResult,
 ): WeeklyReview {
-  const id = crypto.randomUUID()
+  const id = reviewIdForWeek(database, weekStart)
   const now = new Date().toISOString()
-  const suggestions = result.suggestions.map((suggestion) => ({
-    id: crypto.randomUUID(),
-    ...suggestion,
-  }))
+  const suggestions = identifyReviewSuggestions(id, result.suggestions)
   database
     .prepare(
       `INSERT INTO weekly_reviews
@@ -144,7 +151,7 @@ export function generateLocalReview(
     )
     .all(periodStart, periodEnd)
     .map((row) => z.object({ obstacle: z.string() }).parse(row).obstacle)
-  const id = crypto.randomUUID()
+  const id = reviewIdForWeek(database, weekStart)
   const now = new Date().toISOString()
   const summary =
     completed.length === 0 && gains.length === 0 && habits.length === 0 && projects.length === 0
@@ -156,12 +163,11 @@ export function generateLocalReview(
       : completed.length === 0
         ? ["本周完成记录较少，可能需要缩小行动范围。"]
         : []
-  const suggestions = [
-    { id: crypto.randomUUID(), type: "item" as const, content: "为下周选一个最想推进的小动作" },
+  const suggestions = identifyReviewSuggestions(id, [
+    { type: "item" as const, content: "为下周选一个最想推进的小动作" },
     ...(habits.length === 0
       ? [
           {
-            id: crypto.randomUUID(),
             type: "habit" as const,
             content: "选择一个容易坚持的日常动作",
           },
@@ -170,13 +176,12 @@ export function generateLocalReview(
     ...(feedback.length > 0
       ? [
           {
-            id: crypto.randomUUID(),
             type: "project" as const,
             content: "为受阻项目明确一个可验证的下一步",
           },
         ]
       : []),
-  ]
+  ])
   const completedEntries = [
     ...completed,
     ...gains,

@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify"
 import { afterEach, describe, expect, it } from "vitest"
 import { buildApp } from "../../src/server/app.js"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
+import { reviewSuggestionConversionSchema, weeklyReviewSchema } from "../../src/shared/app.js"
 
 let app: FastifyInstance | undefined
 let database: DatabaseSync | undefined
@@ -21,6 +22,52 @@ afterEach(async () => {
 })
 
 describe("weekly review suggestion conversion", () => {
+  it("keeps a converted suggestion idempotent after regenerating the same week", async () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-review-regeneration-"))
+    database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+    })
+    const payload = { weekStart: "2026-07-27", weekEnd: "2026-08-02" }
+    const firstReview = weeklyReviewSchema.parse(
+      (await app.inject({ method: "POST", url: "/api/reviews/generate", payload })).json(),
+    )
+    const firstSuggestion = firstReview.suggestions.find((suggestion) => suggestion.type === "item")
+    if (firstSuggestion === undefined) throw new Error("Missing item suggestion")
+    const conversionUrl = `/api/reviews/${firstReview.id}/suggestions/${firstSuggestion.id}/convert`
+    const firstConversion = reviewSuggestionConversionSchema.parse(
+      (await app.inject({ method: "POST", url: conversionUrl })).json(),
+    )
+
+    const regenerated = weeklyReviewSchema.parse(
+      (await app.inject({ method: "POST", url: "/api/reviews/generate", payload })).json(),
+    )
+    const regeneratedSuggestion = regenerated.suggestions.find(
+      (suggestion) => suggestion.type === "item",
+    )
+    if (regeneratedSuggestion === undefined) throw new Error("Missing regenerated item suggestion")
+    expect(regeneratedSuggestion).toEqual(
+      expect.objectContaining({
+        id: firstSuggestion.id,
+        convertedEntityId: firstConversion.entityId,
+      }),
+    )
+    const secondConversion = reviewSuggestionConversionSchema.parse(
+      (
+        await app.inject({
+          method: "POST",
+          url: `/api/reviews/${regenerated.id}/suggestions/${regeneratedSuggestion.id}/convert`,
+        })
+      ).json(),
+    )
+    expect(secondConversion).toEqual(firstConversion)
+    expect(Number(database.prepare("SELECT COUNT(*) AS value FROM items").get()?.["value"])).toBe(1)
+  })
+
   it("converts each suggestion once and preserves conversion state across restart", async () => {
     directory = mkdtempSync(join(tmpdir(), "galaxy-review-suggestions-"))
     database = openDatabase(join(directory, "app.sqlite"))
