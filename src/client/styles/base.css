@@ -67,6 +67,31 @@ h3 {
   background: var(--color-action-soft);
 }
 
+.route-error {
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  gap: var(--space-4);
+  min-block-size: 100dvb;
+  inline-size: min(100% - 48px, 560px);
+  margin-inline: auto;
+}
+
+.route-error > p:not(.eyebrow) {
+  color: var(--color-text-muted);
+}
+
+.route-error details {
+  max-inline-size: 100%;
+  color: var(--color-text-muted);
+}
+
+.route-error code {
+  display: block;
+  margin-block-start: var(--space-2);
+  overflow-wrap: anywhere;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router"
 import { AppShell } from "./components/AppShell.js"
+import { RouteErrorPage } from "./components/RouteErrorPage.js"
 
 function RouteLoading() {
   return <main className="page-loading">正在打开你的空间...</main>
@@ -8,6 +9,7 @@ function RouteLoading() {
 export const router = createBrowserRouter([
   {
     path: "/design-system",
+    errorElement: <RouteErrorPage />,
     lazy: async () => ({
       Component: (await import("./pages/DesignShowcasePage.js")).DesignShowcasePage,
     }),
@@ -15,6 +17,7 @@ export const router = createBrowserRouter([
   {
     path: "/",
     element: <AppShell />,
+    errorElement: <RouteErrorPage />,
     HydrateFallback: RouteLoading,
     children: [
       {

@@ -12,7 +12,7 @@
     "build:server": "tsc -p tsconfig.server.json",
     "typecheck": "tsc -b --pretty false",
     "lint": "biome check src tests *.ts",
-    "test": "vitest run --exclude tests/e2e/**",
+    "test": "vitest run --exclude 'tests/e2e/**'",
     "test:e2e": "playwright test",
     "doctor": "react-doctor --json",
     "start": "NODE_ENV=production PORT=4173 node dist/server/index.js"
