@@ -87,7 +87,10 @@ export function AppShell() {
     <AppTimeContext.Provider value={time}>
       <AppActionsContext.Provider value={actions}>
         <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
-          <aside className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}>
+          <aside
+            className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}
+            data-app-background
+          >
             <div className="brand">
               <span className="brand-mark">
                 <Sparkles size={18} />
@@ -140,11 +143,11 @@ export function AppShell() {
               </NavLink>
             </div>
           </aside>
-          <main className="main-scroll">
+          <main className="main-scroll" data-app-background>
             <ReminderBanner />
             <Outlet />
           </main>
-          <aside className="ai-rail">
+          <aside className="ai-rail" data-app-background>
             <IconButton
               label={`打开 ${meta.data.settings.aiNickname}`}
               onClick={() => setAiOpen(true)}

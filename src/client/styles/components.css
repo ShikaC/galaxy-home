@@ -56,6 +56,18 @@
   color: var(--color-surface);
 }
 
+.button--status-success {
+  border-color: var(--color-action);
+  background: var(--color-action-soft);
+  color: var(--color-action-hover);
+}
+
+.button--status-error {
+  border-color: var(--color-attention);
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+
 .button:active:not(:disabled) {
   transform: translateY(1px);
 }

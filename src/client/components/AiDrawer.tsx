@@ -11,6 +11,7 @@ import { AiConversationHistory } from "./AiConversationHistory.js"
 import { AiMemoryConfirmation } from "./AiMemoryConfirmation.js"
 import { AiPermissionControl } from "./AiPermissionControl.js"
 import { IconButton } from "./ui/IconButton.js"
+import { DrawerSurface } from "./ui/ModalSurface.js"
 import { Badge } from "./ui/Status.js"
 
 type LocalMessage = {
@@ -118,7 +119,7 @@ export function AiDrawer({
     conversation.title.toLowerCase().includes(historySearch.toLowerCase()),
   )
   return (
-    <aside aria-label={`${nickname} AI 助手`} className="ai-drawer">
+    <DrawerSurface ariaLabel={`${nickname} AI 助手`} onClose={onClose}>
       <header className="drawer__header">
         <div>
           <span className="drawer__title">
@@ -239,6 +240,6 @@ export function AiDrawer({
           <Send size={18} />
         </IconButton>
       </form>
-    </aside>
+    </DrawerSurface>
   )
 }
