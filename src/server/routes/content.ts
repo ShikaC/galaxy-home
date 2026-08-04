@@ -14,6 +14,7 @@ import {
 } from "../repositories/content.js"
 import { generateLocalReview, listReviews } from "../repositories/reviews.js"
 import { searchWorkspace } from "../repositories/search.js"
+import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
 
 const dateSchema = z.object({ localDate: z.string() })
@@ -72,7 +73,14 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
     const input = reviewSchema.parse(request.body)
     return reply
       .code(201)
-      .send(generateLocalReview(context.database, input.weekStart, input.weekEnd))
+      .send(
+        generateLocalReview(
+          context.database,
+          input.weekStart,
+          input.weekEnd,
+          getSettings(context.database).timezone,
+        ),
+      )
   })
   app.get("/api/search", (request) =>
     searchWorkspace(context.database, searchSchema.parse(request.query).q),

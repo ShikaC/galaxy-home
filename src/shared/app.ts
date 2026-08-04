@@ -1,28 +1,22 @@
 import { z } from "zod"
+import { timezoneSchema } from "./settings.js"
+
+const clockTimeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/)
 
 export const updateSettingsInputSchema = z
   .object({
     workspaceName: z.string().trim().min(1).max(60).optional(),
     aiNickname: z.string().trim().min(1).max(30).optional(),
     userName: z.string().trim().min(1).max(30).optional(),
-    timezone: z.string().trim().min(1).max(80).optional(),
+    timezone: timezoneSchema.optional(),
     aiPermission: z.enum(["conservative", "open"]).optional(),
     backupRetentionDays: z.number().int().min(7).max(365).optional(),
     trashRetentionDays: z.number().int().min(1).max(365).optional(),
-    morningReminderTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional(),
+    morningReminderTime: clockTimeSchema.optional(),
     morningReminderEnabled: z.boolean().optional(),
-    eveningReminderTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional(),
+    eveningReminderTime: clockTimeSchema.optional(),
     eveningReminderEnabled: z.boolean().optional(),
-    weeklyReviewTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/)
-      .optional(),
+    weeklyReviewTime: clockTimeSchema.optional(),
     weeklyReviewEnabled: z.boolean().optional(),
   })
   .readonly()

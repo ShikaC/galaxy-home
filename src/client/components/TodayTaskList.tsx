@@ -8,8 +8,9 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { GripVertical } from "lucide-react"
 import type { Item } from "../../shared/items.js"
-import { apiVoid, jsonBody, localDate } from "../lib/api.js"
+import { apiVoid, jsonBody } from "../lib/api.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
+import { useAppTime } from "./AppContext.js"
 import { TaskRow } from "./TaskRow.js"
 
 function SortableTask({ item }: { readonly item: Item }) {
@@ -55,6 +56,7 @@ export function TodayTaskList({
   readonly items: readonly Item[]
   readonly onReordered: () => void
 }) {
+  const { today } = useAppTime()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
   const onDragEnd = (event: DragEndEvent) => {
     if (event.over === null || event.active.id === event.over.id) return
@@ -64,7 +66,7 @@ export function TodayTaskList({
     const reordered = arrayMove([...items], oldIndex, newIndex)
     void apiVoid("/api/today/reorder", {
       method: "PUT",
-      body: jsonBody({ localDate: localDate(), itemIds: reordered.map((item) => item.id) }),
+      body: jsonBody({ localDate: today, itemIds: reordered.map((item) => item.id) }),
     }).then(onReordered)
   }
   return (

@@ -49,7 +49,3 @@ export async function apiVoid(path: string, init?: RequestInit): Promise<void> {
 export function jsonBody(value: unknown): string {
   return JSON.stringify(value)
 }
-
-export function localDate(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(new Date())
-}

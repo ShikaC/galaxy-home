@@ -9,10 +9,16 @@ import { getSettings, updateSettings } from "../repositories/settings.js"
 import { listTrash, moveToTrash, purgeTrash, restoreTrash } from "../repositories/trash.js"
 import { createManualExport, getBackupStatus, restoreManualExport } from "../services/backup.js"
 import { completeOnboarding } from "../services/onboarding.js"
+import {
+  dismissNotification,
+  listDueNotifications,
+  snoozeNotification,
+} from "../services/scheduler.js"
 import { getAiConfigStatus, writeSecretConfig } from "../services/secrets.js"
 
 const idSchema = z.object({ id: z.string().uuid() })
 const memoryUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
+const snoozeSchema = z.object({ minutes: z.number().int().min(5).max(1_440) })
 
 export function registerSystemRoutes(app: FastifyInstance, context: AppContext): void {
   app.get("/api/settings", () => getSettings(context.database))
@@ -31,6 +37,17 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     conversations: listConversations(context.database),
     memories: listMemories(context.database),
   }))
+  app.get("/api/notifications", () => listDueNotifications(context.database))
+  app.post("/api/notifications/:id/snooze", (request, reply) => {
+    const { id } = idSchema.parse(request.params)
+    const { minutes } = snoozeSchema.parse(request.body)
+    snoozeNotification(context.database, id, new Date(Date.now() + minutes * 60_000))
+    return reply.code(204).send()
+  })
+  app.post("/api/notifications/:id/dismiss", (request, reply) => {
+    dismissNotification(context.database, idSchema.parse(request.params).id)
+    return reply.code(204).send()
+  })
   app.get("/api/trash", () => listTrash(context.database))
   app.post("/api/trash/:id/restore", (request, reply) => {
     restoreTrash(context.database, idSchema.parse(request.params).id)

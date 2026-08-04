@@ -3,7 +3,7 @@ import { ArrowRight, CheckSquare2, Plus, RefreshCw, Sparkles } from "lucide-reac
 import { useState } from "react"
 import { Link } from "react-router"
 import { gainSchema, quoteSchema } from "../../shared/app.js"
-import { useAppActions } from "../components/AppContext.js"
+import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { HabitRow } from "../components/HabitRow.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
 import { TaskRow } from "../components/TaskRow.js"
@@ -12,17 +12,18 @@ import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { ProgressBar } from "../components/ui/Status.js"
 import { YesterdayReview } from "../components/YesterdayReview.js"
-import { apiRequest, jsonBody, localDate } from "../lib/api.js"
+import { apiRequest, jsonBody } from "../lib/api.js"
 import { useHabitMutation, useItemStatusMutation } from "../lib/mutations.js"
 import { queryKeys, useGains, useHabits, useItems, useProjects, useQuote } from "../lib/queries.js"
 
 export function HomePage() {
   const actions = useAppActions()
+  const { timezone, today: localToday } = useAppTime()
   const client = useQueryClient()
   const today = useItems("today")
   const habits = useHabits()
   const projects = useProjects()
-  const gains = useGains(localDate())
+  const gains = useGains(localToday)
   const quote = useQuote()
   const record = useHabitMutation("record")
   const undo = useHabitMutation("undo")
@@ -32,7 +33,7 @@ export function HomePage() {
     mutationFn: () =>
       apiRequest("/api/gains", gainSchema, {
         method: "POST",
-        body: jsonBody({ localDate: localDate(), content: gain }),
+        body: jsonBody({ localDate: localToday, content: gain }),
       }),
     onSuccess: () => {
       setGain("")
@@ -43,9 +44,9 @@ export function HomePage() {
     mutationFn: () =>
       apiRequest("/api/quote/next", quoteSchema.nullable(), {
         method: "POST",
-        body: jsonBody({ localDate: localDate() }),
+        body: jsonBody({ localDate: localToday }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.quote }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["quote"] }),
   })
   const activeToday = today.data?.filter((item) => item.status === "active") ?? []
   const primaryToday = activeToday.filter((item) => !item.isSecondary)
@@ -53,6 +54,7 @@ export function HomePage() {
   const completedToday = today.data?.filter((item) => item.status === "completed") ?? []
   const completedHabits = habits.data?.filter((habit) => habit.completedToday).length ?? 0
   const dateText = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: timezone,
     month: "long",
     day: "numeric",
     weekday: "long",

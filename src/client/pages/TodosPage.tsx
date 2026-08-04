@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Inbox, Plus } from "lucide-react"
 import { useState } from "react"
 import type { Item } from "../../shared/items.js"
-import { useAppActions } from "../components/AppContext.js"
+import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { PageHeader } from "../components/PageHeader.js"
 import { TaskRow } from "../components/TaskRow.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
-import { apiRequest, apiVoid, localDate } from "../lib/api.js"
+import { apiRequest, apiVoid } from "../lib/api.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useMeta } from "../lib/queries.js"
 import { itemsSchema } from "../lib/schemas.js"
@@ -23,6 +23,7 @@ const VIEWS: readonly { readonly id: View; readonly label: string }[] = [
 
 export function TodosPage() {
   const actions = useAppActions()
+  const { today: localToday } = useAppTime()
   const meta = useMeta()
   const client = useQueryClient()
   const [view, setView] = useState<View>("inbox")
@@ -31,10 +32,10 @@ export function TodosPage() {
   const status = useItemStatusMutation()
   const today = useTodayMutation()
   const items = useQuery({
-    queryKey: ["items", view, categoryId, localDate()],
+    queryKey: ["items", view, categoryId, localToday],
     queryFn: () =>
       apiRequest(
-        `/api/items?view=${view}&localDate=${localDate()}${categoryId === null ? "" : `&categoryId=${categoryId}`}`,
+        `/api/items?view=${view}&localDate=${localToday}${categoryId === null ? "" : `&categoryId=${categoryId}`}`,
         itemsSchema,
       ),
   })

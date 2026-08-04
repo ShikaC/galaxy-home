@@ -4,6 +4,7 @@ import { buildApp } from "./app.js"
 import { migrateDatabase, openDatabase } from "./database.js"
 import { getSettings } from "./repositories/settings.js"
 import { ensureDailyBackup } from "./services/backup.js"
+import { runScheduler } from "./services/scheduler.js"
 
 const dataDirectory = resolve(process.env["GALAXY_DATA_DIR"] ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
@@ -15,6 +16,7 @@ const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone
   new Date(),
 )
 await ensureDailyBackup(database, backupDirectory, localDate, settings.backupRetentionDays)
+runScheduler(database)
 
 const production = process.env["NODE_ENV"] === "production"
 const port = Number(process.env[production ? "PORT" : "API_PORT"] ?? (production ? 4173 : 3001))

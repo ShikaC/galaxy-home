@@ -1,15 +1,17 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
-import { apiVoid, jsonBody, localDate } from "../lib/api.js"
+import { apiVoid, jsonBody } from "../lib/api.js"
 import { useHabits } from "../lib/queries.js"
+import { useAppTime } from "./AppContext.js"
 import { Button } from "./ui/Button.js"
 import { TextField } from "./ui/Field.js"
 
 export function HabitCorrection() {
+  const { today } = useAppTime()
   const habits = useHabits()
   const client = useQueryClient()
   const [habitId, setHabitId] = useState("")
-  const [date, setDate] = useState(localDate())
+  const [date, setDate] = useState(today)
   const [count, setCount] = useState(0)
   const [leave, setLeave] = useState(false)
   const save = useMutation({
@@ -56,7 +58,7 @@ export function HabitCorrection() {
       </label>
       <TextField
         label="日期"
-        max={localDate()}
+        max={today}
         onChange={(event) => setDate(event.target.value)}
         type="date"
         value={date}

@@ -2,7 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { X } from "lucide-react"
 import { useState } from "react"
 import { apiRequest, jsonBody } from "../lib/api.js"
-import { queryKeys } from "../lib/queries.js"
 import { habitSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
 import { TextField } from "./ui/Field.js"
@@ -38,7 +37,7 @@ export function HabitDialog({
         }),
       }),
     onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.habits })
+      void client.invalidateQueries({ queryKey: ["habits"] })
       onClose()
     },
   })

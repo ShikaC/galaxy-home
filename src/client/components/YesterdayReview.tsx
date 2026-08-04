@@ -1,18 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { format, subDays } from "date-fns"
 import { Archive, ArrowRight, Inbox, Sparkles } from "lucide-react"
 import { apiRequest, apiVoid } from "../lib/api.js"
+import { previousCalendarDate } from "../lib/date.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { itemsSchema } from "../lib/schemas.js"
-import { useAppActions } from "./AppContext.js"
+import { useAppActions, useAppTime } from "./AppContext.js"
 import { Button } from "./ui/Button.js"
 
 export function YesterdayReview() {
   const client = useQueryClient()
   const actions = useAppActions()
+  const { today: localToday } = useAppTime()
   const today = useTodayMutation()
   const status = useItemStatusMutation()
-  const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd")
+  const yesterday = previousCalendarDate(localToday)
   const items = useQuery({
     queryKey: ["items", "yesterday", yesterday],
     queryFn: () => apiRequest(`/api/items?view=today&localDate=${yesterday}`, itemsSchema),

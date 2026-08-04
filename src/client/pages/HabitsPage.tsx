@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { addDays, format, startOfMonth, subDays } from "date-fns"
 import { Plus, Target } from "lucide-react"
 import { useState } from "react"
+import { useAppTime } from "../components/AppContext.js"
 import { HabitCorrection } from "../components/HabitCorrection.js"
 import { HabitDialog } from "../components/HabitDialog.js"
 import { HabitRow } from "../components/HabitRow.js"
@@ -9,17 +10,18 @@ import { HabitTrend } from "../components/HabitTrend.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
-import { apiRequest, localDate } from "../lib/api.js"
+import { apiRequest } from "../lib/api.js"
 import { useHabitMutation } from "../lib/mutations.js"
 import { useHabits } from "../lib/queries.js"
 import { habitSummariesSchema } from "../lib/schemas.js"
 
 export function HabitsPage() {
+  const { today } = useAppTime()
   const habits = useHabits()
   const record = useHabitMutation("record")
   const undo = useHabitMutation("undo")
   const [dialogOpen, setDialogOpen] = useState(false)
-  const end = localDate()
+  const end = today
   const start = format(subDays(new Date(`${end}T12:00:00`), 29), "yyyy-MM-dd")
   const summaries = useQuery({
     queryKey: ["habit-summaries", start, end],

@@ -4,22 +4,24 @@ import { CalendarDays, Check, Lightbulb } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { ReviewSuggestion } from "../../shared/app.js"
 import { weeklyReviewSchema } from "../../shared/app.js"
+import { useAppTime } from "../components/AppContext.js"
 import { GainRow } from "../components/GainRow.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { Badge } from "../components/ui/Status.js"
-import { apiRequest, apiVoid, jsonBody, localDate } from "../lib/api.js"
+import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useGains, useReviews } from "../lib/queries.js"
 
 export function ReviewPage() {
+  const { today } = useAppTime()
   const gains = useGains()
   const reviews = useReviews()
   const client = useQueryClient()
   const [date, setDate] = useState("")
   const [search, setSearch] = useState("")
   const [converted, setConverted] = useState<readonly string[]>([])
-  const now = new Date(`${localDate()}T12:00:00`)
+  const now = new Date(`${today}T12:00:00.000Z`)
   const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd")
   const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd")
   const generate = useMutation({
@@ -63,7 +65,7 @@ export function ReviewPage() {
     onSuccess: (_result, suggestion) => {
       setConverted((current) => [...current, suggestion.id])
       void client.invalidateQueries({ queryKey: ["items"] })
-      void client.invalidateQueries({ queryKey: queryKeys.habits })
+      void client.invalidateQueries({ queryKey: ["habits"] })
       void client.invalidateQueries({ queryKey: queryKeys.projects })
     },
   })
@@ -99,7 +101,7 @@ export function ReviewPage() {
             <label>
               <span>按日期</span>
               <input
-                max={localDate()}
+                max={today}
                 onChange={(event) => setDate(event.target.value)}
                 type="date"
                 value={date}

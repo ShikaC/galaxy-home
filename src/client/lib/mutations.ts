@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { apiRequest, apiVoid, jsonBody, localDate } from "./api.js"
+import { useAppTime } from "../components/AppContext.js"
+import { apiRequest, apiVoid, jsonBody } from "./api.js"
 import { itemSchema } from "./schemas.js"
 
 export function useItemStatusMutation() {
@@ -19,6 +20,7 @@ export function useItemStatusMutation() {
 
 export function useTodayMutation() {
   const client = useQueryClient()
+  const { today } = useAppTime()
   return useMutation({
     mutationFn: ({
       id,
@@ -31,7 +33,7 @@ export function useTodayMutation() {
     }) =>
       apiVoid(`/api/items/${id}/today`, {
         method: "PUT",
-        body: jsonBody({ localDate: localDate(), isFocus: focus, isSecondary: secondary }),
+        body: jsonBody({ localDate: today, isFocus: focus, isSecondary: secondary }),
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
   })
@@ -39,11 +41,12 @@ export function useTodayMutation() {
 
 export function useHabitMutation(action: "record" | "undo") {
   const client = useQueryClient()
+  const { today } = useAppTime()
   return useMutation({
     mutationFn: (id: string) =>
       apiVoid(`/api/habits/${id}/${action}`, {
         method: "POST",
-        body: jsonBody({ localDate: localDate() }),
+        body: jsonBody({ localDate: today }),
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["habits"] })

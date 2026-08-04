@@ -1,13 +1,26 @@
 import { z } from "zod"
 
 export const aiPermissionSchema = z.enum(["conservative", "open"])
+export const timezoneSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .refine((value) => {
+    try {
+      new Intl.DateTimeFormat("en", { timeZone: value }).format()
+      return true
+    } catch {
+      return false
+    }
+  }, "请选择有效时区")
 
 export const onboardingInputSchema = z
   .object({
     workspaceName: z.string().trim().min(1).max(60),
     aiNickname: z.string().trim().min(1).max(30),
     userName: z.string().trim().min(1).max(30),
-    timezone: z.string().trim().min(1).max(80),
+    timezone: timezoneSchema,
   })
   .readonly()
 
