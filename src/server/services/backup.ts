@@ -1,0 +1,119 @@
+import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
+import { join } from "node:path"
+import { backup, type DatabaseSync, type SQLOutputValue } from "node:sqlite"
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
+import { z } from "zod"
+
+const DATA_TABLES = [
+  "workspace_settings",
+  "quotes",
+  "daily_quote_selections",
+  "categories",
+  "items",
+  "projects",
+  "item_categories",
+  "item_projects",
+  "today_items",
+  "project_stages",
+  "project_tasks",
+  "project_feedback",
+  "habits",
+  "habit_schedules",
+  "habit_logs",
+  "habit_exceptions",
+  "daily_gains",
+  "weekly_reviews",
+  "ai_conversations",
+  "ai_messages",
+  "ai_memories",
+  "ai_action_log",
+  "reminders",
+  "notification_events",
+  "trash_entries",
+  "tutorial_state",
+] as const
+
+const exportSchema = z.object({
+  schemaVersion: z.literal(1),
+  exportedAt: z.string(),
+  tables: z.record(
+    z.string(),
+    z.array(z.record(z.string(), z.union([z.string(), z.number(), z.bigint(), z.null()]))),
+  ),
+})
+
+export async function ensureDailyBackup(
+  database: DatabaseSync,
+  directory: string,
+  localDate: string,
+  retentionDays: number,
+): Promise<string> {
+  mkdirSync(directory, { recursive: true })
+  const path = join(directory, `${localDate}.sqlite`)
+  if (!existsSync(path)) await backup(database, path)
+  const files = readdirSync(directory)
+    .filter((file) => /^\d{4}-\d{2}-\d{2}\.sqlite$/.test(file))
+    .sort()
+  for (const file of files.slice(0, Math.max(0, files.length - retentionDays)))
+    rmSync(join(directory, file))
+  return path
+}
+
+export function getBackupStatus(directory: string) {
+  if (!existsSync(directory)) return { latestAt: null, sizeBytes: 0 }
+  const files = readdirSync(directory).filter((file) => file.endsWith(".sqlite"))
+  const stats = files.map((file) => statSync(join(directory, file)))
+  return {
+    latestAt:
+      stats.length === 0
+        ? null
+        : new Date(Math.max(...stats.map((value) => value.mtimeMs))).toISOString(),
+    sizeBytes: stats.reduce((sum, value) => sum + value.size, 0),
+  }
+}
+
+export function createManualExport(database: DatabaseSync): Uint8Array {
+  const tables: Record<string, readonly Record<string, SQLOutputValue>[]> = {}
+  for (const table of DATA_TABLES) tables[table] = database.prepare(`SELECT * FROM ${table}`).all()
+  const payload = JSON.stringify(
+    { schemaVersion: 1, exportedAt: new Date().toISOString(), tables },
+    (_key, value: unknown) => {
+      if (value instanceof Uint8Array) throw new Error("导出暂不支持二进制字段")
+      return typeof value === "bigint" ? Number(value) : value
+    },
+  )
+  return zipSync({ "galaxy-home.json": strToU8(payload) }, { level: 6 })
+}
+
+export async function restoreManualExport(
+  database: DatabaseSync,
+  bytes: Uint8Array,
+  backupDirectory: string,
+): Promise<void> {
+  const file = unzipSync(bytes)["galaxy-home.json"]
+  if (file === undefined) throw new Error("导入文件缺少 galaxy-home.json")
+  const data = exportSchema.parse(JSON.parse(strFromU8(file)))
+  for (const table of DATA_TABLES)
+    if (data.tables[table] === undefined) throw new Error(`导入文件缺少 ${table}`)
+  mkdirSync(backupDirectory, { recursive: true })
+  await backup(database, join(backupDirectory, `restore-${Date.now()}.sqlite`))
+  database.exec("BEGIN IMMEDIATE")
+  try {
+    for (const table of [...DATA_TABLES].reverse()) database.exec(`DELETE FROM ${table}`)
+    for (const table of DATA_TABLES) {
+      const rows = data.tables[table] ?? []
+      for (const row of rows) {
+        const columns = Object.keys(row)
+        database
+          .prepare(
+            `INSERT INTO ${table} (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`,
+          )
+          .run(...columns.map((column) => row[column] ?? null))
+      }
+    }
+    database.exec("COMMIT")
+  } catch (error) {
+    database.exec("ROLLBACK")
+    throw error
+  }
+}

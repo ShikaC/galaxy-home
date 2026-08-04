@@ -1,0 +1,224 @@
+.button {
+  display: inline-flex;
+  min-inline-size: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  padding-inline: var(--space-4);
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast),
+    border-color var(--motion-fast),
+    color var(--motion-fast),
+    transform var(--motion-fast);
+}
+
+.button--regular {
+  block-size: 36px;
+}
+
+.button--compact {
+  block-size: 32px;
+  padding-inline: var(--space-3);
+}
+
+.button--primary {
+  background: var(--color-action);
+  color: var(--color-surface);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--color-action-hover);
+}
+
+.button--secondary {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+}
+
+.button--secondary:hover:not(:disabled),
+.button--ghost:hover:not(:disabled) {
+  background: var(--color-surface-selected);
+}
+
+.button--ghost {
+  background: transparent;
+}
+
+.button--danger {
+  background: var(--color-attention);
+  color: var(--color-surface);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button__loader {
+  flex: 0 0 auto;
+  animation: spin 700ms linear infinite;
+}
+
+.icon-button {
+  display: inline-grid;
+  inline-size: 36px;
+  block-size: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--color-surface-selected);
+}
+
+.field {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+}
+
+.field__label {
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-semibold);
+}
+
+.field__control {
+  inline-size: 100%;
+  min-block-size: 40px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+
+.field__control::placeholder {
+  color: var(--color-text-faint);
+}
+
+.field__control:focus {
+  border-color: var(--color-action);
+  box-shadow: 0 0 0 3px var(--color-action-soft);
+}
+
+.field__control[aria-invalid="true"] {
+  border-color: var(--color-attention);
+}
+
+.field__control--area {
+  resize: vertical;
+}
+
+.field__hint,
+.field__error {
+  font-size: var(--font-size-meta);
+}
+
+.field__hint {
+  color: var(--color-text-muted);
+}
+
+.field__error {
+  color: var(--color-attention);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 24px;
+  border-radius: 999px;
+  padding-inline: var(--space-2);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.badge--positive {
+  background: var(--color-action-soft);
+  color: var(--color-action-hover);
+}
+
+.badge--attention {
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+
+.badge--waiting {
+  background: var(--color-reminder-soft);
+  color: var(--color-reminder);
+}
+
+.progress {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.progress__labels {
+  display: flex;
+  justify-content: space-between;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+
+.progress__track {
+  overflow: hidden;
+  block-size: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.progress__value {
+  display: block;
+  block-size: 100%;
+  border-radius: inherit;
+  background: var(--color-action);
+}
+
+.empty-state {
+  display: grid;
+  min-block-size: 190px;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+}
+
+.empty-state__icon {
+  display: grid;
+  inline-size: 40px;
+  block-size: 40px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-action-soft);
+  color: var(--color-action);
+}
+
+.empty-state p {
+  max-inline-size: 34ch;
+  color: var(--color-text-muted);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

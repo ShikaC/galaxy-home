@@ -1,0 +1,58 @@
+import { resolve } from "node:path"
+import multipart from "@fastify/multipart"
+import staticPlugin from "@fastify/static"
+import Fastify from "fastify"
+import { ZodError } from "zod"
+import type { AppContext } from "./context.js"
+import { TodayLimitError } from "./repositories/todayItems.js"
+import { registerAiRoutes } from "./routes/ai.js"
+import { registerContentRoutes } from "./routes/content.js"
+import { registerDomainRoutes } from "./routes/domain.js"
+import { registerItemRoutes } from "./routes/items.js"
+import { registerSystemRoutes } from "./routes/system.js"
+import { AiServiceError } from "./services/ai.js"
+
+export async function buildApp(context: AppContext, production = false) {
+  const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 })
+  await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024, files: 1 } })
+  app.addContentTypeParser("application/zip", { parseAs: "buffer" }, (_request, body, done) =>
+    done(null, body),
+  )
+  app.addContentTypeParser(
+    "application/octet-stream",
+    { parseAs: "buffer" },
+    (_request, body, done) => done(null, body),
+  )
+  app.get("/api/health", () => ({ status: "ok" }))
+  registerSystemRoutes(app, context)
+  registerItemRoutes(app, context)
+  registerDomainRoutes(app, context)
+  registerContentRoutes(app, context)
+  registerAiRoutes(app, context)
+
+  app.setErrorHandler((error, _request, reply) => {
+    if (error instanceof ZodError) {
+      return reply
+        .code(400)
+        .send({ code: "VALIDATION_ERROR", message: error.issues[0]?.message ?? "输入内容无效" })
+    }
+    if (error instanceof TodayLimitError)
+      return reply.code(409).send({ code: "TODAY_LIMIT", message: error.message })
+    if (error instanceof AiServiceError)
+      return reply.code(503).send({ code: error.code, message: error.message })
+    app.log.error(error)
+    const message =
+      error instanceof Error && error.message !== "" ? error.message : "服务暂时不可用"
+    return reply.code(500).send({ code: "INTERNAL_ERROR", message })
+  })
+
+  if (production) {
+    await app.register(staticPlugin, { root: resolve(process.cwd(), "dist/client") })
+    app.setNotFoundHandler((request, reply) => {
+      if (request.url.startsWith("/api/"))
+        return reply.code(404).send({ code: "NOT_FOUND", message: "接口不存在" })
+      return reply.sendFile("index.html")
+    })
+  }
+  return app
+}

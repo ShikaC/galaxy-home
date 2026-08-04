@@ -1,0 +1,58 @@
+{
+  "name": "galaxy-home",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "npm run build:server && concurrently -k -n api,server-build,web -c green,yellow,cyan \"node --watch dist/server/index.js\" \"tsc -p tsconfig.server.json --watch --preserveWatchOutput\" \"vite --host 127.0.0.1 --strictPort\"",
+    "build": "tsc -b && vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "typecheck": "tsc -b --pretty false",
+    "lint": "biome check src tests *.ts",
+    "test": "vitest run --exclude tests/e2e/**",
+    "test:e2e": "playwright test",
+    "doctor": "react-doctor --json",
+    "start": "NODE_ENV=production PORT=4173 node dist/server/index.js"
+  },
+  "dependencies": {
+    "@date-fns/tz": "^1.5.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@fastify/multipart": "^10.1.0",
+    "@fastify/static": "^10.1.2",
+    "@tanstack/react-query": "^5.101.4",
+    "date-fns": "^4.4.0",
+    "fastify": "^5.11.2",
+    "fflate": "^0.8.3",
+    "ky": "^2.0.2",
+    "lucide-react": "^1.28.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router": "^7.18.2",
+    "recharts": "^3.10.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.6",
+    "@playwright/test": "^1.62.1",
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "concurrently": "^10.0.4",
+    "jsdom": "^30.0.1",
+    "react-doctor": "^0.9.3",
+    "react-grab": "^0.1.50",
+    "react-scan": "^0.5.7",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.10"
+  }
+}
