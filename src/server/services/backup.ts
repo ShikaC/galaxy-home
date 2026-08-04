@@ -17,6 +17,7 @@ const DATA_TABLES = [
   "project_stages",
   "project_tasks",
   "project_feedback",
+  "project_ai_sessions",
   "habits",
   "habit_schedules",
   "habit_logs",

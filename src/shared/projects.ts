@@ -112,3 +112,68 @@ export const completeProjectStageInputSchema = z
   .readonly()
 
 export type CompleteProjectStageInput = z.infer<typeof completeProjectStageInputSchema>
+
+export const projectAiPlanSchema = z
+  .object({
+    stageTitle: z.string().trim().min(1).max(160),
+    currentTask: z.string().trim().min(1).max(240),
+    nextTask: z.string().trim().min(1).max(240),
+    progress: z.number().int().min(0).max(95),
+  })
+  .readonly()
+
+export type ProjectAiPlan = z.infer<typeof projectAiPlanSchema>
+
+export const projectAiSessionSchema = z
+  .object({
+    projectId: projectIdSchema,
+    status: z.enum(["clarifying", "ready", "applied"]),
+    currentQuestion: z.string().nullable(),
+    answeredCount: z.number().int().nonnegative(),
+    totalQuestions: z.number().int().min(1).max(3),
+    draft: projectAiPlanSchema.nullable(),
+  })
+  .readonly()
+
+export type ProjectAiSession = z.infer<typeof projectAiSessionSchema>
+
+export const projectAiAnswerInputSchema = z
+  .object({ answer: z.string().trim().min(1).max(2_000) })
+  .readonly()
+
+export const projectAiQuestionsSchema = z
+  .object({ questions: z.array(z.string().trim().min(1).max(300)).min(1).max(3) })
+  .readonly()
+
+const projectAiTaskFeedbackSchema = z
+  .object({
+    kind: z.literal("task"),
+    nextTask: z.string().trim().min(1).max(240).nullable(),
+    progress: z.number().int().min(0).max(95),
+  })
+  .readonly()
+
+const projectAiStageFeedbackSchema = z
+  .object({
+    kind: z.literal("stage"),
+    stageOutcome: z.string().trim().min(1).max(2_000),
+    stageTitle: z.string().trim().min(1).max(160),
+    currentTask: z.string().trim().min(1).max(240),
+    nextTask: z.string().trim().min(1).max(240),
+    progress: z.number().int().min(0).max(95),
+  })
+  .readonly()
+
+export const projectAiFeedbackResultSchema = z.discriminatedUnion("kind", [
+  projectAiTaskFeedbackSchema,
+  projectAiStageFeedbackSchema,
+])
+
+export type ProjectAiFeedbackResult = z.infer<typeof projectAiFeedbackResultSchema>
+
+export const projectAiFeedbackInputSchema = z
+  .object({
+    outcome: z.string().trim().max(2_000).nullable(),
+    obstacle: z.string().trim().max(2_000).nullable(),
+  })
+  .readonly()

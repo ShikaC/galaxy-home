@@ -1,22 +1,26 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Check, Pause, Play } from "lucide-react"
+import { ArrowLeft, Bot, CalendarPlus, Check, Pause, Play } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router"
 import type { Project } from "../../shared/projects.js"
+import { useAppTime } from "../components/AppContext.js"
 import { NextProjectStageForm } from "../components/NextProjectStageForm.js"
 import { PageHeader } from "../components/PageHeader.js"
+import { ProjectAiPlanner } from "../components/ProjectAiPlanner.js"
 import { ProjectEditPanel } from "../components/ProjectEditPanel.js"
 import { ProjectTimeline } from "../components/ProjectTimeline.js"
 import { Button } from "../components/ui/Button.js"
 import { TextArea, TextField } from "../components/ui/Field.js"
 import { Badge, ProgressBar } from "../components/ui/Status.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
-import { queryKeys, useProjects } from "../lib/queries.js"
-import { projectSchema } from "../lib/schemas.js"
+import { queryKeys, useMeta, useProjects } from "../lib/queries.js"
+import { itemSchema, projectSchema } from "../lib/schemas.js"
 
 export function ProjectDetailPage() {
   const { id } = useParams()
   const projects = useProjects()
+  const meta = useMeta()
+  const { today } = useAppTime()
   const client = useQueryClient()
   const project = projects.data?.find((entry) => entry.id === id)
   const [outcome, setOutcome] = useState("")
@@ -39,6 +43,27 @@ export function ProjectDetailPage() {
       void client.invalidateQueries({ queryKey: queryKeys.projects })
     },
   })
+  const advanceWithAi = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/projects/${id ?? ""}/ai/feedback`, projectSchema, {
+        method: "POST",
+        body: jsonBody({ outcome: outcome || null, obstacle: obstacle || null }),
+      }),
+    onSuccess: () => {
+      setOutcome("")
+      setObstacle("")
+      setNextTask("")
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+    },
+  })
+  const addRecommendation = useMutation({
+    mutationFn: () =>
+      apiRequest(`/api/projects/${id ?? ""}/current-task/today`, itemSchema, {
+        method: "POST",
+        body: jsonBody({ localDate: today }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
+  })
   const changeStatus = useMutation({
     mutationFn: (status: Project["status"]) =>
       apiRequest(`/api/projects/${id ?? ""}`, projectSchema, {
@@ -57,6 +82,8 @@ export function ProjectDetailPage() {
         <p className="page-loading">正在读取项目...</p>
       </div>
     )
+  const recommendationAdded =
+    addRecommendation.isSuccess && addRecommendation.data.title === project.currentTask?.title
   return (
     <div className="page">
       <Link className="text-action back-link" to="/projects">
@@ -89,17 +116,34 @@ export function ProjectDetailPage() {
         <section className="current-stage">
           <header>
             <div>
-              <span>当前阶段</span>
+              <span className="project-section-label">当前阶段</span>
               <h2>{project.stageTitle}</h2>
             </div>
             <Badge tone="positive">只看现在</Badge>
           </header>
           <div className="current-task">
-            <span>当前任务</span>
+            <div className="current-task__header">
+              <span className="project-section-label">当前任务</span>
+              {project.currentTask?.source === "ai" ? (
+                <Button
+                  disabled={project.status !== "active" || recommendationAdded}
+                  loading={addRecommendation.isPending}
+                  onClick={() => addRecommendation.mutate()}
+                  size="compact"
+                  variant="secondary"
+                >
+                  {recommendationAdded ? <Check size={14} /> : <CalendarPlus size={14} />}
+                  {recommendationAdded ? "已加入今日" : "加入今日"}
+                </Button>
+              ) : null}
+            </div>
             <strong>{project.currentTask?.title ?? "等待设置"}</strong>
+            {addRecommendation.isError ? (
+              <p className="inline-error">{addRecommendation.error.message}</p>
+            ) : null}
           </div>
           <div className="next-task">
-            <span>下一任务</span>
+            <span className="project-section-label">下一任务</span>
             <p>{project.nextTask?.title ?? "完成当前任务后再决定"}</p>
           </div>
           <ProgressBar
@@ -148,19 +192,39 @@ export function ProjectDetailPage() {
                 placeholder="原下一任务会先成为当前任务"
                 value={nextTask}
               />
-              <Button
-                disabled={project.currentTask === null || project.status !== "active"}
-                loading={advance.isPending}
-                type="submit"
-              >
-                <Check size={16} />
-                完成当前任务
-              </Button>
-              {advance.isError ? <p className="inline-error">{advance.error.message}</p> : null}
+              <div className="form-actions">
+                <Button
+                  disabled={project.currentTask === null || project.status !== "active"}
+                  loading={advance.isPending}
+                  type="submit"
+                >
+                  <Check size={16} />
+                  手动完成
+                </Button>
+                <Button
+                  disabled={
+                    !meta.data?.ai.configured ||
+                    project.currentTask === null ||
+                    project.status !== "active"
+                  }
+                  loading={advanceWithAi.isPending}
+                  onClick={() => advanceWithAi.mutate()}
+                  variant="secondary"
+                >
+                  <Bot size={16} />
+                  AI 调整并完成
+                </Button>
+              </div>
+              {advance.isError || advanceWithAi.isError ? (
+                <p className="inline-error">
+                  {advance.error?.message ?? advanceWithAi.error?.message}
+                </p>
+              ) : null}
             </form>
           </section>
         )}
       </div>
+      <ProjectAiPlanner configured={meta.data?.ai.configured ?? false} project={project} />
       <ProjectEditPanel project={project} />
       <ProjectTimeline project={project} />
     </div>

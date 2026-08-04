@@ -4,6 +4,8 @@ import staticPlugin from "@fastify/static"
 import Fastify from "fastify"
 import { ZodError } from "zod"
 import type { AppContext } from "./context.js"
+import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./repositories/projectAi.js"
+import { ProjectTaskNotRecommendedError } from "./repositories/projectRecommendations.js"
 import { TodayLimitError } from "./repositories/todayItems.js"
 import { registerAiRoutes } from "./routes/ai.js"
 import { registerContentRoutes } from "./routes/content.js"
@@ -38,6 +40,12 @@ export async function buildApp(context: AppContext, production = false) {
     }
     if (error instanceof TodayLimitError)
       return reply.code(409).send({ code: "TODAY_LIMIT", message: error.message })
+    if (error instanceof ProjectAiPlanStaleError)
+      return reply.code(409).send({ code: "PROJECT_AI_STALE", message: error.message })
+    if (error instanceof ProjectAiSessionNotFoundError)
+      return reply.code(409).send({ code: "PROJECT_AI_SESSION_MISSING", message: error.message })
+    if (error instanceof ProjectTaskNotRecommendedError)
+      return reply.code(409).send({ code: "PROJECT_TASK_NOT_RECOMMENDED", message: error.message })
     if (error instanceof AiServiceError)
       return reply.code(503).send({ code: error.code, message: error.message })
     app.log.error(error)

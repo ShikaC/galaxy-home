@@ -5,6 +5,10 @@ const completionSchema = z.object({
   choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
 })
 const transcriptionSchema = z.object({ text: z.string().trim().min(1) })
+type ChatMessage = {
+  readonly role: "system" | "user" | "assistant"
+  readonly content: string
+}
 
 export class AiServiceError extends Error {
   readonly name = "AiServiceError"
@@ -34,10 +38,11 @@ async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
   return response
 }
 
-export async function chat(
+async function requestCompletion(
   secretPath: string,
-  messages: readonly { readonly role: "user" | "assistant"; readonly content: string }[],
-) {
+  messages: readonly ChatMessage[],
+  structured: boolean,
+): Promise<string> {
   const config = readSecretConfig(secretPath)
   if (config.chatBaseUrl === "" || config.chatModel === "" || config.apiKey === "") {
     throw new AiServiceError("AI_NOT_CONFIGURED", "AI 尚未配置，手动流程仍可正常使用")
@@ -45,12 +50,34 @@ export async function chat(
   const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: config.chatModel, messages, stream: false }),
+    body: JSON.stringify({
+      model: config.chatModel,
+      messages,
+      stream: false,
+      ...(structured ? { response_format: { type: "json_object" } } : {}),
+    }),
   })
   try {
     return completionSchema.parse(await response.json()).choices[0]?.message.content ?? ""
   } catch {
     throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的内容，未写入任何数据")
+  }
+}
+
+export function chat(secretPath: string, messages: readonly ChatMessage[]) {
+  return requestCompletion(secretPath, messages, false)
+}
+
+export async function chatStructured<Schema extends z.ZodType>(
+  secretPath: string,
+  messages: readonly ChatMessage[],
+  schema: Schema,
+): Promise<z.output<Schema>> {
+  const content = await requestCompletion(secretPath, messages, true)
+  try {
+    return schema.parse(JSON.parse(content))
+  } catch {
+    throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的结构，未写入任何数据")
   }
 }
 

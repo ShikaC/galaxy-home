@@ -9,6 +9,8 @@ import {
   advanceProjectInputSchema,
   completeProjectStageInputSchema,
   createProjectInputSchema,
+  projectAiAnswerInputSchema,
+  projectAiFeedbackInputSchema,
   updateProjectInputSchema,
 } from "../../shared/projects.js"
 import type { AppContext } from "../context.js"
@@ -23,7 +25,9 @@ import {
   undoHabit,
   updateHabit,
 } from "../repositories/habits.js"
+import { applyProjectAiPlan, getProjectAiSession } from "../repositories/projectAi.js"
 import { completeProjectStage, updateProject } from "../repositories/projectLifecycle.js"
+import { addAiProjectTaskToToday } from "../repositories/projectRecommendations.js"
 import {
   advanceProject,
   createProject,
@@ -31,8 +35,14 @@ import {
   listProjects,
 } from "../repositories/projects.js"
 import { moveToTrash } from "../repositories/trash.js"
+import {
+  advanceProjectFromAiFeedback,
+  answerProjectAiClarification,
+  startProjectAiClarification,
+} from "../services/projectAi.js"
 
 const dateQuerySchema = z.object({ localDate: z.string() })
+const localDateInputSchema = z.object({ localDate: z.iso.date() })
 const rangeQuerySchema = z.object({ start: z.string(), end: z.string() })
 const idSchema = z.object({ id: z.string().uuid() })
 
@@ -101,6 +111,48 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
       idSchema.parse(request.params).id,
       completeProjectStageInputSchema.parse(request.body),
     ),
+  )
+  app.get("/api/projects/:id/ai", (request) =>
+    getProjectAiSession(context.database, idSchema.parse(request.params).id),
+  )
+  app.post("/api/projects/:id/ai/start", (request) =>
+    startProjectAiClarification(
+      context.database,
+      context.secretPath,
+      idSchema.parse(request.params).id,
+    ),
+  )
+  app.post("/api/projects/:id/ai/answer", (request) =>
+    answerProjectAiClarification(
+      context.database,
+      context.secretPath,
+      idSchema.parse(request.params).id,
+      projectAiAnswerInputSchema.parse(request.body).answer,
+    ),
+  )
+  app.post("/api/projects/:id/ai/apply", (request) =>
+    applyProjectAiPlan(context.database, idSchema.parse(request.params).id),
+  )
+  app.post("/api/projects/:id/ai/feedback", (request) => {
+    const feedback = projectAiFeedbackInputSchema.parse(request.body)
+    return advanceProjectFromAiFeedback(
+      context.database,
+      context.secretPath,
+      idSchema.parse(request.params).id,
+      feedback.outcome,
+      feedback.obstacle,
+    )
+  })
+  app.post("/api/projects/:id/current-task/today", (request, reply) =>
+    reply
+      .code(201)
+      .send(
+        addAiProjectTaskToToday(
+          context.database,
+          idSchema.parse(request.params).id,
+          localDateInputSchema.parse(request.body).localDate,
+        ),
+      ),
   )
   app.patch("/api/projects/:id", (request) =>
     updateProject(

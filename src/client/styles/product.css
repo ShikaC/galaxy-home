@@ -393,9 +393,7 @@
   align-items: flex-start;
   justify-content: space-between;
 }
-.current-stage header span,
-.current-task span,
-.next-task span {
+.project-section-label {
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
 }
@@ -408,6 +406,17 @@
 }
 .current-task strong {
   font-size: var(--font-size-title);
+}
+.current-task__header,
+.project-ai-panel > header,
+.form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.current-task__header .button {
+  flex: none;
 }
 .next-task {
   border-block: 1px solid var(--color-border);
@@ -452,6 +461,53 @@
 .feedback-panel > p,
 .timeline-band p {
   color: var(--color-text-muted);
+}
+.project-ai-panel {
+  display: grid;
+  gap: var(--space-5);
+  margin-block-start: var(--space-8);
+  border-block: 1px solid var(--color-border);
+  padding-block: var(--space-6);
+}
+.project-ai-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.project-ai-panel > p,
+.project-ai-panel small {
+  color: var(--color-text-muted);
+}
+.project-ai-panel__question {
+  font-weight: var(--font-weight-semibold);
+}
+.project-ai-preview {
+  display: grid;
+  gap: var(--space-5);
+}
+.project-ai-preview dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  margin: 0;
+}
+.project-ai-preview dl > div {
+  min-inline-size: 0;
+  border-inline-start: 2px solid var(--color-border-strong);
+  padding-inline-start: var(--space-3);
+}
+.project-ai-preview dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.project-ai-preview dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.project-ai-preview .button,
+.project-ai-panel > .button,
+.project-ai-panel > .form-stack .button {
+  justify-self: start;
 }
 .timeline-band {
   margin-block-start: var(--space-8);
@@ -683,6 +739,9 @@
   .form-grid--three {
     grid-template-columns: 1fr 1fr;
   }
+  .project-ai-preview dl {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 640px) {
   .quick-start-guide {
@@ -707,6 +766,10 @@
   }
   .todo-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
   .filter-nav {
     display: flex;
