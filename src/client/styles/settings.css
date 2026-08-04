@@ -110,6 +110,38 @@
   padding: 3px;
   background: var(--color-surface);
 }
+.inline-create select,
+.settings-list select,
+.settings-list input:not([type="checkbox"]):not([type="color"]) {
+  min-inline-size: 0;
+  min-block-size: 36px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  padding-inline: var(--space-2);
+  background: var(--color-surface);
+}
+.category-create select {
+  inline-size: 82px;
+}
+.settings-list input[type="color"] {
+  inline-size: 34px;
+  block-size: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: 3px;
+  background: var(--color-surface);
+}
+.category-symbol {
+  display: grid;
+  inline-size: 28px;
+  block-size: 28px;
+  place-items: center;
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+}
+.quote-settings > div > input {
+  flex: 1;
+}
 .settings-list {
   display: grid;
 }

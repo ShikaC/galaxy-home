@@ -57,20 +57,23 @@ export function getDailyQuote(database: DatabaseSync, localDate: string): Quote 
   const selected = database
     .prepare(
       `SELECT quotes.id, quotes.content FROM daily_quote_selections
-     JOIN quotes ON quotes.id = daily_quote_selections.quote_id WHERE local_date = ?`,
+       JOIN quotes ON quotes.id = daily_quote_selections.quote_id
+       WHERE local_date = ? AND quotes.enabled = 1 AND quotes.deleted_at IS NULL`,
     )
     .get(localDate)
   if (selected !== undefined) return quoteSchema.parse(selected)
   const row = database
     .prepare(
-      "SELECT id, content FROM quotes WHERE enabled = 1 AND deleted_at IS NULL ORDER BY id LIMIT 1",
+      "SELECT id, content FROM quotes WHERE enabled = 1 AND deleted_at IS NULL ORDER BY random() LIMIT 1",
     )
     .get()
   if (row === undefined) return null
   const quote = quoteRowSchema.parse(row)
   database
     .prepare(
-      "INSERT INTO daily_quote_selections (local_date, quote_id, selected_at) VALUES (?, ?, ?)",
+      `INSERT INTO daily_quote_selections (local_date, quote_id, selected_at) VALUES (?, ?, ?)
+       ON CONFLICT(local_date) DO UPDATE SET quote_id = excluded.quote_id,
+         selected_at = excluded.selected_at`,
     )
     .run(localDate, quote.id, new Date().toISOString())
   return quoteSchema.parse(quote)
@@ -78,13 +81,13 @@ export function getDailyQuote(database: DatabaseSync, localDate: string): Quote 
 
 export function nextDailyQuote(database: DatabaseSync, localDate: string): Quote | null {
   const current = getDailyQuote(database, localDate)
-  const row = database
+  const alternative = database
     .prepare(
-      `SELECT id, content FROM quotes WHERE enabled = 1 AND deleted_at IS NULL AND id > ?
-     UNION ALL SELECT id, content FROM quotes WHERE enabled = 1 AND deleted_at IS NULL
-     ORDER BY id LIMIT 1`,
+      `SELECT id, content FROM quotes
+       WHERE enabled = 1 AND deleted_at IS NULL AND id != ? ORDER BY random() LIMIT 1`,
     )
     .get(current?.id ?? "")
+  const row = alternative ?? current
   if (row === undefined) return null
   const quote = quoteRowSchema.parse(row)
   database

@@ -7,7 +7,11 @@ import {
   updateItemInputSchema,
 } from "../../shared/items.js"
 import type { AppContext } from "../context.js"
-import { createCategory, replaceItemCategories } from "../repositories/categories.js"
+import {
+  createCategory,
+  replaceItemCategories,
+  updateCategory,
+} from "../repositories/categories.js"
 import { createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
 import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { reorderTodayItems } from "../repositories/todayItems.js"
@@ -95,6 +99,13 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     reply
       .code(201)
       .send(createCategory(context.database, createCategoryInputSchema.parse(request.body))),
+  )
+  app.patch("/api/categories/:id", (request) =>
+    updateCategory(
+      context.database,
+      idSchema.parse(request.params).id,
+      createCategoryInputSchema.parse(request.body),
+    ),
   )
   app.put("/api/categories/reorder", (request, reply) => {
     const body = categoryReorderSchema.parse(request.body)

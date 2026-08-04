@@ -3,6 +3,8 @@ import {
   CheckSquare2,
   FolderKanban,
   Home,
+  PanelLeftClose,
+  PanelLeftOpen,
   PanelRightOpen,
   Search,
   Settings,
@@ -34,6 +36,9 @@ export function AppShell() {
   const [captureOpen, setCaptureOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
+  )
   const [clockTick, setClockTick] = useState(() => Date.now())
   const timezone = meta.data?.settings.timezone ?? "UTC"
   const time = useMemo(
@@ -65,6 +70,9 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
   useEffect(() => {
+    window.localStorage.setItem("galaxy:sidebar-collapsed", sidebarCollapsed ? "1" : "0")
+  }, [sidebarCollapsed])
+  useEffect(() => {
     const timer = window.setInterval(() => setClockTick(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
@@ -78,8 +86,8 @@ export function AppShell() {
   return (
     <AppTimeContext.Provider value={time}>
       <AppActionsContext.Provider value={actions}>
-        <div className="app-shell">
-          <aside className="sidebar">
+        <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
+          <aside className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}>
             <div className="brand">
               <span className="brand-mark">
                 <Sparkles size={18} />
@@ -102,6 +110,16 @@ export function AppShell() {
               ))}
             </nav>
             <div className="sidebar__bottom">
+              <button
+                aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+                className="nav-item"
+                onClick={() => setSidebarCollapsed((current) => !current)}
+                title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+                type="button"
+              >
+                {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                <span>{sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}</span>
+              </button>
               <button
                 aria-label="全局搜索"
                 className="nav-item"

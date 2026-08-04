@@ -57,6 +57,24 @@ export function createCategory(database: DatabaseSync, input: CreateCategoryInpu
   return row
 }
 
+export function updateCategory(
+  database: DatabaseSync,
+  id: string,
+  input: CreateCategoryInput,
+): Category {
+  database
+    .prepare(
+      `UPDATE categories SET name = ?, color = ?, icon = ?, updated_at = ?
+       WHERE id = ? AND deleted_at IS NULL`,
+    )
+    .run(input.name, input.color, input.icon, new Date().toISOString(), id)
+  return readCategory(
+    database
+      .prepare("SELECT id, name, color, icon, sort_order FROM categories WHERE id = ?")
+      .get(id),
+  )
+}
+
 export function replaceItemCategories(
   database: DatabaseSync,
   itemId: Item["id"],
