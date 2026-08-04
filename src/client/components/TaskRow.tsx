@@ -1,16 +1,8 @@
-import {
-  Archive,
-  CalendarPlus,
-  Copy,
-  Focus,
-  FolderPlus,
-  ListPlus,
-  MoreHorizontal,
-  Trash2,
-} from "lucide-react"
+import { Archive, CalendarPlus, Copy, Focus, FolderPlus, ListPlus, Trash2 } from "lucide-react"
 import type { Item } from "../../shared/items.js"
 import { useAppTime } from "./AppContext.js"
-import { IconButton } from "./ui/IconButton.js"
+import { type TaskAction, TaskActionsMenu } from "./TaskActionsMenu.js"
+import { NaturalText } from "./ui/NaturalText.js"
 import { Badge } from "./ui/Status.js"
 
 export function TaskRow({
@@ -37,6 +29,35 @@ export function TaskRow({
   readonly onToday?: (() => void) | undefined
 }) {
   const { timezone } = useAppTime()
+  const actions: readonly TaskAction[] = [
+    ...(onToday
+      ? [
+          {
+            icon: CalendarPlus,
+            label: item.inToday ? "已在今日待办" : "加入今日待办",
+            onSelect: onToday,
+          },
+        ]
+      : []),
+    ...(onSecondary ? [{ icon: ListPlus, label: "加入临时小事", onSelect: onSecondary }] : []),
+    ...(onFocus ? [{ icon: Focus, label: "设为今日重点", onSelect: onFocus }] : []),
+    ...(onOrganize
+      ? [
+          {
+            icon: FolderPlus,
+            label: "整理分类与项目",
+            onSelect: onOrganize,
+            opensDialog: true,
+          },
+        ]
+      : []),
+    ...(onCopy ? [{ icon: Copy, label: "复制待办", onSelect: onCopy }] : []),
+    ...(onConvertProject
+      ? [{ icon: FolderPlus, label: "转为新项目", onSelect: onConvertProject }]
+      : []),
+    ...(onArchive ? [{ icon: Archive, label: "归档", onSelect: onArchive }] : []),
+    ...(onDelete ? [{ icon: Trash2, label: "移到回收站", onSelect: onDelete }] : []),
+  ]
   return (
     <article className={`task-row${item.status === "completed" ? " task-row--completed" : ""}`}>
       <button
@@ -48,7 +69,9 @@ export function TaskRow({
         <span />
       </button>
       <div className="task-row__body">
-        <strong>{item.title}</strong>
+        <strong>
+          <NaturalText text={item.title} />
+        </strong>
         <div className="task-meta">
           {item.isFocus ? <Badge tone="positive">今日重点</Badge> : null}
           {item.isSecondary ? <Badge>临时小事</Badge> : null}
@@ -65,50 +88,13 @@ export function TaskRow({
             </time>
           ) : null}
         </div>
-        {item.notes ? <p>{item.notes}</p> : null}
-      </div>
-      <div className="task-row__actions">
-        {onToday ? (
-          <IconButton label={item.inToday ? "已在今日待办" : "加入今日待办"} onClick={onToday}>
-            <CalendarPlus size={17} />
-          </IconButton>
-        ) : null}
-        {onSecondary ? (
-          <IconButton label="加入临时小事" onClick={onSecondary}>
-            <ListPlus size={17} />
-          </IconButton>
-        ) : null}
-        {onFocus ? (
-          <IconButton label="设为今日重点" onClick={onFocus}>
-            <Focus size={17} />
-          </IconButton>
-        ) : null}
-        {onOrganize ? (
-          <IconButton label="整理分类与项目" onClick={onOrganize}>
-            <MoreHorizontal size={18} />
-          </IconButton>
-        ) : null}
-        {onCopy ? (
-          <IconButton label="复制待办" onClick={onCopy}>
-            <Copy size={17} />
-          </IconButton>
-        ) : null}
-        {onConvertProject ? (
-          <IconButton label="转为新项目" onClick={onConvertProject}>
-            <FolderPlus size={17} />
-          </IconButton>
-        ) : null}
-        {onArchive ? (
-          <IconButton label="归档" onClick={onArchive}>
-            <Archive size={17} />
-          </IconButton>
-        ) : null}
-        {onDelete ? (
-          <IconButton label="移到回收站" onClick={onDelete}>
-            <Trash2 size={17} />
-          </IconButton>
+        {item.notes ? (
+          <p>
+            <NaturalText text={item.notes} />
+          </p>
         ) : null}
       </div>
+      {actions.length > 0 ? <TaskActionsMenu actions={actions} /> : null}
     </article>
   )
 }
