@@ -70,6 +70,7 @@ const projectSnapshotSchema = z.object({
 export const projectUndoPayloadSchema = z.object({
   kind: z.literal("project_snapshot"),
   snapshot: projectSnapshotSchema,
+  expected: projectSnapshotSchema.nullable().default(null),
 })
 
 export function captureProjectSnapshot(database: DatabaseSync, projectId: string) {
@@ -97,6 +98,7 @@ export function recordProjectAiAction(
   projectId: string,
   snapshot: z.infer<typeof projectSnapshotSchema>,
 ): void {
+  const expected = captureProjectSnapshot(database, projectId)
   database
     .prepare(
       `INSERT INTO ai_action_log
@@ -108,9 +110,19 @@ export function recordProjectAiAction(
       actionType,
       reason,
       projectId,
-      JSON.stringify({ kind: "project_snapshot", snapshot }),
+      JSON.stringify({ kind: "project_snapshot", snapshot, expected }),
       new Date().toISOString(),
     )
+}
+
+export function projectMatchesSnapshot(
+  database: DatabaseSync,
+  snapshot: z.infer<typeof projectSnapshotSchema>,
+): boolean {
+  return (
+    JSON.stringify(captureProjectSnapshot(database, snapshot.project.id)) ===
+    JSON.stringify(snapshot)
+  )
 }
 
 export function restoreProjectSnapshot(

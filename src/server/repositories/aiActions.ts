@@ -1,7 +1,11 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { aiActionSchema } from "../../shared/ai.js"
-import { projectUndoPayloadSchema, restoreProjectSnapshot } from "./projectAiSnapshots.js"
+import {
+  projectMatchesSnapshot,
+  projectUndoPayloadSchema,
+  restoreProjectSnapshot,
+} from "./projectAiSnapshots.js"
 
 const actionRowSchema = z.object({
   id: z.string().uuid(),
@@ -30,6 +34,7 @@ export const reviewSnapshotSchema = z.object({
 const reviewUndoPayloadSchema = z.object({
   kind: z.literal("weekly_review"),
   previous: reviewSnapshotSchema.nullable(),
+  expected: reviewSnapshotSchema.nullable().default(null),
 })
 const undoPayloadSchema = z.discriminatedUnion("kind", [
   reviewUndoPayloadSchema,
@@ -55,7 +60,7 @@ function parseAction(raw: unknown) {
 
 export function listAiActions(database: DatabaseSync) {
   return database
-    .prepare("SELECT * FROM ai_action_log ORDER BY created_at DESC LIMIT 100")
+    .prepare("SELECT * FROM ai_action_log ORDER BY created_at DESC, rowid DESC LIMIT 100")
     .all()
     .map(parseAction)
 }
@@ -74,13 +79,32 @@ export function recordReviewAction(
   previous: z.infer<typeof reviewSnapshotSchema> | null,
 ): void {
   const now = new Date().toISOString()
+  const expected = reviewSnapshotSchema.parse(
+    database.prepare("SELECT * FROM weekly_reviews WHERE id = ?").get(reviewId),
+  )
   database
     .prepare(
       `INSERT INTO ai_action_log
        (id, action_type, reason, entity_type, entity_id, undo_payload_json, created_at)
        VALUES (?, 'generate_weekly_review', '根据本周本地记录生成 AI 周回顾', 'review', ?, ?, ?)`,
     )
-    .run(crypto.randomUUID(), reviewId, JSON.stringify({ kind: "weekly_review", previous }), now)
+    .run(
+      crypto.randomUUID(),
+      reviewId,
+      JSON.stringify({ kind: "weekly_review", previous, expected }),
+      now,
+    )
+}
+
+function reviewMatchesSnapshot(
+  database: DatabaseSync,
+  reviewId: string,
+  expected: z.infer<typeof reviewSnapshotSchema>,
+): boolean {
+  const current = reviewSnapshotSchema
+    .nullable()
+    .parse(database.prepare("SELECT * FROM weekly_reviews WHERE id = ?").get(reviewId) ?? null)
+  return JSON.stringify(current) === JSON.stringify(expected)
 }
 
 function restoreReview(
@@ -129,21 +153,26 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
     )
   if (row === undefined) throw new AiActionUnavailableError("该操作已经撤销或不存在")
   const payload = undoPayloadSchema.parse(JSON.parse(row.undo_payload_json))
-  const latest = z.object({ id: z.string().uuid() }).parse(
-    database
-      .prepare(
-        `SELECT id FROM ai_action_log
-           WHERE entity_type = ? AND entity_id = ? AND undone_at IS NULL
-           ORDER BY created_at DESC, rowid DESC LIMIT 1`,
-      )
-      .get(row.entity_type, row.entity_id),
-  )
-  if (latest.id !== row.id) throw new AiActionUnavailableError("请先撤销该对象最近的一次 AI 操作")
   database.exec("BEGIN IMMEDIATE")
   try {
+    const latest = z.object({ id: z.string().uuid() }).parse(
+      database
+        .prepare(
+          `SELECT id FROM ai_action_log
+           WHERE entity_type = ? AND entity_id = ? AND undone_at IS NULL
+           ORDER BY created_at DESC, rowid DESC LIMIT 1`,
+        )
+        .get(row.entity_type, row.entity_id),
+    )
+    if (latest.id !== row.id) throw new AiActionUnavailableError("请先撤销该对象最近的一次 AI 操作")
     if (payload.kind === "weekly_review") {
       if (row.action_type !== "generate_weekly_review")
         throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      if (
+        payload.expected === null ||
+        !reviewMatchesSnapshot(database, row.entity_id, payload.expected)
+      )
+        throw new AiActionUnavailableError("回顾已被后续修改，无法安全撤销该 AI 操作")
       restoreReview(database, row.entity_id, payload)
     } else {
       if (
@@ -151,6 +180,8 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         row.action_type !== "advance_project_feedback"
       )
         throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      if (payload.expected === null || !projectMatchesSnapshot(database, payload.expected))
+        throw new AiActionUnavailableError("项目已被后续修改，无法安全撤销该 AI 操作")
       restoreProjectSnapshot(database, payload.snapshot)
     }
     database

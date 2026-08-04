@@ -3,7 +3,11 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
-import { listAiActions, undoAiAction } from "../../src/server/repositories/aiActions.js"
+import {
+  AiActionUnavailableError,
+  listAiActions,
+  undoAiAction,
+} from "../../src/server/repositories/aiActions.js"
 import {
   appendProjectAiAnswer,
   applyProjectAiFeedback,
@@ -22,6 +26,51 @@ afterEach(() => {
 })
 
 describe("project AI action history", () => {
+  it("rejects undo after a later manual project edit", () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-project-action-conflict-"))
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const project = createProject(database, {
+      name: "准备搬家",
+      desiredOutcome: "顺利入住新家",
+      reason: null,
+      notes: null,
+      deadlineDate: null,
+      stageTitle: "手动阶段",
+      currentTask: "手动当前任务",
+      nextTask: "手动下一任务",
+    })
+    startProjectAiSession(database, project.id, ["从哪里开始？"])
+    appendProjectAiAnswer(
+      database,
+      project.id,
+      "先列清单",
+      {
+        stageTitle: "确认范围",
+        currentTask: "列搬家清单",
+        nextTask: "确认搬家日期",
+        progress: 15,
+      },
+      project.updatedAt,
+    )
+    applyProjectAiPlan(database, project.id)
+    const action = listAiActions(database)[0]
+    if (action === undefined) throw new Error("Missing project plan action")
+
+    updateProject(database, project.id, { notes: "我手动补充的重要约束" })
+
+    expect(() => undoAiAction(database, action.id)).toThrow(AiActionUnavailableError)
+    expect(getProject(database, project.id)).toEqual(
+      expect.objectContaining({
+        notes: "我手动补充的重要约束",
+        stageTitle: "确认范围",
+        progress: 15,
+      }),
+    )
+    expect(listAiActions(database)[0]).toEqual(expect.objectContaining({ undoneAt: null }))
+    database.close()
+  })
+
   it("records and restores plan application and feedback changes", () => {
     directory = mkdtempSync(join(tmpdir(), "galaxy-project-actions-"))
     const database = openDatabase(join(directory, "app.sqlite"))
