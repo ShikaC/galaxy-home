@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { endOfWeek, format, startOfWeek } from "date-fns"
-import { CalendarDays, Check, Lightbulb } from "lucide-react"
+import { Bot, CalendarDays, Check, Lightbulb } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { ReviewSuggestion } from "../../shared/app.js"
 import { weeklyReviewSchema } from "../../shared/app.js"
@@ -11,12 +11,13 @@ import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { Badge } from "../components/ui/Status.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
-import { queryKeys, useGains, useReviews } from "../lib/queries.js"
+import { queryKeys, useGains, useMeta, useReviews } from "../lib/queries.js"
 
 export function ReviewPage() {
   const { today } = useAppTime()
   const gains = useGains()
   const reviews = useReviews()
+  const meta = useMeta()
   const client = useQueryClient()
   const [date, setDate] = useState("")
   const [search, setSearch] = useState("")
@@ -31,6 +32,17 @@ export function ReviewPage() {
         body: jsonBody({ weekStart, weekEnd }),
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.reviews }),
+  })
+  const generateAi = useMutation({
+    mutationFn: (confirmed: boolean) =>
+      apiRequest("/api/reviews/generate-ai", weeklyReviewSchema, {
+        method: "POST",
+        body: jsonBody({ weekStart, weekEnd, confirmed }),
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.reviews })
+      void client.invalidateQueries({ queryKey: ["ai-actions"] })
+    },
   })
   const convert = useMutation({
     mutationFn: (suggestion: ReviewSuggestion) => {
@@ -82,18 +94,35 @@ export function ReviewPage() {
     <div className="page">
       <PageHeader
         actions={
-          <Button
-            loading={generate.isPending}
-            onClick={() => generate.mutate()}
-            variant="secondary"
-          >
-            <Lightbulb size={16} />
-            生成本周回顾
-          </Button>
+          <div className="button-row">
+            <Button
+              loading={generate.isPending}
+              onClick={() => generate.mutate()}
+              variant="secondary"
+            >
+              <Lightbulb size={16} />
+              本地生成
+            </Button>
+            <Button
+              disabled={!meta.data?.ai.configured}
+              loading={generateAi.isPending}
+              onClick={() => {
+                const conservative = meta.data?.settings.aiPermission !== "open"
+                if (!conservative || window.confirm("允许 AI 读取本周相关记录并生成回顾？"))
+                  generateAi.mutate(conservative)
+              }}
+            >
+              <Bot size={16} />
+              AI 生成
+            </Button>
+          </div>
         }
         subtitle="原始收获只由你修改；周回顾会从真实记录中总结，不替你改写原文。"
         title="回顾"
       />
+      {generate.isError || generateAi.isError ? (
+        <p className="inline-error">{generate.error?.message ?? generateAi.error?.message}</p>
+      ) : null}
       <div className="review-grid">
         <section className="section-band">
           <SectionHeader title="每日收获" />

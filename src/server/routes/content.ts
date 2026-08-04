@@ -16,6 +16,7 @@ import { generateLocalReview, listReviews } from "../repositories/reviews.js"
 import { searchWorkspace } from "../repositories/search.js"
 import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
+import { generateAiWeeklyReview } from "../services/aiReview.js"
 
 const dateSchema = z.object({ localDate: z.string() })
 const searchSchema = z.object({
@@ -27,6 +28,7 @@ const searchSchema = z.object({
   dateTo: z.iso.date().optional(),
 })
 const reviewSchema = z.object({ weekStart: z.string(), weekEnd: z.string() })
+const aiReviewSchema = reviewSchema.extend({ confirmed: z.boolean() })
 const idSchema = z.object({ id: z.string().uuid() })
 const gainUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
 const quoteInputSchema = z.object({
@@ -86,6 +88,20 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
           input.weekStart,
           input.weekEnd,
           getSettings(context.database).timezone,
+        ),
+      )
+  })
+  app.post("/api/reviews/generate-ai", async (request, reply) => {
+    const input = aiReviewSchema.parse(request.body)
+    return reply
+      .code(201)
+      .send(
+        await generateAiWeeklyReview(
+          context.database,
+          context.secretPath,
+          input.weekStart,
+          input.weekEnd,
+          input.confirmed,
         ),
       )
   })

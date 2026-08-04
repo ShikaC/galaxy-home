@@ -69,3 +69,17 @@ export const aiChatInputSchema = z
 export const aiChatResponseSchema = z
   .object({ conversationId: z.string().uuid(), message: aiMessageSchema })
   .readonly()
+
+export const aiActionSchema = z
+  .object({
+    id: z.string().uuid(),
+    actionType: z.string(),
+    reason: z.string(),
+    entityType: z.string(),
+    entityId: z.string(),
+    createdAt: z.string(),
+    undoneAt: z.string().nullable(),
+  })
+  .readonly()
+
+export const aiActionsSchema = z.array(aiActionSchema).readonly()

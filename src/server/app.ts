@@ -4,6 +4,7 @@ import staticPlugin from "@fastify/static"
 import Fastify from "fastify"
 import { ZodError } from "zod"
 import type { AppContext } from "./context.js"
+import { AiActionUnavailableError } from "./repositories/aiActions.js"
 import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./repositories/projectAi.js"
 import { ProjectTaskNotRecommendedError } from "./repositories/projectRecommendations.js"
 import { TodayLimitError } from "./repositories/todayItems.js"
@@ -13,6 +14,7 @@ import { registerDomainRoutes } from "./routes/domain.js"
 import { registerItemRoutes } from "./routes/items.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { AiServiceError } from "./services/ai.js"
+import { AiConfirmationRequiredError } from "./services/aiReview.js"
 
 export async function buildApp(context: AppContext, production = false) {
   const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 })
@@ -46,6 +48,10 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(409).send({ code: "PROJECT_AI_SESSION_MISSING", message: error.message })
     if (error instanceof ProjectTaskNotRecommendedError)
       return reply.code(409).send({ code: "PROJECT_TASK_NOT_RECOMMENDED", message: error.message })
+    if (error instanceof AiConfirmationRequiredError)
+      return reply.code(409).send({ code: "AI_CONFIRMATION_REQUIRED", message: error.message })
+    if (error instanceof AiActionUnavailableError)
+      return reply.code(409).send({ code: "AI_ACTION_UNAVAILABLE", message: error.message })
     if (error instanceof AiServiceError)
       return reply.code(503).send({ code: error.code, message: error.message })
     app.log.error(error)

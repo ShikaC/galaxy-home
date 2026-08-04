@@ -59,6 +59,23 @@ export const weeklyReviewSchema = z
 
 export type WeeklyReview = z.infer<typeof weeklyReviewSchema>
 
+export const aiWeeklyReviewResultSchema = z
+  .object({
+    summary: z.string().trim().min(1).max(5_000),
+    obstacles: z.array(z.string().trim().min(1).max(1_000)).max(12),
+    suggestions: z
+      .array(
+        z.object({
+          type: z.enum(["item", "habit", "project"]),
+          content: z.string().trim().min(1).max(500),
+        }),
+      )
+      .max(8),
+  })
+  .readonly()
+
+export type AiWeeklyReviewResult = z.infer<typeof aiWeeklyReviewResultSchema>
+
 export const aiConfigInputSchema = z
   .object({
     chatBaseUrl: z.string().url().or(z.literal("")),

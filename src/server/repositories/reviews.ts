@@ -1,6 +1,10 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
-import { type WeeklyReview, weeklyReviewSchema } from "../../shared/app.js"
+import {
+  type AiWeeklyReviewResult,
+  type WeeklyReview,
+  weeklyReviewSchema,
+} from "../../shared/app.js"
 import { localDateTimeToInstant, shiftCalendarDate } from "../services/time.js"
 
 const reviewRowSchema = z.object({
@@ -31,6 +35,44 @@ export function listReviews(database: DatabaseSync): readonly WeeklyReview[] {
     .prepare("SELECT * FROM weekly_reviews WHERE deleted_at IS NULL ORDER BY week_start DESC")
     .all()
     .map(parseReview)
+}
+
+export function saveAiReview(
+  database: DatabaseSync,
+  weekStart: string,
+  completed: readonly string[],
+  result: AiWeeklyReviewResult,
+): WeeklyReview {
+  const id = crypto.randomUUID()
+  const now = new Date().toISOString()
+  const suggestions = result.suggestions.map((suggestion) => ({
+    id: crypto.randomUUID(),
+    ...suggestion,
+  }))
+  database
+    .prepare(
+      `INSERT INTO weekly_reviews
+       (id, week_start, summary, completed_json, obstacles_json, suggestions_json,
+        source, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'ai', ?, ?)
+       ON CONFLICT(week_start) DO UPDATE SET summary = excluded.summary,
+       completed_json = excluded.completed_json, obstacles_json = excluded.obstacles_json,
+       suggestions_json = excluded.suggestions_json, source = 'ai',
+       updated_at = excluded.updated_at, deleted_at = NULL`,
+    )
+    .run(
+      id,
+      weekStart,
+      result.summary,
+      JSON.stringify(completed),
+      JSON.stringify(result.obstacles),
+      JSON.stringify(suggestions),
+      now,
+      now,
+    )
+  return parseReview(
+    database.prepare("SELECT * FROM weekly_reviews WHERE week_start = ?").get(weekStart),
+  )
 }
 
 export function generateLocalReview(

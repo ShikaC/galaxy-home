@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { z } from "zod"
+import { AiActionLog } from "../components/AiActionLog.js"
 import { Button } from "../components/ui/Button.js"
 import { TextField } from "../components/ui/Field.js"
 import { Badge } from "../components/ui/Status.js"
@@ -146,6 +147,7 @@ export function AiSettings() {
           <p className="inline-error">{save.error?.message ?? test.error?.message}</p>
         ) : null}
       </form>
+      <AiActionLog />
     </section>
   )
 }

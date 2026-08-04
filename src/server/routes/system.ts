@@ -4,6 +4,7 @@ import { createAiMemoryInputSchema } from "../../shared/ai.js"
 import { aiConfigInputSchema, updateSettingsInputSchema } from "../../shared/app.js"
 import { onboardingInputSchema } from "../../shared/settings.js"
 import type { AppContext } from "../context.js"
+import { listAiActions, undoAiAction } from "../repositories/aiActions.js"
 import { listCategories } from "../repositories/categories.js"
 import { listConversations } from "../repositories/conversations.js"
 import { createMemory, listMemories, updateMemory } from "../repositories/memories.js"
@@ -87,11 +88,11 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     moveToTrash(context.database, "memory", id, row?.content ?? "AI 记忆")
     return reply.code(204).send()
   })
-  app.get("/api/ai/actions", () =>
-    context.database
-      .prepare("SELECT * FROM ai_action_log ORDER BY created_at DESC LIMIT 100")
-      .all(),
-  )
+  app.get("/api/ai/actions", () => listAiActions(context.database))
+  app.post("/api/ai/actions/:id/undo", (request, reply) => {
+    undoAiAction(context.database, idSchema.parse(request.params).id)
+    return reply.code(204).send()
+  })
   app.get("/api/export", (_request, reply) =>
     reply
       .header("Content-Type", "application/zip")
