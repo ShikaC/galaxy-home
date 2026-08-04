@@ -1,12 +1,15 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { FolderKanban, Plus } from "lucide-react"
 import { useState } from "react"
-import { Link } from "react-router"
-import { PageHeader } from "../components/PageHeader.js"
+import type { Project } from "../../shared/projects.js"
+import { PageHeader, SectionHeader } from "../components/PageHeader.js"
+import { ProjectCard } from "../components/ProjectCard.js"
 import { ProjectDialog } from "../components/ProjectDialog.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
-import { Badge, ProgressBar } from "../components/ui/Status.js"
-import { useProjects } from "../lib/queries.js"
+import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
+import { queryKeys, useProjects } from "../lib/queries.js"
+import { projectSchema } from "../lib/schemas.js"
 
 const STATUS_LABELS = {
   active: "进行中",
@@ -16,8 +19,24 @@ const STATUS_LABELS = {
 } as const
 
 export function ProjectsPage() {
+  const client = useQueryClient()
   const projects = useProjects()
   const [open, setOpen] = useState(false)
+  const pin = useMutation({
+    mutationFn: (project: Project) =>
+      apiRequest(`/api/projects/${project.id}`, projectSchema, {
+        method: "PATCH",
+        body: jsonBody({ pinned: !project.pinned }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+  })
+  const remove = useMutation({
+    mutationFn: (project: Project) => apiVoid(`/api/projects/${project.id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+      void client.invalidateQueries({ queryKey: ["trash"] })
+    },
+  })
   return (
     <div className="page">
       <PageHeader
@@ -42,34 +61,31 @@ export function ProjectsPage() {
           title="还没有周期项目"
         />
       ) : (
-        <div className="project-grid">
-          {projects.data?.map((project) => (
-            <Link className="project-card" key={project.id} to={`/projects/${project.id}`}>
-              <header>
-                <h2>{project.name}</h2>
-                <Badge tone={project.status === "active" ? "positive" : "neutral"}>
-                  {STATUS_LABELS[project.status]}
-                </Badge>
-              </header>
-              <p className="project-outcome">{project.desiredOutcome}</p>
-              <dl>
-                <div>
-                  <dt>当前阶段</dt>
-                  <dd>{project.stageTitle}</dd>
+        <div className="project-sections">
+          {Object.entries(STATUS_LABELS).map(([status, label]) => {
+            const group = projects.data?.filter((project) => project.status === status) ?? []
+            if (group.length === 0) return null
+            return (
+              <section className="project-section" key={status}>
+                <SectionHeader title={`${label} ${group.length}`} />
+                <div className="project-grid">
+                  {group.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      onDelete={() => remove.mutate(project)}
+                      onPin={() => pin.mutate(project)}
+                      project={project}
+                    />
+                  ))}
                 </div>
-                <div>
-                  <dt>当前任务</dt>
-                  <dd>{project.currentTask?.title ?? "尚未设置"}</dd>
-                </div>
-              </dl>
-              <ProgressBar
-                label={project.progressSource === "ai" ? "AI 估算" : "手动进度"}
-                value={project.progress}
-              />
-            </Link>
-          ))}
+              </section>
+            )
+          })}
         </div>
       )}
+      {pin.isError || remove.isError ? (
+        <p className="inline-error">{pin.error?.message ?? remove.error?.message}</p>
+      ) : null}
       <ProjectDialog onClose={() => setOpen(false)} open={open} />
     </div>
   )

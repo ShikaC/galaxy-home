@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { queryKeys } from "../lib/queries.js"
 import { projectSchema } from "../lib/schemas.js"
@@ -19,10 +19,22 @@ export function ProjectDialog({
   const [name, setName] = useState("")
   const [outcome, setOutcome] = useState("")
   const [reason, setReason] = useState("")
+  const [notes, setNotes] = useState("")
   const [deadline, setDeadline] = useState("")
   const [stage, setStage] = useState("迈出第一步")
   const [current, setCurrent] = useState("")
   const [next, setNext] = useState("")
+  useEffect(() => {
+    if (!open) return
+    setName("")
+    setOutcome("")
+    setReason("")
+    setNotes("")
+    setDeadline("")
+    setStage("迈出第一步")
+    setCurrent("")
+    setNext("")
+  }, [open])
   const create = useMutation({
     mutationFn: () =>
       apiRequest("/api/projects", projectSchema, {
@@ -31,7 +43,7 @@ export function ProjectDialog({
           name,
           desiredOutcome: outcome,
           reason: reason || null,
-          notes: null,
+          notes: notes || null,
           deadlineDate: deadline || null,
           stageTitle: stage,
           currentTask: current,
@@ -93,6 +105,12 @@ export function ProjectDialog({
               value={deadline}
             />
           </div>
+          <TextArea
+            label="补充说明（可选）"
+            onChange={(event) => setNotes(event.target.value)}
+            rows={2}
+            value={notes}
+          />
           <div className="manual-plan">
             <p>
               <strong>手动拆解</strong>

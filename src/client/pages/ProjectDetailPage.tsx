@@ -2,7 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Check, Pause, Play } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router"
+import type { Project } from "../../shared/projects.js"
+import { NextProjectStageForm } from "../components/NextProjectStageForm.js"
 import { PageHeader } from "../components/PageHeader.js"
+import { ProjectEditPanel } from "../components/ProjectEditPanel.js"
+import { ProjectTimeline } from "../components/ProjectTimeline.js"
 import { Button } from "../components/ui/Button.js"
 import { TextArea, TextField } from "../components/ui/Field.js"
 import { Badge, ProgressBar } from "../components/ui/Status.js"
@@ -36,7 +40,7 @@ export function ProjectDetailPage() {
     },
   })
   const changeStatus = useMutation({
-    mutationFn: (status: "active" | "paused") =>
+    mutationFn: (status: Project["status"]) =>
       apiRequest(`/api/projects/${id ?? ""}`, projectSchema, {
         method: "PATCH",
         body: jsonBody({ status }),
@@ -62,14 +66,22 @@ export function ProjectDetailPage() {
       <PageHeader
         actions={
           <Button
-            onClick={() => changeStatus.mutate(project.status === "paused" ? "active" : "paused")}
+            onClick={() => changeStatus.mutate(project.status === "active" ? "paused" : "active")}
             variant="secondary"
           >
-            {project.status === "paused" ? <Play size={16} /> : <Pause size={16} />}
-            {project.status === "paused" ? "恢复" : "暂停"}
+            {project.status === "active" ? <Pause size={16} /> : <Play size={16} />}
+            {project.status === "active" ? "暂停" : "恢复进行"}
           </Button>
         }
-        eyebrow={project.status === "paused" ? "项目已暂停" : "正在推进"}
+        eyebrow={
+          project.status === "active"
+            ? "正在推进"
+            : project.status === "paused"
+              ? "项目已暂停"
+              : project.status === "completed"
+                ? "项目已完成"
+                : "项目已归档"
+        }
         subtitle={project.desiredOutcome}
         title={project.name}
       />
@@ -94,50 +106,63 @@ export function ProjectDetailPage() {
             label={project.progressSource === "ai" ? "AI 估算" : "手动进度"}
             value={project.progress}
           />
+          <dl className="project-facts">
+            <div>
+              <dt>截止日期</dt>
+              <dd>{project.deadlineDate ?? "未设置"}</dd>
+            </div>
+            <div>
+              <dt>开始原因</dt>
+              <dd>{project.reason ?? "未设置"}</dd>
+            </div>
+          </dl>
         </section>
-        <section className="feedback-panel">
-          <h2>完成与反馈</h2>
-          <p>反馈可跳过。人工记录会成为以后 AI 恢复时的事实基线。</p>
-          <form
-            className="form-stack"
-            onSubmit={(event) => {
-              event.preventDefault()
-              advance.mutate()
-            }}
-          >
-            <TextArea
-              label="实际成果（可选）"
-              onChange={(event) => setOutcome(event.target.value)}
-              rows={2}
-              value={outcome}
-            />
-            <TextArea
-              label="遇到的阻碍（可选）"
-              onChange={(event) => setObstacle(event.target.value)}
-              rows={2}
-              value={obstacle}
-            />
-            <TextField
-              label="新的下一任务（可选）"
-              onChange={(event) => setNextTask(event.target.value)}
-              placeholder="原下一任务会先成为当前任务"
-              value={nextTask}
-            />
-            <Button
-              disabled={project.currentTask === null}
-              loading={advance.isPending}
-              type="submit"
+        {project.currentTask === null && project.nextTask === null ? (
+          <NextProjectStageForm project={project} />
+        ) : (
+          <section className="feedback-panel">
+            <h2>完成与反馈</h2>
+            <p>反馈可跳过。人工记录会成为以后 AI 恢复时的事实基线。</p>
+            <form
+              className="form-stack"
+              onSubmit={(event) => {
+                event.preventDefault()
+                advance.mutate()
+              }}
             >
-              <Check size={16} />
-              完成当前任务
-            </Button>
-          </form>
-        </section>
+              <TextArea
+                label="实际成果（可选）"
+                onChange={(event) => setOutcome(event.target.value)}
+                rows={2}
+                value={outcome}
+              />
+              <TextArea
+                label="遇到的阻碍（可选）"
+                onChange={(event) => setObstacle(event.target.value)}
+                rows={2}
+                value={obstacle}
+              />
+              <TextField
+                label="新的下一任务（可选）"
+                onChange={(event) => setNextTask(event.target.value)}
+                placeholder="原下一任务会先成为当前任务"
+                value={nextTask}
+              />
+              <Button
+                disabled={project.currentTask === null || project.status !== "active"}
+                loading={advance.isPending}
+                type="submit"
+              >
+                <Check size={16} />
+                完成当前任务
+              </Button>
+              {advance.isError ? <p className="inline-error">{advance.error.message}</p> : null}
+            </form>
+          </section>
+        )}
       </div>
-      <section className="timeline-band">
-        <h2>最近进展</h2>
-        <p>已完成 {project.completedCount} 个任务。已完成阶段会在这里形成时间线。</p>
-      </section>
+      <ProjectEditPanel project={project} />
+      <ProjectTimeline project={project} />
     </div>
   )
 }

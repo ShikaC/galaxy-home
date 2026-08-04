@@ -5,7 +5,12 @@ import {
   setHabitLogInputSchema,
   updateHabitInputSchema,
 } from "../../shared/habits.js"
-import { advanceProjectInputSchema, createProjectInputSchema } from "../../shared/projects.js"
+import {
+  advanceProjectInputSchema,
+  completeProjectStageInputSchema,
+  createProjectInputSchema,
+  updateProjectInputSchema,
+} from "../../shared/projects.js"
 import type { AppContext } from "../context.js"
 import {
   copyHabit,
@@ -18,6 +23,7 @@ import {
   undoHabit,
   updateHabit,
 } from "../repositories/habits.js"
+import { completeProjectStage, updateProject } from "../repositories/projectLifecycle.js"
 import {
   advanceProject,
   createProject,
@@ -29,10 +35,6 @@ import { moveToTrash } from "../repositories/trash.js"
 const dateQuerySchema = z.object({ localDate: z.string() })
 const rangeQuerySchema = z.object({ start: z.string(), end: z.string() })
 const idSchema = z.object({ id: z.string().uuid() })
-const progressSchema = z.object({
-  status: z.enum(["active", "paused", "completed", "archived"]).optional(),
-  progress: z.number().int().min(0).max(100).optional(),
-})
 
 export function registerDomainRoutes(app: FastifyInstance, context: AppContext): void {
   app.get("/api/habits", (request) =>
@@ -93,20 +95,23 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
     )
     return reply.code(204).send()
   })
-  app.patch("/api/projects/:id", (request) => {
+  app.post("/api/projects/:id/stages/advance", (request) =>
+    completeProjectStage(
+      context.database,
+      idSchema.parse(request.params).id,
+      completeProjectStageInputSchema.parse(request.body),
+    ),
+  )
+  app.patch("/api/projects/:id", (request) =>
+    updateProject(
+      context.database,
+      idSchema.parse(request.params).id,
+      updateProjectInputSchema.parse(request.body),
+    ),
+  )
+  app.delete("/api/projects/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    const body = progressSchema.parse(request.body)
-    const current = getProject(context.database, id)
-    context.database
-      .prepare(
-        "UPDATE projects SET status = ?, progress = ?, progress_source = 'manual', updated_at = ? WHERE id = ?",
-      )
-      .run(
-        body.status ?? current.status,
-        body.progress ?? current.progress,
-        new Date().toISOString(),
-        id,
-      )
-    return getProject(context.database, id)
+    moveToTrash(context.database, "project", id, getProject(context.database, id).name)
+    return reply.code(204).send()
   })
 }

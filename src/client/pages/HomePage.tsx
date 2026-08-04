@@ -179,7 +179,7 @@ export function HomePage() {
             />
             <div className="project-summary-list">
               {projects.data
-                ?.filter((project) => project.status === "active")
+                ?.filter((project) => project.status === "active" && project.pinned)
                 .slice(0, 3)
                 .map((project) => (
                   <Link className="project-summary" key={project.id} to={`/projects/${project.id}`}>
