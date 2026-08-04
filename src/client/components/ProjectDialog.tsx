@@ -114,7 +114,7 @@ export function ProjectDialog({
           <div className="manual-plan">
             <p>
               <strong>手动拆解</strong>
-              <span>AI 未配置也能继续，之后会以人工现状为准。</span>
+              <span className="manual-plan__note">AI 未配置也能继续，之后会以人工现状为准。</span>
             </p>
             <TextField
               label="当前阶段"

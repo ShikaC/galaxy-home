@@ -43,8 +43,8 @@ export function MemorySettings() {
       ) : (
         <div className="settings-list">
           {memories.map((memory) => {
-            const id = String(memory["id"] ?? "")
-            const text = String(memory["content"] ?? "")
+            const id = memory.id
+            const text = memory.content
             return (
               <div key={id}>
                 {editing === id ? (

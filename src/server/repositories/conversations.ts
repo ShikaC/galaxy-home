@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
+import { type AiReference, aiMessageSchema, aiReferenceSchema } from "../../shared/ai.js"
 
 const conversationSchema = z.object({
   id: z.string().uuid(),
@@ -14,6 +15,18 @@ const messageSchema = z.object({
   references_json: z.string(),
   created_at: z.string(),
 })
+
+function parseMessage(raw: unknown) {
+  const row = messageSchema.parse(raw)
+  return aiMessageSchema.parse({
+    id: row.id,
+    conversationId: row.conversation_id,
+    role: row.role,
+    content: row.content,
+    references: z.array(aiReferenceSchema).parse(JSON.parse(row.references_json)),
+    createdAt: row.created_at,
+  })
+}
 
 export function listConversations(database: DatabaseSync) {
   return database
@@ -44,25 +57,26 @@ export function addMessage(
   conversationId: string,
   role: "user" | "assistant",
   content: string,
+  references: readonly AiReference[] = [],
 ) {
   const id = crypto.randomUUID()
   const now = new Date().toISOString()
   database
     .prepare(
       `INSERT INTO ai_messages (id, conversation_id, role, content, references_json, created_at)
-     VALUES (?, ?, ?, ?, '[]', ?)`,
+     VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .run(id, conversationId, role, content, now)
+    .run(id, conversationId, role, content, JSON.stringify(references), now)
   database
     .prepare("UPDATE ai_conversations SET updated_at = ? WHERE id = ?")
     .run(now, conversationId)
-  return messageSchema.parse({
+  return aiMessageSchema.parse({
     id,
-    conversation_id: conversationId,
+    conversationId,
     role,
     content,
-    references_json: "[]",
-    created_at: now,
+    references,
+    createdAt: now,
   })
 }
 
@@ -70,13 +84,5 @@ export function listMessages(database: DatabaseSync, conversationId: string) {
   return database
     .prepare("SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at")
     .all(conversationId)
-    .map((row) => messageSchema.parse(row))
-}
-
-export function listMemories(database: DatabaseSync) {
-  return database
-    .prepare(
-      "SELECT id, content, kind, confirmed_at, updated_at FROM ai_memories WHERE deleted_at IS NULL ORDER BY updated_at DESC",
-    )
-    .all()
+    .map(parseMessage)
 }

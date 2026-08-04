@@ -1,4 +1,10 @@
 import { z } from "zod"
+import {
+  aiChatResponseSchema,
+  aiMemorySchema,
+  aiMessageSchema,
+  aiMessagesSchema,
+} from "../../shared/ai.js"
 import { gainSchema, quoteSchema, weeklyReviewSchema } from "../../shared/app.js"
 import { habitSchema } from "../../shared/habits.js"
 import { categorySchema, itemSchema } from "../../shared/items.js"
@@ -35,15 +41,8 @@ export const conversationSchema = z.object({
   title: z.string(),
   updated_at: z.string(),
 })
-export const messageSchema = z.object({
-  id: z.string().uuid(),
-  conversation_id: z.string().uuid(),
-  role: z.enum(["user", "assistant", "system"]),
-  content: z.string(),
-  references_json: z.string(),
-  created_at: z.string(),
-})
-export const messagesSchema = z.array(messageSchema).readonly()
+export const messageSchema = aiMessageSchema
+export const messagesSchema = aiMessagesSchema
 
 export const metaSchema = z.object({
   settings: workspaceSettingsSchema,
@@ -51,7 +50,7 @@ export const metaSchema = z.object({
   ai: aiStatusSchema,
   backup: z.object({ latestAt: z.string().nullable(), sizeBytes: z.number() }),
   conversations: z.array(conversationSchema).readonly(),
-  memories: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.null()]))).readonly(),
+  memories: z.array(aiMemorySchema).readonly(),
   tutorial: z.object({ guideDismissed: z.boolean() }),
 })
 
@@ -70,7 +69,4 @@ export const searchResultsSchema = z
 export const habitSummariesSchema = z
   .array(z.object({ localDate: z.string(), completedHabits: z.number() }))
   .readonly()
-export const chatResponseSchema = z.object({
-  conversationId: z.string().uuid(),
-  message: messageSchema,
-})
+export const chatResponseSchema = aiChatResponseSchema

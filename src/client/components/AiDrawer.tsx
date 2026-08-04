@@ -1,10 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Bot, History, Pencil, Plus, Send, Settings, Trash2, X } from "lucide-react"
+import { Bot, History, Plus, Send, Settings, X } from "lucide-react"
 import { useState } from "react"
 import { Link, useLocation } from "react-router"
+import type { AiReference } from "../../shared/ai.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
 import { chatResponseSchema, messagesSchema } from "../lib/schemas.js"
+import { AiChatMessage } from "./AiChatMessage.js"
+import { AiConversationHistory } from "./AiConversationHistory.js"
+import { AiMemoryConfirmation } from "./AiMemoryConfirmation.js"
+import { AiPermissionControl } from "./AiPermissionControl.js"
 import { IconButton } from "./ui/IconButton.js"
 import { Badge } from "./ui/Status.js"
 
@@ -12,6 +17,7 @@ type LocalMessage = {
   readonly id: string
   readonly role: "user" | "assistant"
   readonly content: string
+  readonly references: readonly AiReference[]
 }
 
 const PAGE_LABELS: Readonly<Record<string, string>> = {
@@ -38,25 +44,33 @@ export function AiDrawer({
   const [messages, setMessages] = useState<readonly LocalMessage[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState("")
+  const [memoryContent, setMemoryContent] = useState<string | null>(null)
   const send = useMutation({
     mutationFn: (message: string) =>
       apiRequest("/api/ai/chat", chatResponseSchema, {
         method: "POST",
-        body: jsonBody({ conversationId, content: message }),
+        body: jsonBody({
+          conversationId,
+          content: message,
+          currentPath: location.pathname,
+          currentLabel: location.pathname.startsWith("/projects/")
+            ? "项目"
+            : (PAGE_LABELS[location.pathname] ?? "当前页"),
+        }),
       }),
-    onMutate: (message) => {
-      setMessages((current) => [
-        ...current,
-        { id: crypto.randomUUID(), role: "user", content: message },
-      ])
-      setContent("")
-    },
-    onSuccess: (result) => {
+    onSuccess: (result, sentContent) => {
       setConversationId(result.conversationId)
       setMessages((current) => [
         ...current,
-        { id: result.message.id, role: "assistant", content: result.message.content },
+        { id: crypto.randomUUID(), role: "user", content: sentContent, references: [] },
+        {
+          id: result.message.id,
+          role: "assistant",
+          content: result.message.content,
+          references: result.message.references,
+        },
       ])
+      setContent("")
       void client.invalidateQueries({ queryKey: queryKeys.meta })
     },
   })
@@ -69,6 +83,7 @@ export function AiDrawer({
           id: message.id,
           role: message.role === "user" ? "user" : "assistant",
           content: message.content,
+          references: message.references,
         })),
       )
       setHistoryOpen(false)
@@ -138,46 +153,21 @@ export function AiDrawer({
           <History size={15} />
           会话
         </button>
+        <AiPermissionControl />
         <span className="drawer__context" title={`当前页：${currentPage}`}>
-          {meta.data?.settings.aiPermission === "open" ? "开放模式" : "保守模式"} · {currentPage}
+          {currentPage}
         </span>
       </div>
       {historyOpen ? (
-        <section aria-label="AI 会话历史" className="drawer__history">
-          <input
-            aria-label="搜索 AI 会话"
-            onChange={(event) => setHistorySearch(event.target.value)}
-            placeholder="搜索会话"
-            value={historySearch}
-          />
-          {conversations.length === 0 ? <p>暂无匹配会话</p> : null}
-          {conversations.map((conversation) => (
-            <div key={conversation.id}>
-              <button
-                className={conversationId === conversation.id ? "selected" : ""}
-                onClick={() => loadConversation.mutate(conversation.id)}
-                type="button"
-              >
-                {conversation.title}
-              </button>
-              <IconButton
-                label={`重命名 ${conversation.title}`}
-                onClick={() => {
-                  const title = window.prompt("重命名会话", conversation.title)?.trim()
-                  if (title) rename.mutate({ id: conversation.id, title })
-                }}
-              >
-                <Pencil size={14} />
-              </IconButton>
-              <IconButton
-                label={`删除 ${conversation.title}`}
-                onClick={() => remove.mutate(conversation.id)}
-              >
-                <Trash2 size={14} />
-              </IconButton>
-            </div>
-          ))}
-        </section>
+        <AiConversationHistory
+          conversations={conversations}
+          onDelete={(id) => remove.mutate(id)}
+          onLoad={(id) => loadConversation.mutate(id)}
+          onRename={(id, title) => rename.mutate({ id, title })}
+          onSearch={setHistorySearch}
+          search={historySearch}
+          selectedId={conversationId}
+        />
       ) : null}
       <div className="drawer__body">
         {!configured ? (
@@ -201,15 +191,31 @@ export function AiDrawer({
           </div>
         ) : (
           messages.map((message) => (
-            <div className={`chat-message chat-message--${message.role}`} key={message.id}>
-              <span>{message.role === "user" ? "你" : nickname}</span>
-              <p>{message.content}</p>
-              {message.role === "assistant" ? <small>参考：当前对话</small> : null}
-            </div>
+            <AiChatMessage
+              key={message.id}
+              message={message}
+              nickname={nickname}
+              onRemember={setMemoryContent}
+            />
           ))
         )}
-        {send.isError ? <p className="inline-error">{send.error.message}</p> : null}
+        {send.isError ? (
+          <div className="ai-pending">
+            <Badge tone="waiting">等待分析</Badge>
+            <p>{send.error.message}</p>
+          </div>
+        ) : null}
       </div>
+      {memoryContent === null ? null : (
+        <AiMemoryConfirmation
+          content={memoryContent}
+          onCancel={() => setMemoryContent(null)}
+          onSaved={() => {
+            setMemoryContent(null)
+            void client.invalidateQueries({ queryKey: queryKeys.meta })
+          }}
+        />
+      )}
       <form
         className="drawer__composer"
         onSubmit={(event) => {
@@ -219,7 +225,7 @@ export function AiDrawer({
       >
         <textarea
           aria-label="给 AI 发送消息"
-          disabled={!configured}
+          disabled={!configured || send.isPending}
           onChange={(event) => setContent(event.target.value)}
           placeholder={configured ? "写下你卡住的地方..." : "请先在设置中配置 AI 服务"}
           rows={3}

@@ -1,10 +1,12 @@
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
+import { createAiMemoryInputSchema } from "../../shared/ai.js"
 import { aiConfigInputSchema, updateSettingsInputSchema } from "../../shared/app.js"
 import { onboardingInputSchema } from "../../shared/settings.js"
 import type { AppContext } from "../context.js"
 import { listCategories } from "../repositories/categories.js"
-import { listConversations, listMemories } from "../repositories/conversations.js"
+import { listConversations } from "../repositories/conversations.js"
+import { createMemory, listMemories, updateMemory } from "../repositories/memories.js"
 import { getSettings, updateSettings } from "../repositories/settings.js"
 import { listTrash, moveToTrash, purgeTrash, restoreTrash } from "../repositories/trash.js"
 import { dismissTutorialGuide, getTutorialState } from "../repositories/tutorial.js"
@@ -69,10 +71,12 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
   )
   app.patch("/api/ai/memories/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    context.database
-      .prepare("UPDATE ai_memories SET content = ?, updated_at = ? WHERE id = ?")
-      .run(memoryUpdateSchema.parse(request.body).content, new Date().toISOString(), id)
+    updateMemory(context.database, id, memoryUpdateSchema.parse(request.body).content)
     return reply.code(204).send()
+  })
+  app.post("/api/ai/memories", (request, reply) => {
+    const input = createAiMemoryInputSchema.parse(request.body)
+    return reply.code(201).send(createMemory(context.database, input.content, input.kind))
   })
   app.delete("/api/ai/memories/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
