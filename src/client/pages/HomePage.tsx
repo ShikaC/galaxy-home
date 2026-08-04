@@ -62,7 +62,8 @@ export function HomePage() {
   const primaryToday = activeToday.filter((item) => !item.isSecondary)
   const secondaryToday = activeToday.filter((item) => item.isSecondary)
   const completedToday = today.data?.filter((item) => item.status === "completed") ?? []
-  const completedHabits = habits.data?.filter((habit) => habit.completedToday).length ?? 0
+  const todayHabits = habits.data?.filter((habit) => habit.scheduledToday) ?? []
+  const completedHabits = todayHabits.filter((habit) => habit.completedToday).length
   const dateText = new Intl.DateTimeFormat("zh-CN", {
     timeZone: timezone,
     month: "long",
@@ -149,13 +150,13 @@ export function HomePage() {
             <SectionHeader
               action={
                 <span className="section-count">
-                  {completedHabits}/{habits.data?.length ?? 0}
+                  {completedHabits}/{todayHabits.length}
                 </span>
               }
               title="今日习惯"
             />
             <div className="list-stack">
-              {habits.data?.map((habit) => (
+              {todayHabits.map((habit) => (
                 <HabitRow
                   habit={habit}
                   key={habit.id}

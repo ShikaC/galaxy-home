@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import type { Habit } from "../../shared/habits.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { habitSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
@@ -10,9 +11,11 @@ import { IconButton } from "./ui/IconButton.js"
 const WEEKDAYS = ["日", "一", "二", "三", "四", "五", "六"] as const
 
 export function HabitDialog({
+  habit = null,
   onClose,
   open,
 }: {
+  readonly habit?: Habit | null
   readonly onClose: () => void
   readonly open: boolean
 }) {
@@ -23,10 +26,20 @@ export function HabitDialog({
   const [frequency, setFrequency] = useState<"daily" | "weekly">("daily")
   const [weeklyTarget, setWeeklyTarget] = useState(3)
   const [restDays, setRestDays] = useState<readonly number[]>([])
-  const create = useMutation({
+  const editing = habit !== null
+  useEffect(() => {
+    if (!open) return
+    setName(habit?.name ?? "")
+    setType(habit?.type ?? "check")
+    setTarget(habit?.targetCount ?? 1)
+    setFrequency(habit?.frequencyType ?? "daily")
+    setWeeklyTarget(habit?.weeklyTarget ?? 3)
+    setRestDays(habit?.restDays ?? [])
+  }, [habit, open])
+  const save = useMutation({
     mutationFn: () =>
-      apiRequest("/api/habits", habitSchema, {
-        method: "POST",
+      apiRequest(habit === null ? "/api/habits" : `/api/habits/${habit.id}`, habitSchema, {
+        method: editing ? "PATCH" : "POST",
         body: jsonBody({
           name,
           type,
@@ -38,6 +51,7 @@ export function HabitDialog({
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["habits"] })
+      void client.invalidateQueries({ queryKey: ["habit-day"] })
       onClose()
     },
   })
@@ -51,8 +65,8 @@ export function HabitDialog({
       <section aria-labelledby="new-habit-title" aria-modal="true" className="dialog" role="dialog">
         <header className="dialog__header">
           <div>
-            <p className="eyebrow">新习惯</p>
-            <h2 id="new-habit-title">设定一种可持续的节奏</h2>
+            <p className="eyebrow">{editing ? "编辑习惯" : "新习惯"}</p>
+            <h2 id="new-habit-title">{editing ? "调整习惯设置" : "设定一种可持续的节奏"}</h2>
           </div>
           <IconButton label="关闭习惯创建" onClick={onClose}>
             <X size={18} />
@@ -62,7 +76,7 @@ export function HabitDialog({
           className="form-stack"
           onSubmit={(event) => {
             event.preventDefault()
-            create.mutate()
+            save.mutate()
           }}
         >
           <TextField
@@ -130,13 +144,13 @@ export function HabitDialog({
               ))}
             </fieldset>
           )}
-          {create.isError ? <p className="inline-error">{create.error.message}</p> : null}
+          {save.isError ? <p className="inline-error">{save.error.message}</p> : null}
           <footer className="dialog__actions">
             <Button onClick={onClose} variant="ghost">
               取消
             </Button>
-            <Button disabled={!name.trim()} loading={create.isPending} type="submit">
-              创建习惯
+            <Button disabled={!name.trim()} loading={save.isPending} type="submit">
+              {editing ? "保存修改" : "创建习惯"}
             </Button>
           </footer>
         </form>

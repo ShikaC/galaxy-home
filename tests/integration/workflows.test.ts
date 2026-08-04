@@ -74,6 +74,74 @@ describe("daily workflows", () => {
     database.close()
   })
 
+  it("manages tutorial habits and exposes corrected history through HTTP", async () => {
+    const { app, database } = await createTestApp()
+    const tutorial = z
+      .object({ id: z.string().uuid() })
+      .optional()
+      .parse(database.prepare("SELECT id FROM habits WHERE is_tutorial = 1").get())
+    expect(tutorial).toBeDefined()
+    if (tutorial === undefined) return
+
+    const copied = await app.inject({ method: "POST", url: `/api/habits/${tutorial.id}/copy` })
+    expect(copied.statusCode).toBe(201)
+    const copiedHabit = z
+      .object({ id: z.string().uuid(), isTutorial: z.boolean() })
+      .parse(copied.json())
+    expect(copiedHabit.isTutorial).toBe(false)
+
+    const edited = await app.inject({
+      method: "PATCH",
+      url: `/api/habits/${tutorial.id}`,
+      payload: {
+        name: "我的阅读习惯",
+        type: "count",
+        targetCount: 2,
+        frequencyType: "daily",
+        weeklyTarget: null,
+        restDays: [],
+      },
+    })
+    expect(edited.json()).toEqual(
+      expect.objectContaining({ isTutorial: false, name: "我的阅读习惯" }),
+    )
+
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: "/api/habit-logs",
+          payload: {
+            habitId: copiedHabit.id,
+            localDate: "2026-08-03",
+            count: 1,
+            status: "active",
+            corrected: true,
+          },
+        })
+      ).statusCode,
+    ).toBe(204)
+    const history = await app.inject({ method: "GET", url: "/api/habits?localDate=2026-08-03" })
+    expect(history.json()).toContainEqual(
+      expect.objectContaining({ id: copiedHabit.id, correctedToday: true }),
+    )
+
+    expect(
+      (await app.inject({ method: "DELETE", url: `/api/habits/${copiedHabit.id}` })).statusCode,
+    ).toBe(204)
+    const trash = await app.inject({ method: "GET", url: "/api/trash" })
+    expect(trash.json()).toContainEqual(
+      expect.objectContaining({ entity_id: copiedHabit.id, entity_type: "habit" }),
+    )
+    const summaries = await app.inject({
+      method: "GET",
+      url: "/api/habits/summaries?start=2026-08-03&end=2026-08-03",
+    })
+    expect(summaries.json()).toEqual([])
+    await app.close()
+    database.close()
+  })
+
   it("converts an item into a project and archives the source item", async () => {
     const { app, database } = await createTestApp()
     const item = await app.inject({

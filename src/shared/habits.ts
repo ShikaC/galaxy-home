@@ -21,6 +21,8 @@ export const createHabitInputSchema = z
   .readonly()
 
 export type CreateHabitInput = z.infer<typeof createHabitInputSchema>
+export const updateHabitInputSchema = createHabitInputSchema
+export type UpdateHabitInput = z.infer<typeof updateHabitInputSchema>
 
 export const habitSchema = z
   .object({
@@ -33,6 +35,10 @@ export const habitSchema = z
     restDays: z.array(z.number().int()).readonly(),
     currentCount: z.number().int(),
     completedToday: z.boolean(),
+    todayStatus: habitLogStatusSchema.nullable(),
+    correctedToday: z.boolean(),
+    isRestDay: z.boolean(),
+    scheduledToday: z.boolean(),
     weeklyCount: z.number().int().nonnegative(),
     streak: z.number().int(),
     totalCheckIns: z.number().int(),

@@ -50,6 +50,7 @@ export function useHabitMutation(action: "record" | "undo") {
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["habits"] })
+      void client.invalidateQueries({ queryKey: ["habit-day"] })
       void client.invalidateQueries({ queryKey: ["habit-summaries"] })
     },
   })

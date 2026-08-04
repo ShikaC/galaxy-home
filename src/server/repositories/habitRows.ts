@@ -1,5 +1,5 @@
 import type { DatabaseSync, SQLOutputValue } from "node:sqlite"
-import { endOfWeek, format, parseISO, startOfWeek } from "date-fns"
+import { format, parseISO, startOfWeek } from "date-fns"
 import { z } from "zod"
 import {
   type Habit,
@@ -27,7 +27,11 @@ const habitRowSchema = z.object({
 })
 
 const currentLogSchema = z
-  .object({ count: z.number().int(), status: z.enum(["active", "leave"]) })
+  .object({
+    count: z.number().int(),
+    status: z.enum(["active", "leave"]),
+    corrected: z.number().int(),
+  })
   .optional()
 
 export function readHabit(
@@ -39,14 +43,25 @@ export function readHabit(
   const restDays = z.array(z.number().int().min(0).max(6)).parse(JSON.parse(parsed.rest_days_json))
   const log = currentLogSchema.parse(
     database
-      .prepare("SELECT count, status FROM habit_logs WHERE habit_id = ? AND local_date = ?")
+      .prepare(
+        "SELECT count, status, corrected FROM habit_logs WHERE habit_id = ? AND local_date = ?",
+      )
       .get(parsed.id, localDate),
   )
   const currentCount = log?.status === "active" ? log.count : 0
   const tutorial = parsed.is_tutorial === 1
   const localDay = parseISO(localDate)
   const weekStart = format(startOfWeek(localDay, { weekStartsOn: 1 }), "yyyy-MM-dd")
-  const weekEnd = format(endOfWeek(localDay, { weekStartsOn: 1 }), "yyyy-MM-dd")
+  const weeklyCount = tutorial
+    ? 0
+    : countHabitCheckInsInRange(database, parsed.id, parsed.target_count, weekStart, localDate)
+  const isRestDay = restDays.includes(localDay.getDay())
+  const scheduledToday =
+    !isRestDay &&
+    log?.status !== "leave" &&
+    (parsed.frequency_type === "daily" ||
+      weeklyCount < (parsed.weekly_target ?? 1) ||
+      currentCount > 0)
 
   return habitSchema.parse({
     id: parsed.id,
@@ -58,9 +73,11 @@ export function readHabit(
     restDays,
     currentCount,
     completedToday: currentCount >= parsed.target_count,
-    weeklyCount: tutorial
-      ? 0
-      : countHabitCheckInsInRange(database, parsed.id, parsed.target_count, weekStart, weekEnd),
+    todayStatus: log?.status ?? null,
+    correctedToday: log?.corrected === 1,
+    isRestDay,
+    scheduledToday,
+    weeklyCount,
     streak: tutorial
       ? 0
       : calculateHabitStreak(database, parsed.id, localDate, parsed.target_count, restDays),

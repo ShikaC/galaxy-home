@@ -180,6 +180,11 @@
   color: var(--color-action);
   cursor: pointer;
 }
+.habit-complete:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
 .habit-row__body > div {
   display: flex;
   flex-wrap: wrap;
@@ -192,6 +197,12 @@
 }
 .habit-count {
   font-variant-numeric: tabular-nums;
+}
+.habit-row__actions {
+  display: flex;
+  grid-column: 2 / -1;
+  justify-content: flex-end;
+  gap: var(--space-1);
 }
 .project-summary {
   display: grid;
@@ -404,6 +415,10 @@
 .calendar-frame {
   min-inline-size: 0;
 }
+.trend-stack {
+  display: grid;
+  gap: var(--space-6);
+}
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
@@ -414,14 +429,25 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-micro);
 }
-.calendar-grid > div {
+.calendar-grid > button {
   position: relative;
   display: grid;
   aspect-ratio: 1;
   place-items: center;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
   font-size: var(--font-size-meta);
+  cursor: pointer;
+}
+.calendar-grid > button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.calendar-grid > button[aria-pressed="true"] {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
 }
 .calendar-grid .outside {
   color: var(--color-text-faint);
@@ -435,6 +461,32 @@
   inset-block-end: 1px;
   color: var(--color-action);
   font-size: var(--font-size-nano);
+}
+.habit-day-detail {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-border);
+  padding-block-start: var(--space-4);
+}
+.habit-day-detail > p,
+.habit-day-detail small {
+  color: var(--color-text-muted);
+}
+.habit-day-detail ul {
+  display: grid;
+  gap: var(--space-2);
+}
+.habit-day-detail li,
+.habit-day-detail__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.habit-day-detail__name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 .correction-form {
   display: grid;

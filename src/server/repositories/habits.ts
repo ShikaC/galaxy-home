@@ -1,8 +1,29 @@
 import type { DatabaseSync } from "node:sqlite"
-import { type CreateHabitInput, type Habit, habitIdSchema } from "../../shared/habits.js"
-import { readHabitRows } from "./habitRows.js"
+import {
+  type CreateHabitInput,
+  type Habit,
+  habitIdSchema,
+  type UpdateHabitInput,
+} from "../../shared/habits.js"
+import { readHabit, readHabitRows } from "./habitRows.js"
 
 export { recordHabit, setHabitLog, undoHabit } from "./habitLogs.js"
+
+export class HabitNotFoundError extends Error {
+  readonly name = "HabitNotFoundError"
+
+  constructor(readonly habitId: string) {
+    super(`Habit not found: ${habitId}`)
+  }
+}
+
+export function getHabit(database: DatabaseSync, habitId: string, localDate: string): Habit {
+  const row = database
+    .prepare("SELECT * FROM habits WHERE id = ? AND deleted_at IS NULL")
+    .get(habitId)
+  if (row === undefined) throw new HabitNotFoundError(habitId)
+  return readHabit(database, row, localDate)
+}
 
 export function createHabit(database: DatabaseSync, input: CreateHabitInput): Habit {
   const id = habitIdSchema.parse(crypto.randomUUID())
@@ -52,6 +73,49 @@ export function listHabits(database: DatabaseSync, localDate: string): readonly 
   )
 }
 
+export function updateHabit(
+  database: DatabaseSync,
+  rawHabitId: string,
+  input: UpdateHabitInput,
+): Habit {
+  const habitId = habitIdSchema.parse(rawHabitId)
+  const now = new Date().toISOString()
+  const result = database
+    .prepare(
+      `UPDATE habits SET name = ?, type = ?, target_count = ?, frequency_type = ?,
+       weekly_target = ?, rest_days_json = ?, is_tutorial = 0, updated_at = ?
+       WHERE id = ? AND deleted_at IS NULL`,
+    )
+    .run(
+      input.name,
+      input.type,
+      input.targetCount,
+      input.frequencyType,
+      input.weeklyTarget,
+      JSON.stringify(input.restDays),
+      now,
+      habitId,
+    )
+  if (result.changes === 0) throw new HabitNotFoundError(habitId)
+  return getHabit(database, habitId, now.slice(0, 10))
+}
+
+export function copyHabit(database: DatabaseSync, rawHabitId: string): Habit {
+  const source = getHabit(
+    database,
+    habitIdSchema.parse(rawHabitId),
+    new Date().toISOString().slice(0, 10),
+  )
+  return createHabit(database, {
+    name: `${source.name} 副本`,
+    type: source.type,
+    targetCount: source.targetCount,
+    frequencyType: source.frequencyType,
+    weeklyTarget: source.weeklyTarget,
+    restDays: [...source.restDays],
+  })
+}
+
 export function listHabitDaySummaries(database: DatabaseSync, startDate: string, endDate: string) {
   return database
     .prepare(
@@ -59,6 +123,7 @@ export function listHabitDaySummaries(database: DatabaseSync, startDate: string,
        FROM habit_logs JOIN habits ON habits.id = habit_logs.habit_id
        WHERE habit_logs.local_date BETWEEN ? AND ? AND habit_logs.status = 'active'
          AND habit_logs.count >= habits.target_count AND habits.is_tutorial = 0
+         AND habits.deleted_at IS NULL
        GROUP BY habit_logs.local_date ORDER BY habit_logs.local_date`,
     )
     .all(startDate, endDate)

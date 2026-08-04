@@ -1,19 +1,29 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { apiVoid, jsonBody } from "../lib/api.js"
 import { useHabits } from "../lib/queries.js"
 import { useAppTime } from "./AppContext.js"
 import { Button } from "./ui/Button.js"
 import { TextField } from "./ui/Field.js"
 
-export function HabitCorrection() {
+export function HabitCorrection({ initialDate }: { readonly initialDate?: string }) {
   const { today } = useAppTime()
   const habits = useHabits()
   const client = useQueryClient()
   const [habitId, setHabitId] = useState("")
-  const [date, setDate] = useState(today)
+  const [date, setDate] = useState(initialDate ?? today)
   const [count, setCount] = useState(0)
   const [leave, setLeave] = useState(false)
+  useEffect(() => setDate(initialDate ?? today), [initialDate, today])
+  useEffect(() => {
+    if (
+      habitId !== "" &&
+      habits.data !== undefined &&
+      !habits.data.some((habit) => habit.id === habitId)
+    ) {
+      setHabitId("")
+    }
+  }, [habitId, habits.data])
   const save = useMutation({
     mutationFn: () =>
       apiVoid("/api/habit-logs", {
@@ -28,6 +38,7 @@ export function HabitCorrection() {
       }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["habits"] })
+      void client.invalidateQueries({ queryKey: ["habit-day"] })
       void client.invalidateQueries({ queryKey: ["habit-summaries"] })
     },
   })
