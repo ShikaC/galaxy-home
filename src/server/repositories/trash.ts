@@ -111,3 +111,15 @@ export function purgeTrash(database: DatabaseSync, trashId: string): void {
     throw error
   }
 }
+
+export function purgeExpiredTrash(database: DatabaseSync, now = new Date()): number {
+  const entries = z
+    .array(z.object({ id: z.string().uuid() }))
+    .parse(
+      database
+        .prepare("SELECT id FROM trash_entries WHERE purge_after <= ? ORDER BY purge_after")
+        .all(now.toISOString()),
+    )
+  for (const entry of entries) purgeTrash(database, entry.id)
+  return entries.length
+}

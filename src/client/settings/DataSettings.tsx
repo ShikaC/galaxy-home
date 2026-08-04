@@ -1,9 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Download, RotateCcw, Trash2, Upload } from "lucide-react"
+import { useEffect, useState } from "react"
 import { z } from "zod"
+import { workspaceSettingsSchema } from "../../shared/settings.js"
+import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
+import { TextField } from "../components/ui/Field.js"
 import { IconButton } from "../components/ui/IconButton.js"
-import { apiRequest, apiVoid } from "../lib/api.js"
+import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
 
 const trashSchema = z
@@ -22,6 +26,14 @@ const trashSchema = z
 export function DataSettings() {
   const meta = useMeta()
   const client = useQueryClient()
+  const [backupRetentionDays, setBackupRetentionDays] = useState("30")
+  const [trashRetentionDays, setTrashRetentionDays] = useState("30")
+  useEffect(() => {
+    if (meta.data !== undefined) {
+      setBackupRetentionDays(String(meta.data.settings.backupRetentionDays))
+      setTrashRetentionDays(String(meta.data.settings.trashRetentionDays))
+    }
+  }, [meta.data])
   const trash = useQuery({
     queryKey: ["trash"],
     queryFn: () => apiRequest("/api/trash", trashSchema),
@@ -49,6 +61,17 @@ export function DataSettings() {
         }),
       ),
     onSuccess: () => window.location.reload(),
+  })
+  const saveRetention = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/settings", workspaceSettingsSchema, {
+        method: "PATCH",
+        body: jsonBody({
+          backupRetentionDays: Number(backupRetentionDays),
+          trashRetentionDays: Number(trashRetentionDays),
+        }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.meta }),
   })
   const size =
     meta.data === undefined
@@ -92,7 +115,41 @@ export function DataSettings() {
           />
         </label>
       </div>
-      {restoreFile.isError ? <p className="inline-error">{restoreFile.error.message}</p> : null}
+      <form
+        className="form-stack settings-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          saveRetention.mutate()
+        }}
+      >
+        <div className="form-grid">
+          <TextField
+            label="自动备份保留天数"
+            max={365}
+            min={7}
+            onChange={(event) => setBackupRetentionDays(event.target.value)}
+            type="number"
+            value={backupRetentionDays}
+          />
+          <TextField
+            label="回收站保留天数"
+            max={365}
+            min={1}
+            onChange={(event) => setTrashRetentionDays(event.target.value)}
+            type="number"
+            value={trashRetentionDays}
+          />
+        </div>
+        <div>
+          <Button loading={saveRetention.isPending} type="submit">
+            保存保留规则
+          </Button>
+          {saveRetention.isSuccess ? <span className="success-text">已保存</span> : null}
+        </div>
+      </form>
+      {restoreFile.isError || saveRetention.isError ? (
+        <p className="inline-error">{restoreFile.error?.message ?? saveRetention.error?.message}</p>
+      ) : null}
       <div className="subsection">
         <h3>回收站</h3>
         {trash.data?.length === 0 ? (

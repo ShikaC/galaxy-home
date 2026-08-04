@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { backup, type DatabaseSync, type SQLOutputValue } from "node:sqlite"
+import { format, parseISO, subDays } from "date-fns"
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
 import { z } from "zod"
 
@@ -52,17 +53,19 @@ export async function ensureDailyBackup(
   mkdirSync(directory, { recursive: true })
   const path = join(directory, `${localDate}.sqlite`)
   if (!existsSync(path)) await backup(database, path)
+  const oldestRetainedDate = format(subDays(parseISO(localDate), retentionDays - 1), "yyyy-MM-dd")
   const files = readdirSync(directory)
     .filter((file) => /^\d{4}-\d{2}-\d{2}\.sqlite$/.test(file))
     .sort()
-  for (const file of files.slice(0, Math.max(0, files.length - retentionDays)))
-    rmSync(join(directory, file))
+  for (const file of files) {
+    if (file.slice(0, 10) < oldestRetainedDate) rmSync(join(directory, file))
+  }
   return path
 }
 
 export function getBackupStatus(directory: string) {
   if (!existsSync(directory)) return { latestAt: null, sizeBytes: 0 }
-  const files = readdirSync(directory).filter((file) => file.endsWith(".sqlite"))
+  const files = readdirSync(directory).filter((file) => /^\d{4}-\d{2}-\d{2}\.sqlite$/.test(file))
   const stats = files.map((file) => statSync(join(directory, file)))
   return {
     latestAt:

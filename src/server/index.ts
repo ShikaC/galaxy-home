@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import { buildApp } from "./app.js"
 import { migrateDatabase, openDatabase } from "./database.js"
 import { getSettings } from "./repositories/settings.js"
+import { purgeExpiredTrash } from "./repositories/trash.js"
 import { ensureDailyBackup } from "./services/backup.js"
 import { runScheduler } from "./services/scheduler.js"
 
@@ -16,6 +17,7 @@ const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone
   new Date(),
 )
 await ensureDailyBackup(database, backupDirectory, localDate, settings.backupRetentionDays)
+purgeExpiredTrash(database)
 runScheduler(database)
 
 const production = process.env["NODE_ENV"] === "production"
