@@ -52,10 +52,11 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await page.getByLabel("实际成果（可选）").fill("已经选好书")
   await page.getByLabel("遇到的阻碍（可选）").fill("晚间容易分心")
   await page.getByLabel("新的下一任务（可选）").fill("准备阅读笔记模板")
-  await page.getByRole("button", { name: "完成当前任务" }).click()
+  await page.getByRole("button", { name: "手动完成" }).click()
 
   await expect(page.getByText("安排第一次阅读", { exact: true })).toBeVisible()
   await expect(page.getByText("准备阅读笔记模板", { exact: true })).toBeVisible()
-  await expect(page.getByText("已完成 1 个任务。已完成阶段会在这里形成时间线。")).toBeVisible()
+  await expect(page.getByText("成果：已经选好书")).toBeVisible()
+  await expect(page.getByText("阻碍：晚间容易分心")).toBeVisible()
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("project-flow.png") })
 })
