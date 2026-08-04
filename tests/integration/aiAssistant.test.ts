@@ -37,7 +37,13 @@ describe("AI assistant context and memory", () => {
       }
       requests.push(JSON.parse(Buffer.concat(chunks).toString("utf8")))
       response.writeHead(200, { "Content-Type": "application/json" })
-      response.end(JSON.stringify({ choices: [{ message: { content: "先把下一步缩小一点。" } }] }))
+      response.end(
+        JSON.stringify({
+          choices: [
+            { message: { content: requests.length === 3 ? "   " : "先把下一步缩小一点。" } },
+          ],
+        }),
+      )
     })
     await new Promise<void>((resolve) => aiServer?.listen(0, "127.0.0.1", resolve))
     const address = aiServer.address()
@@ -150,5 +156,30 @@ describe("AI assistant context and memory", () => {
       .all()
     expect(storedReferences).toHaveLength(2)
     expect(JSON.stringify(storedReferences[1])).toContain("预约搬家车辆")
+
+    const conversationCountBefore = Number(
+      database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get()?.["value"],
+    )
+    const messageCountBefore = Number(
+      database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get()?.["value"],
+    )
+    const blank = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "请帮我开始",
+        currentPath: "/",
+        currentLabel: "首页",
+      },
+    })
+    expect(blank.statusCode).toBe(503)
+    expect(blank.json()).toEqual(expect.objectContaining({ code: "AI_INVALID_RESPONSE" }))
+    expect(
+      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get()?.["value"]),
+    ).toBe(conversationCountBefore)
+    expect(
+      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get()?.["value"]),
+    ).toBe(messageCountBefore)
   })
 })

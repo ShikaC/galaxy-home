@@ -116,57 +116,66 @@ export function convertItemToProject(database: DatabaseSync, itemId: string): Pr
   return getProject(database, projectId)
 }
 
+export function advanceProjectRows(
+  database: DatabaseSync,
+  project: Project,
+  input: AdvanceProjectInput,
+  now: string,
+): void {
+  if (project.currentTask === null) return
+  database
+    .prepare(
+      "UPDATE project_tasks SET position = 'completed', completed_at = ?, updated_at = ? WHERE id = ?",
+    )
+    .run(now, now, project.currentTask.id)
+  database
+    .prepare(
+      "UPDATE project_tasks SET position = 'current', updated_at = ? WHERE project_id = ? AND position = 'next'",
+    )
+    .run(now, project.id)
+  database
+    .prepare(
+      "INSERT INTO project_feedback (id, project_id, task_id, outcome, obstacle, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .run(
+      crypto.randomUUID(),
+      project.id,
+      project.currentTask.id,
+      input.outcome,
+      input.obstacle,
+      now,
+    )
+  if (input.nextTask !== null) {
+    const stage = z
+      .object({ id: z.string() })
+      .parse(
+        database
+          .prepare("SELECT id FROM project_stages WHERE project_id = ? AND status = 'current'")
+          .get(project.id),
+      )
+    database
+      .prepare(
+        `INSERT INTO project_tasks
+         (id, project_id, stage_id, title, position, source, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 'next', 'manual', ?, ?)`,
+      )
+      .run(crypto.randomUUID(), project.id, stage.id, input.nextTask, now, now)
+  }
+  database
+    .prepare("UPDATE projects SET progress = MIN(progress + 10, 95), updated_at = ? WHERE id = ?")
+    .run(now, project.id)
+}
+
 export function advanceProject(
   database: DatabaseSync,
   rawProjectId: string,
   input: AdvanceProjectInput,
 ): void {
   const project = getProject(database, rawProjectId)
-  if (project.currentTask === null) return
   const now = new Date().toISOString()
   database.exec("BEGIN IMMEDIATE")
   try {
-    database
-      .prepare(
-        "UPDATE project_tasks SET position = 'completed', completed_at = ?, updated_at = ? WHERE id = ?",
-      )
-      .run(now, now, project.currentTask.id)
-    database
-      .prepare(
-        "UPDATE project_tasks SET position = 'current', updated_at = ? WHERE project_id = ? AND position = 'next'",
-      )
-      .run(now, project.id)
-    database
-      .prepare(
-        "INSERT INTO project_feedback (id, project_id, task_id, outcome, obstacle, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      )
-      .run(
-        crypto.randomUUID(),
-        project.id,
-        project.currentTask.id,
-        input.outcome,
-        input.obstacle,
-        now,
-      )
-    if (input.nextTask !== null) {
-      const stage = z
-        .object({ id: z.string() })
-        .parse(
-          database
-            .prepare("SELECT id FROM project_stages WHERE project_id = ? AND status = 'current'")
-            .get(project.id),
-        )
-      database
-        .prepare(
-          `INSERT INTO project_tasks
-         (id, project_id, stage_id, title, position, source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'next', 'manual', ?, ?)`,
-        )
-        .run(crypto.randomUUID(), project.id, stage.id, input.nextTask, now, now)
-    }
-    database
-      .prepare("UPDATE projects SET progress = MIN(progress + 10, 95), updated_at = ? WHERE id = ?")
-      .run(now, project.id)
+    advanceProjectRows(database, project, input, now)
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")

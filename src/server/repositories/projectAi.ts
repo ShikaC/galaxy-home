@@ -2,14 +2,17 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { projectIdSchema } from "../../shared/items.js"
 import {
-  type ProjectAiFeedbackResult,
   type ProjectAiPlan,
   type ProjectAiSession,
   projectAiPlanSchema,
   projectAiSessionSchema,
 } from "../../shared/projects.js"
-import { completeProjectStage } from "./projectLifecycle.js"
-import { advanceProject, getProject } from "./projects.js"
+import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./projectAiErrors.js"
+import { captureProjectSnapshot, recordProjectAiAction } from "./projectAiSnapshots.js"
+import { getProject } from "./projects.js"
+
+export { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./projectAiErrors.js"
+export { applyProjectAiFeedback } from "./projectAiFeedback.js"
 
 const statusSchema = z.enum(["clarifying", "ready", "applied"])
 const sessionRowSchema = z.object({
@@ -28,14 +31,6 @@ export type ProjectAiSessionData = {
   readonly answers: readonly string[]
   readonly draft: ProjectAiPlan | null
   readonly baseUpdatedAt: string
-}
-
-export class ProjectAiSessionNotFoundError extends Error {
-  readonly name = "ProjectAiSessionNotFoundError"
-}
-
-export class ProjectAiPlanStaleError extends Error {
-  readonly name = "ProjectAiPlanStaleError"
 }
 
 export function getProjectAiSessionData(
@@ -177,6 +172,7 @@ export function applyProjectAiPlan(database: DatabaseSync, rawProjectId: string)
   const now = new Date().toISOString()
   database.exec("BEGIN IMMEDIATE")
   try {
+    const snapshot = captureProjectSnapshot(database, project.id)
     database
       .prepare("UPDATE project_stages SET title = ?, updated_at = ? WHERE id = ?")
       .run(session.draft.stageTitle, now, stage.id)
@@ -192,53 +188,17 @@ export function applyProjectAiPlan(database: DatabaseSync, rawProjectId: string)
         "UPDATE project_ai_sessions SET status = 'applied', updated_at = ? WHERE project_id = ?",
       )
       .run(now, project.id)
+    recordProjectAiAction(
+      database,
+      "apply_project_plan",
+      "采用 AI 项目拆解并更新估算进度",
+      project.id,
+      snapshot,
+    )
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")
     throw error
   }
-  return getProject(database, project.id)
-}
-
-export function applyProjectAiFeedback(
-  database: DatabaseSync,
-  rawProjectId: string,
-  expectedTaskId: string,
-  outcome: string | null,
-  obstacle: string | null,
-  result: ProjectAiFeedbackResult,
-) {
-  const project = getProject(database, rawProjectId)
-  if (project.currentTask?.id !== expectedTaskId) {
-    throw new ProjectAiPlanStaleError("当前任务已变化，未应用过期的 AI 建议")
-  }
-  if (result.kind === "stage" && project.nextTask !== null) {
-    throw new ProjectAiPlanStaleError("当前阶段还有下一任务")
-  }
-  advanceProject(database, project.id, {
-    outcome,
-    obstacle,
-    nextTask: result.kind === "task" ? result.nextTask : null,
-  })
-  if (result.kind === "stage") {
-    completeProjectStage(database, project.id, {
-      outcome: result.stageOutcome,
-      stageTitle: result.stageTitle,
-      currentTask: result.currentTask,
-      nextTask: result.nextTask,
-    })
-  }
-  const now = new Date().toISOString()
-  database
-    .prepare(
-      `UPDATE project_tasks SET source = 'ai', updated_at = ?
-       WHERE project_id = ? AND position IN ('current', 'next')`,
-    )
-    .run(now, project.id)
-  database
-    .prepare(
-      "UPDATE projects SET progress = ?, progress_source = 'ai', updated_at = ? WHERE id = ?",
-    )
-    .run(result.progress, now, project.id)
   return getProject(database, project.id)
 }

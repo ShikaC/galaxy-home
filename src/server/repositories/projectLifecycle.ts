@@ -104,10 +104,11 @@ export class ProjectStageNotReadyError extends Error {
   readonly name = "ProjectStageNotReadyError"
 }
 
-export function completeProjectStage(
+export function completeProjectStageRows(
   database: DatabaseSync,
   rawProjectId: string,
   input: CompleteProjectStageInput,
+  now: string,
 ): Project {
   const projectId = projectIdSchema.parse(rawProjectId)
   const project = getProject(database, projectId)
@@ -121,48 +122,57 @@ export function completeProjectStage(
       )
       .get(projectId),
   )
-  const now = new Date().toISOString()
   const nextStageId = crypto.randomUUID()
-  database.exec("BEGIN IMMEDIATE")
-  try {
-    database
-      .prepare(
-        `UPDATE project_stages SET status = 'completed', outcome = ?, completed_at = ?,
+  database
+    .prepare(
+      `UPDATE project_stages SET status = 'completed', outcome = ?, completed_at = ?,
          updated_at = ? WHERE id = ?`,
-      )
-      .run(input.outcome, now, now, stage.id)
-    database
-      .prepare(
-        `INSERT INTO project_stages
+    )
+    .run(input.outcome, now, now, stage.id)
+  database
+    .prepare(
+      `INSERT INTO project_stages
          (id, project_id, title, status, sort_order, created_at, updated_at)
          VALUES (?, ?, ?, 'current', ?, ?, ?)`,
-      )
-      .run(nextStageId, projectId, input.stageTitle, stage.sort_order + 1, now, now)
-    const insertTask = database.prepare(
-      `INSERT INTO project_tasks
+    )
+    .run(nextStageId, projectId, input.stageTitle, stage.sort_order + 1, now, now)
+  const insertTask = database.prepare(
+    `INSERT INTO project_tasks
        (id, project_id, stage_id, title, position, source, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 'manual', ?, ?)`,
-    )
-    insertTask.run(
-      crypto.randomUUID(),
-      projectId,
-      nextStageId,
-      input.currentTask,
-      "current",
-      now,
-      now,
-    )
-    insertTask.run(crypto.randomUUID(), projectId, nextStageId, input.nextTask, "next", now, now)
-    database
-      .prepare(
-        `UPDATE projects SET progress = MIN(progress + 15, 95), progress_source = 'manual',
+  )
+  insertTask.run(
+    crypto.randomUUID(),
+    projectId,
+    nextStageId,
+    input.currentTask,
+    "current",
+    now,
+    now,
+  )
+  insertTask.run(crypto.randomUUID(), projectId, nextStageId, input.nextTask, "next", now, now)
+  database
+    .prepare(
+      `UPDATE projects SET progress = MIN(progress + 15, 95), progress_source = 'manual',
          updated_at = ? WHERE id = ?`,
-      )
-      .run(now, projectId)
+    )
+    .run(now, projectId)
+  return getProject(database, projectId)
+}
+
+export function completeProjectStage(
+  database: DatabaseSync,
+  rawProjectId: string,
+  input: CompleteProjectStageInput,
+): Project {
+  const now = new Date().toISOString()
+  database.exec("BEGIN IMMEDIATE")
+  try {
+    const project = completeProjectStageRows(database, rawProjectId, input, now)
     database.exec("COMMIT")
+    return project
   } catch (error) {
     database.exec("ROLLBACK")
     throw error
   }
-  return getProject(database, projectId)
 }

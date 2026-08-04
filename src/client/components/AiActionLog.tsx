@@ -16,6 +16,8 @@ export function AiActionLog() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["ai-actions"] })
       void client.invalidateQueries({ queryKey: queryKeys.reviews })
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+      void client.invalidateQueries({ queryKey: ["project-ai"] })
     },
   })
   return (

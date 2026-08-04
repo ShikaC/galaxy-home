@@ -2,7 +2,7 @@ import { z } from "zod"
 import { readSecretConfig } from "./secrets.js"
 
 const completionSchema = z.object({
-  choices: z.array(z.object({ message: z.object({ content: z.string() }) })).min(1),
+  choices: z.array(z.object({ message: z.object({ content: z.string().trim().min(1) }) })).min(1),
 })
 const transcriptionSchema = z.object({ text: z.string().trim().min(1) })
 type ChatMessage = {
@@ -58,7 +58,10 @@ async function requestCompletion(
     }),
   })
   try {
-    return completionSchema.parse(await response.json()).choices[0]?.message.content ?? ""
+    const completion = completionSchema.parse(await response.json())
+    const choice = completion.choices[0]
+    if (choice === undefined) throw new Error("Missing completion choice")
+    return choice.message.content
   } catch {
     throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的内容，未写入任何数据")
   }

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { z } from "zod"
+import { workspaceSettingsSchema } from "../../shared/settings.js"
 import { AiActionLog } from "../components/AiActionLog.js"
 import { Button } from "../components/ui/Button.js"
 import { TextField } from "../components/ui/Field.js"
@@ -48,7 +49,7 @@ export function AiSettings() {
   })
   const permission = useMutation({
     mutationFn: (aiPermission: "conservative" | "open") =>
-      apiRequest("/api/settings", z.unknown(), {
+      apiRequest("/api/settings", workspaceSettingsSchema, {
         method: "PATCH",
         body: jsonBody({ aiPermission }),
       }),

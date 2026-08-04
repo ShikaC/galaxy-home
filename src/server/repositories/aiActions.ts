@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { aiActionSchema } from "../../shared/ai.js"
+import { projectUndoPayloadSchema, restoreProjectSnapshot } from "./projectAiSnapshots.js"
 
 const actionRowSchema = z.object({
   id: z.string().uuid(),
@@ -26,10 +27,14 @@ export const reviewSnapshotSchema = z.object({
   deleted_at: z.string().nullable(),
 })
 
-const undoPayloadSchema = z.object({
+const reviewUndoPayloadSchema = z.object({
   kind: z.literal("weekly_review"),
   previous: reviewSnapshotSchema.nullable(),
 })
+const undoPayloadSchema = z.discriminatedUnion("kind", [
+  reviewUndoPayloadSchema,
+  projectUndoPayloadSchema,
+])
 
 export class AiActionUnavailableError extends Error {
   readonly name = "AiActionUnavailableError"
@@ -81,7 +86,7 @@ export function recordReviewAction(
 function restoreReview(
   database: DatabaseSync,
   reviewId: string,
-  payload: z.infer<typeof undoPayloadSchema>,
+  payload: z.infer<typeof reviewUndoPayloadSchema>,
 ) {
   if (payload.previous === null) {
     database.prepare("DELETE FROM weekly_reviews WHERE id = ?").run(reviewId)
@@ -123,12 +128,31 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         .get(actionId),
     )
   if (row === undefined) throw new AiActionUnavailableError("该操作已经撤销或不存在")
-  if (row.action_type !== "generate_weekly_review")
-    throw new AiActionUnavailableError("该操作暂不支持撤销")
   const payload = undoPayloadSchema.parse(JSON.parse(row.undo_payload_json))
+  const latest = z.object({ id: z.string().uuid() }).parse(
+    database
+      .prepare(
+        `SELECT id FROM ai_action_log
+           WHERE entity_type = ? AND entity_id = ? AND undone_at IS NULL
+           ORDER BY created_at DESC, rowid DESC LIMIT 1`,
+      )
+      .get(row.entity_type, row.entity_id),
+  )
+  if (latest.id !== row.id) throw new AiActionUnavailableError("请先撤销该对象最近的一次 AI 操作")
   database.exec("BEGIN IMMEDIATE")
   try {
-    restoreReview(database, row.entity_id, payload)
+    if (payload.kind === "weekly_review") {
+      if (row.action_type !== "generate_weekly_review")
+        throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      restoreReview(database, row.entity_id, payload)
+    } else {
+      if (
+        row.action_type !== "apply_project_plan" &&
+        row.action_type !== "advance_project_feedback"
+      )
+        throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      restoreProjectSnapshot(database, payload.snapshot)
+    }
     database
       .prepare("UPDATE ai_action_log SET undone_at = ? WHERE id = ?")
       .run(new Date().toISOString(), row.id)
