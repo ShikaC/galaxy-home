@@ -88,24 +88,19 @@ export async function transcribe(
   mimeType: string,
 ) {
   const config = readSecretConfig(secretPath)
-  if (
-    config.transcriptionBaseUrl === "" ||
-    config.transcriptionModel === "" ||
-    config.apiKey === ""
-  ) {
+  const baseUrl = config.transcriptionBaseUrl || config.chatBaseUrl
+  const model = config.transcriptionModel || config.chatModel
+  if (baseUrl === "" || model === "" || config.apiKey === "") {
     throw new AiServiceError("AI_NOT_CONFIGURED", "转写服务尚未配置")
   }
   const form = new FormData()
-  form.set("model", config.transcriptionModel)
+  form.set("model", model)
   form.set("file", new File([Uint8Array.from(file).buffer], filename, { type: mimeType }))
-  const response = await checkedFetch(
-    `${config.transcriptionBaseUrl.replace(/\/$/, "")}/audio/transcriptions`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${config.apiKey}` },
-      body: form,
-    },
-  )
+  const response = await checkedFetch(`${baseUrl.replace(/\/$/, "")}/audio/transcriptions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.apiKey}` },
+    body: form,
+  })
   try {
     return transcriptionSchema.parse(await response.json()).text
   } catch {

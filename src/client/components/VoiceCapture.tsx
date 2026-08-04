@@ -1,4 +1,4 @@
-import { Mic, Pause, Play, Square, Trash2 } from "lucide-react"
+import { Mic, Pause, Play, RefreshCw, Square, Trash2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { apiRequest } from "../lib/api.js"
@@ -9,8 +9,12 @@ const transcriptionSchema = z.object({ text: z.string() })
 export function VoiceCapture({ onText }: { readonly onText: (text: string) => void }) {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const audioRef = useRef<Blob | null>(null)
+  const requestRef = useRef(0)
   const [seconds, setSeconds] = useState(0)
-  const [state, setState] = useState<"idle" | "recording" | "paused" | "transcribing">("idle")
+  const [state, setState] = useState<"idle" | "recording" | "paused" | "transcribing" | "failed">(
+    "idle",
+  )
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     if (state !== "recording") return
@@ -20,6 +24,46 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
   useEffect(() => {
     if (seconds >= 120) recorderRef.current?.stop()
   }, [seconds])
+  useEffect(
+    () => () => {
+      requestRef.current += 1
+      const recorder = recorderRef.current
+      if (recorder !== null) {
+        recorder.onstop = null
+        recorder.stream.getTracks().forEach((track) => {
+          track.stop()
+        })
+        if (recorder.state !== "inactive") recorder.stop()
+      }
+      chunksRef.current = []
+      audioRef.current = null
+    },
+    [],
+  )
+
+  const requestTranscription = async (blob: Blob) => {
+    const requestId = requestRef.current + 1
+    requestRef.current = requestId
+    setState("transcribing")
+    setError(null)
+    const form = new FormData()
+    form.set("file", blob, "capture.webm")
+    try {
+      const result = await apiRequest("/api/transcribe", transcriptionSchema, {
+        method: "POST",
+        body: form,
+      })
+      if (requestRef.current !== requestId) return
+      audioRef.current = null
+      onText(result.text)
+      setState("idle")
+      setSeconds(0)
+    } catch (reason) {
+      if (requestRef.current !== requestId) return
+      setError(reason instanceof Error ? reason.message : "转写失败")
+      setState("failed")
+    }
+  }
 
   const start = async () => {
     setError(null)
@@ -27,6 +71,7 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const recorder = new MediaRecorder(stream)
       chunksRef.current = []
+      audioRef.current = null
       recorder.ondataavailable = (event) => {
         if (event.data.size > 0) chunksRef.current.push(event.data)
       }
@@ -36,19 +81,9 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
           track.stop()
         })
         chunksRef.current = []
-        setState("transcribing")
-        const form = new FormData()
-        form.set("file", blob, "capture.webm")
-        void apiRequest("/api/transcribe", transcriptionSchema, { method: "POST", body: form })
-          .then((result) => {
-            onText(result.text)
-            setState("idle")
-            setSeconds(0)
-          })
-          .catch((reason: unknown) => {
-            setError(reason instanceof Error ? reason.message : "转写失败")
-            setState("idle")
-          })
+        recorderRef.current = null
+        audioRef.current = blob
+        void requestTranscription(blob)
       }
       recorder.start()
       recorderRef.current = recorder
@@ -59,6 +94,7 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
     }
   }
   const cancel = () => {
+    requestRef.current += 1
     const recorder = recorderRef.current
     if (recorder !== null) {
       recorder.onstop = null
@@ -67,7 +103,10 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
       })
       if (recorder.state !== "inactive") recorder.stop()
     }
+    recorderRef.current = null
     chunksRef.current = []
+    audioRef.current = null
+    setError(null)
     setState("idle")
     setSeconds(0)
   }
@@ -87,7 +126,13 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
         {String(Math.floor(seconds / 60)).padStart(2, "0")}:{String(seconds % 60).padStart(2, "0")}
       </strong>
       <span>
-        {state === "transcribing" ? "正在转写..." : state === "paused" ? "已暂停" : "正在录音"}
+        {state === "transcribing"
+          ? "正在转写..."
+          : state === "failed"
+            ? (error ?? "转写失败，录音仍保留")
+            : state === "paused"
+              ? "已暂停"
+              : "正在录音"}
       </span>
       {state === "recording" ? (
         <IconButton
@@ -109,14 +154,22 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
         >
           <Play size={17} />
         </IconButton>
+      ) : state === "failed" ? (
+        <IconButton
+          label="重试转写"
+          onClick={() => {
+            const audio = audioRef.current
+            if (audio !== null) void requestTranscription(audio)
+          }}
+        >
+          <RefreshCw size={17} />
+        </IconButton>
       ) : null}
-      <IconButton
-        disabled={state === "transcribing"}
-        label="结束并转写"
-        onClick={() => recorderRef.current?.stop()}
-      >
-        <Square size={16} />
-      </IconButton>
+      {state === "recording" || state === "paused" ? (
+        <IconButton label="结束并转写" onClick={() => recorderRef.current?.stop()}>
+          <Square size={16} />
+        </IconButton>
+      ) : null}
       <IconButton label="取消录音" onClick={cancel}>
         <Trash2 size={17} />
       </IconButton>
