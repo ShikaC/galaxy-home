@@ -40,11 +40,17 @@ function iconFor(value: string): LucideIcon {
   return ICONS.find((option) => option.value === value)?.icon ?? Tag
 }
 
+function defaultCategoryColor(): string {
+  const color = window.getComputedStyle(document.documentElement).getPropertyValue("--color-action")
+  if (color.trim() === "") throw new Error("缺少分类默认颜色设计令牌")
+  return color.trim()
+}
+
 export function CategorySettings() {
   const meta = useMeta()
   const client = useQueryClient()
   const [name, setName] = useState("")
-  const [color, setColor] = useState("#26734d")
+  const [color, setColor] = useState(defaultCategoryColor)
   const [icon, setIcon] = useState("tag")
   const [editing, setEditing] = useState<Category | null>(null)
   const refresh = () => client.invalidateQueries({ queryKey: queryKeys.meta })

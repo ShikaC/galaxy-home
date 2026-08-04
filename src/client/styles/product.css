@@ -58,9 +58,10 @@
   display: grid;
 }
 .task-row {
+  position: relative;
   display: grid;
   min-block-size: 58px;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   border-block-end: 1px solid var(--color-border);
@@ -98,6 +99,9 @@
 .task-row__body p {
   overflow-wrap: anywhere;
 }
+.task-row__body strong {
+  word-break: auto-phrase;
+}
 .task-row__body p {
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
@@ -111,13 +115,27 @@
   font-size: var(--font-size-micro);
 }
 .task-row__actions {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 50%;
+  inset-inline-end: var(--space-2);
   display: flex;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
   opacity: 0;
-  transition: opacity var(--motion-fast);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    opacity var(--motion-fast),
+    visibility var(--motion-fast);
+  visibility: hidden;
 }
 .task-row:hover .task-row__actions,
 .task-row:focus-within .task-row__actions {
   opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
 }
 .sortable-task {
   display: grid;
@@ -760,9 +778,15 @@
     align-items: start;
   }
   .task-row__actions {
+    position: static;
     grid-column: 1 / -1;
     justify-content: flex-end;
+    background: transparent;
+    box-shadow: none;
     opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    visibility: visible;
   }
   .todo-layout {
     grid-template-columns: minmax(0, 1fr);

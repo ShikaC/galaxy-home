@@ -78,10 +78,12 @@ test("primary views remain readable with long content and rendered analytics", a
   await page.goto("/todos")
   const longItem = page.getByRole("article").filter({ hasText: longItemTitle })
   await expect(longItem).toBeVisible()
+  expect((await longItem.locator(".task-row__body").boundingBox())?.width).toBeGreaterThan(280)
   await expectNoHorizontalOverflow(page)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("todos-long-content.png") })
 
   const organizeTrigger = longItem.getByRole("button", { name: "整理分类与项目" })
+  await longItem.hover()
   await organizeTrigger.click()
   const organizeDialog = page.getByRole("dialog", { name: "决定它接下来去哪里" })
   await expect(organizeDialog).toBeVisible()

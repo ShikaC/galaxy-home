@@ -24,8 +24,10 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await page.getByRole("link", { name: "待办", exact: true }).click()
   let item = page.getByRole("article").filter({ hasText: itemTitle })
   await expect(item).toBeVisible()
+  await item.hover()
   await item.getByRole("button", { name: "加入今日待办" }).click()
   item = page.getByRole("article").filter({ hasText: itemTitle })
+  await item.hover()
   await item.getByRole("button", { name: "设为今日重点" }).click()
 
   await page.getByRole("link", { name: "首页", exact: true }).click()

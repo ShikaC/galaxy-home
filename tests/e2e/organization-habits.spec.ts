@@ -28,6 +28,7 @@ test("an item stays synchronized across two categories", async ({ page, request 
   await page.getByLabel("标题").fill(itemTitle)
   await page.getByRole("button", { name: "保存到收集箱" }).click()
   let item = page.getByRole("article").filter({ hasText: itemTitle })
+  await item.hover()
   await item.getByRole("button", { name: "整理分类与项目" }).click()
   await page.getByLabel(firstCategory).check()
   await page.getByLabel(secondCategory).check()

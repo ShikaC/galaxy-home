@@ -5,7 +5,7 @@
   inset: 0;
   place-items: center;
   padding: var(--space-6);
-  background: rgb(32 35 31 / 24%);
+  background: var(--color-overlay-scrim);
 }
 .dialog {
   overflow: auto;
