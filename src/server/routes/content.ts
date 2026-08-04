@@ -12,6 +12,7 @@ import {
   updateGain,
   updateQuote,
 } from "../repositories/content.js"
+import { convertReviewSuggestion } from "../repositories/reviewSuggestions.js"
 import { generateLocalReview, listReviews } from "../repositories/reviews.js"
 import { searchWorkspace } from "../repositories/search.js"
 import { getSettings } from "../repositories/settings.js"
@@ -30,6 +31,10 @@ const searchSchema = z.object({
 const reviewSchema = z.object({ weekStart: z.string(), weekEnd: z.string() })
 const aiReviewSchema = reviewSchema.extend({ confirmed: z.boolean() })
 const idSchema = z.object({ id: z.string().uuid() })
+const suggestionParamsSchema = z.object({
+  reviewId: z.string().uuid(),
+  suggestionId: z.string().uuid(),
+})
 const gainUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
 const quoteInputSchema = z.object({
   content: z.string().trim().min(1).max(500),
@@ -78,6 +83,10 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
     return reply.code(204).send()
   })
   app.get("/api/reviews", () => listReviews(context.database))
+  app.post("/api/reviews/:reviewId/suggestions/:suggestionId/convert", (request) => {
+    const params = suggestionParamsSchema.parse(request.params)
+    return convertReviewSuggestion(context.database, params.reviewId, params.suggestionId)
+  })
   app.post("/api/reviews/generate", (request, reply) => {
     const input = reviewSchema.parse(request.body)
     return reply

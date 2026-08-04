@@ -2,10 +2,12 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import {
   type AiWeeklyReviewResult,
+  reviewSuggestionSchema,
   type WeeklyReview,
   weeklyReviewSchema,
 } from "../../shared/app.js"
 import { localDateTimeToInstant, shiftCalendarDate } from "../services/time.js"
+import { listReviewSuggestionConversions } from "./reviewSuggestions.js"
 
 const reviewRowSchema = z.object({
   id: z.string().uuid(),
@@ -17,15 +19,28 @@ const reviewRowSchema = z.object({
   source: z.enum(["manual", "ai"]),
 })
 
-function parseReview(raw: unknown): WeeklyReview {
+function parseReview(database: DatabaseSync, raw: unknown): WeeklyReview {
   const row = reviewRowSchema.parse(raw)
+  const conversions = new Map(
+    listReviewSuggestionConversions(database, row.id).map((conversion) => [
+      conversion.suggestionId,
+      conversion.entityId,
+    ]),
+  )
+  const suggestions = z
+    .array(reviewSuggestionSchema)
+    .parse(JSON.parse(row.suggestions_json))
+    .map((suggestion) => ({
+      ...suggestion,
+      convertedEntityId: conversions.get(suggestion.id) ?? null,
+    }))
   return weeklyReviewSchema.parse({
     id: row.id,
     weekStart: row.week_start,
     summary: row.summary,
     completed: JSON.parse(row.completed_json),
     obstacles: JSON.parse(row.obstacles_json),
-    suggestions: JSON.parse(row.suggestions_json),
+    suggestions,
     source: row.source,
   })
 }
@@ -34,7 +49,7 @@ export function listReviews(database: DatabaseSync): readonly WeeklyReview[] {
   return database
     .prepare("SELECT * FROM weekly_reviews WHERE deleted_at IS NULL ORDER BY week_start DESC")
     .all()
-    .map(parseReview)
+    .map((row) => parseReview(database, row))
 }
 
 export function saveAiReview(
@@ -71,6 +86,7 @@ export function saveAiReview(
       now,
     )
   return parseReview(
+    database,
     database.prepare("SELECT * FROM weekly_reviews WHERE week_start = ?").get(weekStart),
   )
 }
@@ -190,5 +206,5 @@ export function generateLocalReview(
       now,
     )
   const row = database.prepare("SELECT * FROM weekly_reviews WHERE week_start = ?").get(weekStart)
-  return parseReview(row)
+  return parseReview(database, row)
 }

@@ -41,9 +41,24 @@ export const quoteSchema = z.object({ id: z.string().uuid(), content: z.string()
 export type Quote = z.infer<typeof quoteSchema>
 
 export const reviewSuggestionSchema = z
-  .object({ id: z.string(), type: z.enum(["item", "habit", "project"]), content: z.string() })
+  .object({
+    id: z.string(),
+    type: z.enum(["item", "habit", "project"]),
+    content: z.string(),
+    convertedEntityId: z.string().nullable().default(null),
+  })
   .readonly()
 export type ReviewSuggestion = z.infer<typeof reviewSuggestionSchema>
+
+export const reviewSuggestionConversionSchema = z
+  .object({
+    reviewId: z.string().uuid(),
+    suggestionId: z.string(),
+    entityType: z.enum(["item", "habit", "project"]),
+    entityId: z.string().uuid(),
+    createdAt: z.string(),
+  })
+  .readonly()
 
 export const weeklyReviewSchema = z
   .object({

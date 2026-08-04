@@ -25,6 +25,7 @@ const DATA_TABLES = [
   "habit_exceptions",
   "daily_gains",
   "weekly_reviews",
+  "review_suggestion_conversions",
   "ai_conversations",
   "ai_messages",
   "ai_memories",

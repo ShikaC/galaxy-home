@@ -7,6 +7,7 @@ import type { AppContext } from "./context.js"
 import { AiActionUnavailableError } from "./repositories/aiActions.js"
 import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./repositories/projectAi.js"
 import { ProjectTaskNotRecommendedError } from "./repositories/projectRecommendations.js"
+import { ReviewSuggestionUnavailableError } from "./repositories/reviewSuggestions.js"
 import { TodayLimitError } from "./repositories/todayItems.js"
 import { registerAiRoutes } from "./routes/ai.js"
 import { registerContentRoutes } from "./routes/content.js"
@@ -48,6 +49,8 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(409).send({ code: "PROJECT_AI_SESSION_MISSING", message: error.message })
     if (error instanceof ProjectTaskNotRecommendedError)
       return reply.code(409).send({ code: "PROJECT_TASK_NOT_RECOMMENDED", message: error.message })
+    if (error instanceof ReviewSuggestionUnavailableError)
+      return reply.code(409).send({ code: "REVIEW_SUGGESTION_UNAVAILABLE", message: error.message })
     if (error instanceof AiConfirmationRequiredError)
       return reply.code(409).send({ code: "AI_CONFIRMATION_REQUIRED", message: error.message })
     if (error instanceof AiActionUnavailableError)
