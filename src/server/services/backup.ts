@@ -2,8 +2,18 @@ import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { backup, type DatabaseSync, type SQLOutputValue } from "node:sqlite"
 import { format, parseISO, subDays } from "date-fns"
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
+import { strFromU8, strToU8, type UnzipFileInfo, unzipSync, zipSync } from "fflate"
 import { z } from "zod"
+
+export const MAX_IMPORT_UNCOMPRESSED_BYTES = 32 * 1024 * 1024
+
+export class ImportArchiveTooLargeError extends Error {
+  readonly name = "ImportArchiveTooLargeError"
+
+  constructor(readonly limitBytes: number) {
+    super(`导入文件解压后超过 ${limitBytes} 字节上限`)
+  }
+}
 
 const DATA_TABLES = [
   "workspace_settings",
@@ -96,7 +106,16 @@ export async function restoreManualExport(
   bytes: Uint8Array,
   backupDirectory: string,
 ): Promise<void> {
-  const file = unzipSync(bytes)["galaxy-home.json"]
+  let uncompressedBytes = 0
+  const file = unzipSync(bytes, {
+    filter: (entry: UnzipFileInfo) => {
+      if (entry.name !== "galaxy-home.json") return false
+      uncompressedBytes += entry.originalSize
+      if (uncompressedBytes > MAX_IMPORT_UNCOMPRESSED_BYTES)
+        throw new ImportArchiveTooLargeError(MAX_IMPORT_UNCOMPRESSED_BYTES)
+      return true
+    },
+  })["galaxy-home.json"]
   if (file === undefined) throw new Error("导入文件缺少 galaxy-home.json")
   const data = exportSchema.parse(JSON.parse(strFromU8(file)))
   for (const table of DATA_TABLES)

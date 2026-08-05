@@ -1,13 +1,14 @@
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { strFromU8, unzipSync } from "fflate"
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
 import { afterEach, describe, expect, it } from "vitest"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
 import {
   createManualExport,
   ensureDailyBackup,
   getBackupStatus,
+  MAX_IMPORT_UNCOMPRESSED_BYTES,
   restoreManualExport,
 } from "../../src/server/services/backup.js"
 import { writeSecretConfig } from "../../src/server/services/secrets.js"
@@ -20,6 +21,24 @@ afterEach(() => {
 })
 
 describe("manual backup", () => {
+  it("rejects archives whose extracted content exceeds the safety limit", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-oversized-import-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const bytes = zipSync({
+      "galaxy-home.json": strToU8("x".repeat(MAX_IMPORT_UNCOMPRESSED_BYTES + 1)),
+    })
+
+    await expect(
+      restoreManualExport(database, bytes, join(directory, "backups")),
+    ).rejects.toMatchObject({ name: "ImportArchiveTooLargeError" })
+    expect(database.prepare("SELECT COUNT(*) AS count FROM workspace_settings").get()).toEqual({
+      count: 1,
+    })
+    database.close()
+  })
+
   it("exports versioned data without the locally stored API key", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-backup-"))
     directories.push(directory)
