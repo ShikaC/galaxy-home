@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test"
+import { expect, type Locator, type Page, test } from "@playwright/test"
 
 const onboarding = {
   workspaceName: "银河居所",
@@ -12,6 +12,16 @@ async function expectNoHorizontalOverflow(page: Page) {
     .poll(() =>
       page.evaluate(
         () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1,
+      ),
+    )
+    .toBe(true)
+}
+
+async function expectAnimationsSettled(locator: Locator) {
+  await expect
+    .poll(() =>
+      locator.evaluate((element) =>
+        element.getAnimations().every((animation) => animation.playState === "finished"),
       ),
     )
     .toBe(true)
@@ -168,6 +178,7 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
   await expect(page.getByText("配置服务", { exact: false })).toBeVisible()
   await expect(page.getByRole("link", { name: "前往设置" })).toHaveCSS("color", "rgb(31, 96, 64)")
+  await expectAnimationsSettled(drawer)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer.png") })
   await page.keyboard.press("Escape")
   await expect(drawerTrigger).toBeFocused()
