@@ -25,7 +25,11 @@ export function getHabit(database: DatabaseSync, habitId: string, localDate: str
   return readHabit(database, row, localDate)
 }
 
-export function createHabit(database: DatabaseSync, input: CreateHabitInput): Habit {
+export function createHabit(
+  database: DatabaseSync,
+  input: CreateHabitInput,
+  localDate = new Date().toISOString().slice(0, 10),
+): Habit {
   const id = habitIdSchema.parse(crypto.randomUUID())
   const now = new Date().toISOString()
   const nextOrder = database
@@ -52,7 +56,7 @@ export function createHabit(database: DatabaseSync, input: CreateHabitInput): Ha
       now,
       now,
     )
-  const created = listHabits(database, now.slice(0, 10)).find((habit) => habit.id === id)
+  const created = listHabits(database, localDate).find((habit) => habit.id === id)
   if (created === undefined) {
     throw new Error(`Created habit could not be read: ${id}`)
   }
@@ -77,6 +81,7 @@ export function updateHabit(
   database: DatabaseSync,
   rawHabitId: string,
   input: UpdateHabitInput,
+  localDate = new Date().toISOString().slice(0, 10),
 ): Habit {
   const habitId = habitIdSchema.parse(rawHabitId)
   const now = new Date().toISOString()
@@ -97,23 +102,27 @@ export function updateHabit(
       habitId,
     )
   if (result.changes === 0) throw new HabitNotFoundError(habitId)
-  return getHabit(database, habitId, now.slice(0, 10))
+  return getHabit(database, habitId, localDate)
 }
 
-export function copyHabit(database: DatabaseSync, rawHabitId: string): Habit {
-  const source = getHabit(
+export function copyHabit(
+  database: DatabaseSync,
+  rawHabitId: string,
+  localDate = new Date().toISOString().slice(0, 10),
+): Habit {
+  const source = getHabit(database, habitIdSchema.parse(rawHabitId), localDate)
+  return createHabit(
     database,
-    habitIdSchema.parse(rawHabitId),
-    new Date().toISOString().slice(0, 10),
+    {
+      name: `${source.name} 副本`,
+      type: source.type,
+      targetCount: source.targetCount,
+      frequencyType: source.frequencyType,
+      weeklyTarget: source.weeklyTarget,
+      restDays: [...source.restDays],
+    },
+    localDate,
   )
-  return createHabit(database, {
-    name: `${source.name} 副本`,
-    type: source.type,
-    targetCount: source.targetCount,
-    frequencyType: source.frequencyType,
-    weeklyTarget: source.weeklyTarget,
-    restDays: [...source.restDays],
-  })
 }
 
 export function listHabitDaySummaries(database: DatabaseSync, startDate: string, endDate: string) {

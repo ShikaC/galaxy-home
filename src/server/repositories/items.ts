@@ -30,7 +30,11 @@ export function getItem(database: DatabaseSync, itemId: string, localDate: strin
   return readItem(database, row, localDate)
 }
 
-export function createItem(database: DatabaseSync, input: CreateItemInput): Item {
+export function createItem(
+  database: DatabaseSync,
+  input: CreateItemInput,
+  localDate = new Date().toISOString().slice(0, 10),
+): Item {
   const id = itemIdSchema.parse(crypto.randomUUID())
   const now = new Date().toISOString()
   database.exec("BEGIN IMMEDIATE")
@@ -67,19 +71,23 @@ export function createItem(database: DatabaseSync, input: CreateItemInput): Item
     database.exec("ROLLBACK")
     throw error
   }
-  return getItem(database, id, now.slice(0, 10))
+  return getItem(database, id, localDate)
 }
 
 export function copyItem(database: DatabaseSync, itemId: string, localDate: string): Item {
   const item = getItem(database, itemId, localDate)
-  return createItem(database, {
-    title: `${item.title} 副本`,
-    categoryIds: [...item.categoryIds],
-    projectIds: [...item.projectIds],
-    ...(item.notes === null ? {} : { notes: item.notes }),
-    ...(item.dueAt === null ? {} : { dueAt: item.dueAt }),
-    ...(item.reminderMinutes === null ? {} : { reminderMinutes: item.reminderMinutes }),
-  })
+  return createItem(
+    database,
+    {
+      title: `${item.title} 副本`,
+      categoryIds: [...item.categoryIds],
+      projectIds: [...item.projectIds],
+      ...(item.notes === null ? {} : { notes: item.notes }),
+      ...(item.dueAt === null ? {} : { dueAt: item.dueAt }),
+      ...(item.reminderMinutes === null ? {} : { reminderMinutes: item.reminderMinutes }),
+    },
+    localDate,
+  )
 }
 
 export function listItems(database: DatabaseSync, query: ItemQuery): readonly Item[] {
@@ -159,8 +167,12 @@ export function listItems(database: DatabaseSync, query: ItemQuery): readonly It
   }
 }
 
-export function updateItem(database: DatabaseSync, itemId: string, input: UpdateItemInput): Item {
-  const localDate = new Date().toISOString().slice(0, 10)
+export function updateItem(
+  database: DatabaseSync,
+  itemId: string,
+  input: UpdateItemInput,
+  localDate = new Date().toISOString().slice(0, 10),
+): Item {
   const existing = getItem(database, itemId, localDate)
   const status = input.status ?? existing.status
   const dueAt = input.dueAt === undefined ? existing.dueAt : input.dueAt

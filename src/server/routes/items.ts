@@ -55,12 +55,16 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
         : { projectId: z.string().uuid().brand("ProjectId").parse(query.projectId) }),
     })
   })
-  app.post("/api/items", (request, reply) =>
-    reply.code(201).send(createItem(context.database, createItemInputSchema.parse(request.body))),
-  )
+  app.post("/api/items", (request, reply) => {
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return reply
+      .code(201)
+      .send(createItem(context.database, createItemInputSchema.parse(request.body), localDate))
+  })
   app.patch("/api/items/:id", (request) => {
     const { id } = idSchema.parse(request.params)
-    return updateItem(context.database, id, updateItemInputSchema.parse(request.body))
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return updateItem(context.database, id, updateItemInputSchema.parse(request.body), localDate)
   })
   app.post("/api/items/:id/copy", (request, reply) =>
     reply

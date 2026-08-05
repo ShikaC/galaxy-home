@@ -59,19 +59,27 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
     const query = rangeQuerySchema.parse(request.query)
     return listHabitDaySummaries(context.database, query.start, query.end)
   })
-  app.post("/api/habits", (request, reply) =>
-    reply.code(201).send(createHabit(context.database, createHabitInputSchema.parse(request.body))),
-  )
-  app.patch("/api/habits/:id", (request) =>
-    updateHabit(
+  app.post("/api/habits", (request, reply) => {
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return reply
+      .code(201)
+      .send(createHabit(context.database, createHabitInputSchema.parse(request.body), localDate))
+  })
+  app.patch("/api/habits/:id", (request) => {
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return updateHabit(
       context.database,
       idSchema.parse(request.params).id,
       updateHabitInputSchema.parse(request.body),
-    ),
-  )
-  app.post("/api/habits/:id/copy", (request, reply) =>
-    reply.code(201).send(copyHabit(context.database, idSchema.parse(request.params).id)),
-  )
+      localDate,
+    )
+  })
+  app.post("/api/habits/:id/copy", (request, reply) => {
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return reply
+      .code(201)
+      .send(copyHabit(context.database, idSchema.parse(request.params).id, localDate))
+  })
   app.delete("/api/habits/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
     const now = clock.now()

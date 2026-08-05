@@ -3,6 +3,7 @@ import { X } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { Item } from "../../shared/items.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
+import { instantForLocalDateTimeInput, localDateTimeInputFor } from "../lib/date.js"
 import { useMeta, useProjects } from "../lib/queries.js"
 import { itemSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
@@ -20,6 +21,7 @@ export function OrganizeDialog({
   const meta = useMeta()
   const projects = useProjects()
   const client = useQueryClient()
+  const timezone = meta.data?.settings.timezone ?? "UTC"
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
   const [dueAt, setDueAt] = useState("")
@@ -30,20 +32,21 @@ export function OrganizeDialog({
     if (item === null) return
     setTitle(item.title)
     setNotes(item.notes ?? "")
-    setDueAt(item.dueAt?.slice(0, 16) ?? "")
+    setDueAt(item.dueAt === null ? "" : localDateTimeInputFor(item.dueAt, timezone))
     setReminder(item.reminderMinutes?.toString() ?? "")
     setCategories(item.categoryIds)
     setProjectIds(item.projectIds)
-  }, [item])
+  }, [item, timezone])
   const save = useMutation({
     mutationFn: async () => {
       if (item === null) return
+      const dueAtInstant = instantForLocalDateTimeInput(dueAt, timezone)
       await apiRequest(`/api/items/${item.id}`, itemSchema, {
         method: "PATCH",
         body: jsonBody({
           title,
           notes: notes || null,
-          dueAt: dueAt ? new Date(dueAt).toISOString() : null,
+          dueAt: dueAtInstant,
           reminderMinutes: dueAt && reminder ? Number(reminder) : null,
         }),
       })
