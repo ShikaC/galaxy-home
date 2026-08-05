@@ -33,14 +33,16 @@ test.afterEach(async ({ request }) => {
   })
 })
 
-test("optional AI setup can be tested during onboarding", async ({ page }) => {
+test("optional AI setup can be tested during onboarding", async ({ page }, testInfo) => {
   await page.goto("/")
   await expect(page.getByRole("heading", { name: "欢迎来到银河居所" })).toBeVisible()
+  await page.screenshot({ fullPage: true, path: testInfo.outputPath("onboarding.png") })
   await page.getByLabel("聊天服务地址").fill(`http://127.0.0.1:${aiPort}/v1`)
   await page.getByLabel("聊天模型").fill("onboarding-model")
   await page.getByLabel("API Key").fill("onboarding-key")
   await page.getByRole("button", { name: "保存并测试 AI 服务" }).click()
   await expect(page.getByText("连接成功", { exact: true })).toBeVisible()
+  await page.screenshot({ fullPage: true, path: testInfo.outputPath("onboarding-ai-success.png") })
   await page.getByRole("button", { name: "进入我的空间" }).click()
   await expect(page.getByRole("heading", { name: "今日空间" })).toBeVisible()
 })
