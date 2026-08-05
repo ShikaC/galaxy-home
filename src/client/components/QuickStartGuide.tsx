@@ -21,7 +21,7 @@ export function QuickStartGuide() {
       <div>
         <Sparkles size={17} />
         <span>
-          <strong>再整理</strong> 放进今天、分类或项目
+          <strong>再整理</strong> 放进今天、<span className="text-phrase">分类或项目</span>
         </span>
       </div>
       <div>

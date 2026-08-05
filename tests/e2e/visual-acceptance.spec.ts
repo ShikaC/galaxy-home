@@ -40,6 +40,11 @@ test("primary views remain readable with long content and rendered analytics", a
   const longHabitName = `长习惯验收 ${suffix}：分次补充饮水并在每次专注结束后记录完成情况`
 
   await ensureOnboarding(page)
+  const quickStart = page.getByRole("complementary", { name: "开始使用" })
+  await expect(quickStart.locator(".text-phrase", { hasText: "分类或项目" })).toHaveCSS(
+    "white-space",
+    "nowrap",
+  )
   const itemResponse = await request.post("/api/items", {
     data: {
       title: longItemTitle,
