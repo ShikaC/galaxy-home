@@ -11,6 +11,7 @@ import { localClock, localDateTimeToInstant, shiftCalendarDate } from "./time.js
 
 const reminderRowSchema = z.object({ id: z.string().uuid() })
 const eventRowSchema = z.object({ id: z.string().uuid() })
+const schedulerStateRowSchema = z.object({ last_run_at: z.string().nullable() })
 const dueRowSchema = z.object({
   id: z.string().uuid(),
   reminder_id: z.string().uuid(),
@@ -67,7 +68,11 @@ function ensureEvent(
     .run(crypto.randomUUID(), reminderId, kind, scheduledAt, new Date().toISOString())
 }
 
-function materializeDailyReminders(database: DatabaseSync, now: Date): void {
+function materializeDailyReminders(
+  database: DatabaseSync,
+  now: Date,
+  lastRunAt: string | null,
+): void {
   const settings = getSettings(database)
   const clock = localClock(now, settings.timezone)
   const daily = [
@@ -82,12 +87,20 @@ function materializeDailyReminders(database: DatabaseSync, now: Date): void {
       time: settings.eveningReminderTime,
     },
   ]
-  for (const reminder of daily) {
-    if (!reminder.enabled) continue
-    const scheduledAt = localDateTimeToInstant(clock.date, reminder.time, settings.timezone)
-    if (scheduledAt > now) continue
-    const id = ensureReminder(database, reminder.kind, clock.date, scheduledAt.toISOString())
-    ensureEvent(database, id, reminder.kind, scheduledAt.toISOString())
+  const lastDate =
+    lastRunAt === null ? clock.date : localClock(new Date(lastRunAt), settings.timezone).date
+  const firstDate = lastDate > clock.date ? clock.date : lastDate
+  let date = firstDate
+  while (true) {
+    for (const reminder of daily) {
+      if (!reminder.enabled) continue
+      const scheduledAt = localDateTimeToInstant(date, reminder.time, settings.timezone)
+      if (scheduledAt > now) continue
+      const id = ensureReminder(database, reminder.kind, date, scheduledAt.toISOString())
+      ensureEvent(database, id, reminder.kind, scheduledAt.toISOString())
+    }
+    if (date === clock.date) break
+    date = shiftCalendarDate(date, 1)
   }
 }
 
@@ -145,9 +158,15 @@ export function runScheduler(database: DatabaseSync, now = new Date()): void {
   try {
     database.prepare("DELETE FROM notification_events WHERE scheduled_at NOT LIKE '%Z'").run()
     database.prepare("DELETE FROM reminders WHERE scheduled_at NOT LIKE '%Z'").run()
-    materializeDailyReminders(database, now)
+    const schedulerState = schedulerStateRowSchema.parse(
+      database.prepare("SELECT last_run_at FROM scheduler_state WHERE id = 1").get(),
+    )
+    materializeDailyReminders(database, now, schedulerState.last_run_at)
     materializeWeeklyReview(database, now)
     materializeDeadlines(database, now)
+    database
+      .prepare("UPDATE scheduler_state SET last_run_at = ? WHERE id = 1")
+      .run(now.toISOString())
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")

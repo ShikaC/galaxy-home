@@ -32,6 +32,7 @@ const DATA_TABLES = [
   "ai_action_log",
   "reminders",
   "notification_events",
+  "scheduler_state",
   "trash_entries",
   "tutorial_state",
 ] as const

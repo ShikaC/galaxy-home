@@ -23,6 +23,32 @@ function createDatabase() {
 }
 
 describe("reminder scheduler", () => {
+  it("materializes daily reminders missed while the app was closed", () => {
+    const database = createDatabase()
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', evening_reminder_time = '21:00'",
+      )
+      .run()
+
+    listDueNotifications(database, new Date("2026-08-04T02:00:00.000Z"))
+    const dueAfterRestart = listDueNotifications(database, new Date("2026-08-05T02:00:00.000Z"))
+
+    expect(dueAfterRestart).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: "evening",
+          scheduledAt: "2026-08-04T13:00:00.000Z",
+        }),
+        expect.objectContaining({
+          kind: "morning",
+          scheduledAt: "2026-08-05T01:00:00.000Z",
+        }),
+      ]),
+    )
+    database.close()
+  })
+
   it("materializes missed reminders and persists snooze state", () => {
     const database = createDatabase()
     database

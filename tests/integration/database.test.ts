@@ -39,6 +39,7 @@ describe("database migrations", () => {
         "daily_gains",
         "weekly_reviews",
         "ai_conversations",
+        "scheduler_state",
         "trash_entries",
       ]),
     )
