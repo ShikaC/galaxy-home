@@ -161,6 +161,8 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
   await expect(page.locator("main.main-scroll")).toHaveAttribute("inert", "")
   expect((await drawer.boundingBox())?.width).toBeLessThan(361)
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
+  await expect(page.getByText("配置服务", { exact: false })).toBeVisible()
+  await expect(page.getByRole("link", { name: "前往设置" })).toHaveCSS("color", "rgb(31, 96, 64)")
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer.png") })
   await page.keyboard.press("Escape")
   await expect(drawerTrigger).toBeFocused()

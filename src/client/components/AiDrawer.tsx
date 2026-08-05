@@ -195,7 +195,10 @@ export function AiDrawer({
           <div className="ai-unavailable">
             <Bot size={24} />
             <h3>AI 尚未配置</h3>
-            <p>待办、习惯、项目手动推进和回顾仍可正常使用。配置服务后可继续当前会话。</p>
+            <p>
+              待办、习惯、项目手动推进和回顾仍可正常使用。<span className="cjk-keep">配置服务</span>
+              后可继续当前会话。
+            </p>
             <Link
               className="button button--secondary button--regular"
               onClick={onClose}

@@ -40,6 +40,8 @@
 .button--secondary {
   border-color: var(--color-border);
   background: var(--color-surface);
+  color: var(--color-action-hover);
+  text-decoration: none;
 }
 
 .button--secondary:hover:not(:disabled),

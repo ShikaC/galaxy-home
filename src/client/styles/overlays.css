@@ -312,6 +312,9 @@
 .ai-welcome span {
   color: var(--color-text-muted);
 }
+.cjk-keep {
+  white-space: nowrap;
+}
 .chat-message {
   display: grid;
   gap: var(--space-1);
