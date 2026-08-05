@@ -26,9 +26,15 @@ describe("manual backup", () => {
     directories.push(directory)
     const database = openDatabase(join(directory, "app.sqlite"))
     migrateDatabase(database)
-    const bytes = zipSync({
-      "galaxy-home.json": strToU8("x".repeat(MAX_IMPORT_UNCOMPRESSED_BYTES + 1)),
-    })
+    const bytes = zipSync({ "galaxy-home.json": strToU8("x") })
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    for (let offset = 0; offset <= bytes.byteLength - 4; offset += 1) {
+      const signature = view.getUint32(offset, true)
+      if (signature === 0x04034b50)
+        view.setUint32(offset + 22, MAX_IMPORT_UNCOMPRESSED_BYTES + 1, true)
+      if (signature === 0x02014b50)
+        view.setUint32(offset + 24, MAX_IMPORT_UNCOMPRESSED_BYTES + 1, true)
+    }
 
     await expect(
       restoreManualExport(database, bytes, join(directory, "backups")),
