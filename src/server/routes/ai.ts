@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify"
 import "@fastify/multipart"
 import { z } from "zod"
 import { aiChatInputSchema } from "../../shared/ai.js"
-import type { AppContext } from "../context.js"
+import { type AppContext, getAppClock } from "../context.js"
 import { listMessages, renameConversation } from "../repositories/conversations.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { AiServiceError, chat, streamChat, transcribe } from "../services/ai.js"
@@ -13,6 +13,7 @@ const idSchema = z.object({ id: z.string().uuid() })
 const titleSchema = z.object({ title: z.string().trim().min(1).max(80) })
 
 export function registerAiRoutes(app: FastifyInstance, context: AppContext): void {
+  const clock = getAppClock(context)
   app.get("/api/ai/conversations/:id/messages", (request) =>
     listMessages(context.database, idSchema.parse(request.params).id),
   )
@@ -30,7 +31,7 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
       .object({ title: z.string() })
       .optional()
       .parse(context.database.prepare("SELECT title FROM ai_conversations WHERE id = ?").get(id))
-    moveToTrash(context.database, "conversation", id, row?.title ?? "AI 会话")
+    moveToTrash(context.database, "conversation", id, row?.title ?? "AI 会话", clock.now())
     return reply.code(204).send()
   })
   app.post("/api/ai/chat", async (request) => {

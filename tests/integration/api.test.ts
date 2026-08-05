@@ -23,6 +23,7 @@ describe("local API", () => {
       dataDirectory: directory,
       backupDirectory: join(directory, "backups"),
       secretPath: join(directory, "secrets.json"),
+      clock: { now: () => new Date("2026-08-05T04:00:00.000Z") },
     })
 
     const onboarding = await app.inject({
@@ -58,6 +59,13 @@ describe("local API", () => {
     })
     expect(today.json<readonly { title: string; isFocus: boolean }[]>()).toContainEqual(
       expect.objectContaining({ title: "把散落想法收进来", isFocus: true }),
+    )
+    expect((await app.inject({ method: "DELETE", url: `/api/items/${itemId}` })).statusCode).toBe(
+      204,
+    )
+    const trash = await app.inject({ method: "GET", url: "/api/trash" })
+    expect(trash.json<readonly { deleted_at: string }[]>()[0]?.deleted_at).toBe(
+      "2026-08-05T04:00:00.000Z",
     )
     expect(
       (await app.inject({ method: "GET", url: "/api/ai/config" })).json<{ configured: boolean }>()

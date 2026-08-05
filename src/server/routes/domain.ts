@@ -14,7 +14,7 @@ import {
   projectAiStartInputSchema,
   updateProjectInputSchema,
 } from "../../shared/projects.js"
-import type { AppContext } from "../context.js"
+import { type AppContext, getAppClock } from "../context.js"
 import {
   copyHabit,
   createHabit,
@@ -35,6 +35,7 @@ import {
   getProject,
   listProjects,
 } from "../repositories/projects.js"
+import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
 import {
   advanceProjectFromAiFeedback,
@@ -42,6 +43,7 @@ import {
   startProjectAiClarification,
 } from "../services/projectAi.js"
 import { resumeProject } from "../services/projectResume.js"
+import { localClock } from "../services/time.js"
 
 const dateQuerySchema = z.object({ localDate: z.string() })
 const localDateInputSchema = z.object({ localDate: z.iso.date() })
@@ -49,6 +51,7 @@ const rangeQuerySchema = z.object({ start: z.string(), end: z.string() })
 const idSchema = z.object({ id: z.string().uuid() })
 
 export function registerDomainRoutes(app: FastifyInstance, context: AppContext): void {
+  const clock = getAppClock(context)
   app.get("/api/habits", (request) =>
     listHabits(context.database, dateQuerySchema.parse(request.query).localDate),
   )
@@ -71,8 +74,10 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
   )
   app.delete("/api/habits/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    const habit = getHabit(context.database, id, new Date().toISOString().slice(0, 10))
-    moveToTrash(context.database, "habit", id, habit.name)
+    const now = clock.now()
+    const localDate = localClock(now, getSettings(context.database).timezone).date
+    const habit = getHabit(context.database, id, localDate)
+    moveToTrash(context.database, "habit", id, habit.name, now)
     return reply.code(204).send()
   })
   app.post("/api/habits/:id/record", (request, reply) => {
@@ -169,7 +174,7 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
   )
   app.delete("/api/projects/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    moveToTrash(context.database, "project", id, getProject(context.database, id).name)
+    moveToTrash(context.database, "project", id, getProject(context.database, id).name, clock.now())
     return reply.code(204).send()
   })
 }

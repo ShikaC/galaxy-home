@@ -6,7 +6,7 @@ import {
   itemViewSchema,
   updateItemInputSchema,
 } from "../../shared/items.js"
-import type { AppContext } from "../context.js"
+import { type AppContext, getAppClock } from "../context.js"
 import {
   createCategory,
   reorderCategoryItems,
@@ -16,8 +16,10 @@ import {
 import { copyItem, createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
 import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { convertItemToProject } from "../repositories/projects.js"
+import { getSettings } from "../repositories/settings.js"
 import { reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
+import { localClock } from "../services/time.js"
 
 const querySchema = z.object({
   view: itemViewSchema.default("active"),
@@ -39,6 +41,7 @@ const itemReorderSchema = z.object({ itemIds: z.array(z.string().uuid()) })
 const localDateSchema = z.object({ localDate: z.string() })
 
 export function registerItemRoutes(app: FastifyInstance, context: AppContext): void {
+  const clock = getAppClock(context)
   app.get("/api/items", (request) => {
     const query = querySchema.parse(request.query)
     return listItems(context.database, {
@@ -66,7 +69,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
         copyItem(
           context.database,
           idSchema.parse(request.params).id,
-          new Date().toISOString().slice(0, 10),
+          localClock(clock.now(), getSettings(context.database).timezone).date,
         ),
       ),
   )
@@ -129,7 +132,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     const statement = context.database.prepare(
       "UPDATE categories SET sort_order = ?, updated_at = ? WHERE id = ?",
     )
-    const now = new Date().toISOString()
+    const now = clock.now().toISOString()
     body.categoryIds.forEach((categoryId, index) => {
       statement.run(index, now, categoryId)
     })
@@ -145,7 +148,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   })
   app.delete("/api/categories/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    moveToTrash(context.database, "category", id, "分类")
+    moveToTrash(context.database, "category", id, "分类", clock.now())
     return reply.code(204).send()
   })
   app.put("/api/today/reorder", (request, reply) => {
@@ -165,9 +168,9 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     const { id } = idSchema.parse(request.params)
     const item = listItems(context.database, {
       view: "active",
-      localDate: new Date().toISOString().slice(0, 10),
+      localDate: localClock(clock.now(), getSettings(context.database).timezone).date,
     }).find((value) => value.id === id)
-    moveToTrash(context.database, "item", id, item?.title ?? "已删除待办")
+    moveToTrash(context.database, "item", id, item?.title ?? "已删除待办", clock.now())
     return reply.code(204).send()
   })
 }

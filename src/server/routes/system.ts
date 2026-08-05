@@ -3,7 +3,7 @@ import { z } from "zod"
 import { createAiMemoryInputSchema } from "../../shared/ai.js"
 import { aiConfigInputSchema, updateSettingsInputSchema } from "../../shared/app.js"
 import { onboardingInputSchema } from "../../shared/settings.js"
-import type { AppContext } from "../context.js"
+import { type AppContext, getAppClock } from "../context.js"
 import { listAiActions, undoAiAction } from "../repositories/aiActions.js"
 import { listCategories } from "../repositories/categories.js"
 import { listConversations } from "../repositories/conversations.js"
@@ -25,6 +25,7 @@ const memoryUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_00
 const snoozeSchema = z.object({ minutes: z.number().int().min(5).max(1_440) })
 
 export function registerSystemRoutes(app: FastifyInstance, context: AppContext): void {
+  const clock = getAppClock(context)
   app.get("/api/settings", () => getSettings(context.database))
   app.patch("/api/settings", (request) =>
     updateSettings(context.database, updateSettingsInputSchema.parse(request.body)),
@@ -46,15 +47,16 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     dismissTutorialGuide(context.database)
     return reply.code(204).send()
   })
-  app.get("/api/notifications", () => listDueNotifications(context.database))
+  app.get("/api/notifications", () => listDueNotifications(context.database, clock.now()))
   app.post("/api/notifications/:id/snooze", (request, reply) => {
     const { id } = idSchema.parse(request.params)
     const { minutes } = snoozeSchema.parse(request.body)
-    snoozeNotification(context.database, id, new Date(Date.now() + minutes * 60_000))
+    const now = clock.now()
+    snoozeNotification(context.database, id, new Date(now.getTime() + minutes * 60_000), now)
     return reply.code(204).send()
   })
   app.post("/api/notifications/:id/dismiss", (request, reply) => {
-    dismissNotification(context.database, idSchema.parse(request.params).id)
+    dismissNotification(context.database, idSchema.parse(request.params).id, clock.now())
     return reply.code(204).send()
   })
   app.get("/api/trash", () => listTrash(context.database))
@@ -85,7 +87,7 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
       .object({ content: z.string() })
       .optional()
       .parse(context.database.prepare("SELECT content FROM ai_memories WHERE id = ?").get(id))
-    moveToTrash(context.database, "memory", id, row?.content ?? "AI 记忆")
+    moveToTrash(context.database, "memory", id, row?.content ?? "AI 记忆", clock.now())
     return reply.code(204).send()
   })
   app.get("/api/ai/actions", () => listAiActions(context.database))

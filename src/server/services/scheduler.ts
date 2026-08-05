@@ -232,21 +232,26 @@ export function listDueNotifications(
   })
 }
 
-export function snoozeNotification(database: DatabaseSync, id: string, until: Date): void {
+export function snoozeNotification(
+  database: DatabaseSync,
+  id: string,
+  until: Date,
+  now = new Date(),
+): void {
   const event = z
     .object({ reminder_id: z.string().uuid() })
     .parse(database.prepare("SELECT reminder_id FROM notification_events WHERE id = ?").get(id))
-  const now = new Date().toISOString()
+  const updatedAt = now.toISOString()
   database
     .prepare("UPDATE notification_events SET scheduled_at = ?, delivered_at = NULL WHERE id = ?")
     .run(until.toISOString(), id)
   database
     .prepare("UPDATE reminders SET snoozed_until = ?, updated_at = ? WHERE id = ?")
-    .run(until.toISOString(), now, event.reminder_id)
+    .run(until.toISOString(), updatedAt, event.reminder_id)
 }
 
-export function dismissNotification(database: DatabaseSync, id: string): void {
+export function dismissNotification(database: DatabaseSync, id: string, now = new Date()): void {
   database
     .prepare("UPDATE notification_events SET dismissed_at = ? WHERE id = ?")
-    .run(new Date().toISOString(), id)
+    .run(now.toISOString(), id)
 }

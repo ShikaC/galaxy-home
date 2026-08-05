@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
 import { createGainInputSchema } from "../../shared/app.js"
-import type { AppContext } from "../context.js"
+import { type AppContext, getAppClock } from "../context.js"
 import {
   createGain,
   createQuote,
@@ -42,6 +42,7 @@ const quoteInputSchema = z.object({
 })
 
 export function registerContentRoutes(app: FastifyInstance, context: AppContext): void {
+  const clock = getAppClock(context)
   app.get("/api/quote", (request) =>
     getDailyQuote(context.database, dateSchema.parse(request.query).localDate),
   )
@@ -62,7 +63,7 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
   })
   app.delete("/api/quotes/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    moveToTrash(context.database, "quote", id, "每日短语")
+    moveToTrash(context.database, "quote", id, "每日短语", clock.now())
     return reply.code(204).send()
   })
   app.get("/api/gains", (request) =>
@@ -79,7 +80,7 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
   })
   app.delete("/api/gains/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    moveToTrash(context.database, "gain", id, "每日收获")
+    moveToTrash(context.database, "gain", id, "每日收获", clock.now())
     return reply.code(204).send()
   })
   app.get("/api/reviews", () => listReviews(context.database))

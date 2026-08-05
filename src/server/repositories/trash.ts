@@ -42,9 +42,9 @@ export function moveToTrash(
   rawEntity: string,
   entityId: string,
   displayName: string,
+  now = new Date(),
 ): void {
   const entity = entitySchema.parse(rawEntity)
-  const now = new Date()
   const deletedAt = now.toISOString()
   database.exec("BEGIN IMMEDIATE")
   try {

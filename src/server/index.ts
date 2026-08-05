@@ -5,8 +5,10 @@ import { migrateDatabase, openDatabase } from "./database.js"
 import { getSettings } from "./repositories/settings.js"
 import { purgeExpiredTrash } from "./repositories/trash.js"
 import { ensureDailyBackup } from "./services/backup.js"
+import { systemClock } from "./services/clock.js"
 import { runScheduler } from "./services/scheduler.js"
 
+const clock = systemClock
 const dataDirectory = resolve(process.env["GALAXY_DATA_DIR"] ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
@@ -14,11 +16,11 @@ const database = openDatabase(resolve(dataDirectory, "galaxy-home.sqlite"))
 migrateDatabase(database)
 const settings = getSettings(database)
 const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone }).format(
-  new Date(),
+  clock.now(),
 )
 await ensureDailyBackup(database, backupDirectory, localDate, settings.backupRetentionDays)
 purgeExpiredTrash(database)
-runScheduler(database)
+runScheduler(database, clock.now())
 
 const production = process.env["NODE_ENV"] === "production"
 const port = Number(process.env[production ? "PORT" : "API_PORT"] ?? (production ? 4173 : 3001))
@@ -28,6 +30,7 @@ const app = await buildApp(
     dataDirectory,
     backupDirectory,
     secretPath: resolve(dataDirectory, "secrets.json"),
+    clock,
   },
   production,
 )
