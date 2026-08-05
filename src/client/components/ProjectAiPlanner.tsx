@@ -28,6 +28,7 @@ export function ProjectAiPlanner({
     mutationFn: () =>
       apiRequest(`/api/projects/${project.id}/ai/start`, projectAiSessionSchema, {
         method: "POST",
+        body: jsonBody({ mode: "create" }),
       }),
     onSuccess: () => refreshSession(),
   })

@@ -66,11 +66,19 @@ export function ProjectDetailPage() {
   })
   const changeStatus = useMutation({
     mutationFn: (status: Project["status"]) =>
-      apiRequest(`/api/projects/${id ?? ""}`, projectSchema, {
-        method: "PATCH",
-        body: jsonBody({ status }),
-      }),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
+      status === "active"
+        ? apiRequest(`/api/projects/${id ?? ""}/resume`, projectSchema, { method: "POST" })
+        : apiRequest(`/api/projects/${id ?? ""}`, projectSchema, {
+            method: "PATCH",
+            body: jsonBody({ status }),
+          }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+      void client.invalidateQueries({ queryKey: ["project-ai", id] })
+    },
+    onError: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+    },
   })
   if (project === undefined)
     return (
@@ -112,6 +120,7 @@ export function ProjectDetailPage() {
         subtitle={project.desiredOutcome}
         title={project.name}
       />
+      {changeStatus.isError ? <p className="inline-error">{changeStatus.error.message}</p> : null}
       <div className="project-detail-grid">
         <section className="current-stage">
           <header>

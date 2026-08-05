@@ -34,14 +34,18 @@ export async function startProjectAiClarification(
   database: DatabaseSync,
   secretPath: string,
   projectId: string,
+  mode: "create" | "resume" = "create",
 ) {
+  const systemPrompt =
+    mode === "resume"
+      ? "你是温和务实的项目教练。这个项目刚从暂停恢复。只返回 JSON，格式为 {questions:string[]}。生成 1 到 3 个简短问题，优先确认当前阶段是否仍准确、当前任务是否仍可行以及恢复后的最小下一步，不要直接改写项目。"
+      : "你是温和务实的项目教练。只返回 JSON，格式为 {questions:string[]}。生成 1 到 3 个简短问题，用于澄清成功标准和当前情况，不要一次规划完整任务链。"
   const result = await chatStructured(
     secretPath,
     [
       {
         role: "system",
-        content:
-          "你是温和务实的项目教练。只返回 JSON，格式为 {questions:string[]}。生成 1 到 3 个简短问题，用于澄清成功标准和当前情况，不要一次规划完整任务链。",
+        content: systemPrompt,
       },
       { role: "user", content: JSON.stringify(projectContext(database, projectId)) },
     ],

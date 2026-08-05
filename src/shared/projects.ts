@@ -137,6 +137,10 @@ export const projectAiSessionSchema = z
 
 export type ProjectAiSession = z.infer<typeof projectAiSessionSchema>
 
+export const projectAiStartInputSchema = z
+  .object({ mode: z.enum(["create", "resume"]).default("create") })
+  .readonly()
+
 export const projectAiAnswerInputSchema = z
   .object({ answer: z.string().trim().min(1).max(2_000) })
   .readonly()
