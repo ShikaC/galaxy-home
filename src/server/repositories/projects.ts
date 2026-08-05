@@ -57,8 +57,10 @@ function insertProject(database: DatabaseSync, input: CreateProjectInput, now: s
      (id, project_id, stage_id, title, position, source, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, 'manual', ?, ?)`,
   )
-  task.run(crypto.randomUUID(), projectId, stageId, input.currentTask, "current", now, now)
-  task.run(crypto.randomUUID(), projectId, stageId, input.nextTask, "next", now, now)
+  if (input.currentTask !== null)
+    task.run(crypto.randomUUID(), projectId, stageId, input.currentTask, "current", now, now)
+  if (input.nextTask !== null)
+    task.run(crypto.randomUUID(), projectId, stageId, input.nextTask, "next", now, now)
   return projectId
 }
 

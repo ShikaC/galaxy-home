@@ -47,8 +47,8 @@ export function ProjectDialog({
           notes: notes || null,
           deadlineDate: deadline || null,
           stageTitle: stage,
-          currentTask: current,
-          nextTask: next,
+          currentTask: current.trim() || null,
+          nextTask: next.trim() || null,
         }),
       }),
     onSuccess: () => {
@@ -117,13 +117,13 @@ export function ProjectDialog({
             value={stage}
           />
           <TextField
-            label="当前任务"
+            label="当前任务（可选）"
             onChange={(event) => setCurrent(event.target.value)}
             placeholder="一个可以直接开始的动作"
             value={current}
           />
           <TextField
-            label="下一任务"
+            label="下一任务（可选）"
             onChange={(event) => setNext(event.target.value)}
             placeholder="只写紧接着的一步"
             value={next}
@@ -135,7 +135,7 @@ export function ProjectDialog({
             取消
           </Button>
           <Button
-            disabled={!name.trim() || !outcome.trim() || !current.trim() || !next.trim()}
+            disabled={!name.trim() || !outcome.trim()}
             loading={create.isPending}
             type="submit"
           >

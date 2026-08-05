@@ -15,6 +15,39 @@ afterEach(() => {
 })
 
 describe("project HTTP workflow", () => {
+  it("creates a project with only its required outcome fields", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-project-minimal-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+    })
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/projects",
+      payload: {
+        name: "整理阳台",
+        desiredOutcome: "阳台可以安心休息",
+      },
+    })
+
+    expect(response.statusCode).toBe(201)
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        currentTask: null,
+        nextTask: null,
+        name: "整理阳台",
+      }),
+    )
+    await app.close()
+    database.close()
+  })
+
   it("edits, advances, closes, and trashes a project through the manual API", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-project-workflow-"))
     directories.push(directory)

@@ -12,8 +12,8 @@ export const createProjectInputSchema = z
     notes: z.string().trim().max(10_000).nullable().default(null),
     deadlineDate: z.iso.date().nullable().default(null),
     stageTitle: z.string().trim().min(1).max(160).default("迈出第一步"),
-    currentTask: z.string().trim().min(1).max(240),
-    nextTask: z.string().trim().min(1).max(240),
+    currentTask: z.string().trim().min(1).max(240).nullable().default(null),
+    nextTask: z.string().trim().min(1).max(240).nullable().default(null),
   })
   .readonly()
 
