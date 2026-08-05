@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation } from "react-router"
 import { streamAiChat } from "../lib/aiStream.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
@@ -27,10 +27,14 @@ const PAGE_LABELS: Readonly<Record<string, string>> = {
 
 export function AiDrawer({
   onClose,
+  onConversationChange,
   open,
+  requestedConversationId,
 }: {
   readonly onClose: () => void
+  readonly onConversationChange: (conversationId: string | null) => void
   readonly open: boolean
+  readonly requestedConversationId: string | null
 }) {
   const meta = useMeta()
   const location = useLocation()
@@ -99,6 +103,9 @@ export function AiDrawer({
       setHistoryOpen(false)
     },
   })
+  useEffect(() => {
+    if (open && requestedConversationId !== null) loadConversation.mutate(requestedConversationId)
+  }, [loadConversation.mutate, open, requestedConversationId])
   const rename = useMutation({
     mutationFn: ({ id, title }: { readonly id: string; readonly title: string }) =>
       apiVoid(`/api/ai/conversations/${id}`, {
@@ -137,6 +144,7 @@ export function AiDrawer({
         onNewConversation={() => {
           setConversationId(null)
           setMessages([])
+          onConversationChange(null)
         }}
         onToggleHistory={() => setHistoryOpen((value) => !value)}
       />

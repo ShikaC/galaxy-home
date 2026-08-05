@@ -36,6 +36,7 @@ export function AppShell() {
   const [captureOpen, setCaptureOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [aiConversationId, setAiConversationId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
   )
@@ -49,7 +50,10 @@ export function AppShell() {
     () => ({
       openCapture: () => setCaptureOpen(true),
       openSearch: () => setSearchOpen(true),
-      openAi: () => setAiOpen(true),
+      openAi: (conversationId?: string) => {
+        setAiConversationId(conversationId ?? null)
+        setAiOpen(true)
+      },
     }),
     [],
   )
@@ -158,7 +162,12 @@ export function AppShell() {
           </aside>
           <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
           <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
-          <AiDrawer onClose={() => setAiOpen(false)} open={aiOpen} />
+          <AiDrawer
+            onClose={() => setAiOpen(false)}
+            onConversationChange={setAiConversationId}
+            open={aiOpen}
+            requestedConversationId={aiConversationId}
+          />
         </div>
       </AppActionsContext.Provider>
     </AppTimeContext.Provider>

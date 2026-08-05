@@ -44,3 +44,33 @@ test("optional AI setup can be tested during onboarding", async ({ page }) => {
   await page.getByRole("button", { name: "进入我的空间" }).click()
   await expect(page.getByRole("heading", { name: "今日空间" })).toBeVisible()
 })
+
+test("global search opens the matched AI conversation", async ({ page, request }) => {
+  await request.put("/api/ai/config", {
+    data: {
+      chatBaseUrl: `http://127.0.0.1:${aiPort}/v1`,
+      chatModel: "search-model",
+      apiKey: "search-key",
+      transcriptionBaseUrl: "",
+      transcriptionModel: "",
+    },
+  })
+  const conversation = await request.post("/api/ai/chat", {
+    data: {
+      conversationId: null,
+      content: "搜索定位会话",
+      currentPath: "/",
+      currentLabel: "首页",
+    },
+  })
+  expect(conversation.ok()).toBe(true)
+
+  await page.goto("/")
+  await page.getByRole("button", { name: "全局搜索" }).click()
+  await page.getByLabel("搜索空间").fill("搜索定位会话")
+  await page.getByRole("button", { name: /搜索定位会话/ }).click()
+
+  const drawer = page.getByRole("dialog", { name: "星伴 AI 助手" })
+  await expect(drawer).toBeVisible()
+  await expect(drawer.getByText("搜索定位会话", { exact: true })).toBeVisible()
+})

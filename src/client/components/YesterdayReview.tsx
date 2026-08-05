@@ -48,7 +48,7 @@ export function YesterdayReview() {
             >
               <Inbox size={14} /> 移回收集箱
             </Button>
-            <Button onClick={actions.openAi} size="compact" variant="ghost">
+            <Button onClick={() => actions.openAi()} size="compact" variant="ghost">
               <Sparkles size={14} /> 请 AI 缩小
             </Button>
             <Button

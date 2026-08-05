@@ -3,7 +3,7 @@ import { createContext, useContext } from "react"
 type AppActions = {
   readonly openCapture: () => void
   readonly openSearch: () => void
-  readonly openAi: () => void
+  readonly openAi: (conversationId?: string) => void
 }
 
 type AppTime = {
