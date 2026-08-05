@@ -1,26 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Bot, History, Plus, Send, Settings, X } from "lucide-react"
 import { useState } from "react"
-import { Link, useLocation } from "react-router"
-import type { AiReference } from "../../shared/ai.js"
+import { useLocation } from "react-router"
 import { streamAiChat } from "../lib/aiStream.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
 import { messagesSchema } from "../lib/schemas.js"
-import { AiChatMessage } from "./AiChatMessage.js"
 import { AiConversationHistory } from "./AiConversationHistory.js"
-import { AiMemoryConfirmation } from "./AiMemoryConfirmation.js"
-import { AiPermissionControl } from "./AiPermissionControl.js"
-import { IconButton } from "./ui/IconButton.js"
+import { AiDrawerBody, type AiDrawerMessage } from "./AiDrawerBody.js"
+import { AiDrawerComposer } from "./AiDrawerComposer.js"
+import { AiDrawerHeader } from "./AiDrawerHeader.js"
 import { DrawerSurface } from "./ui/ModalSurface.js"
-import { Badge } from "./ui/Status.js"
-
-type LocalMessage = {
-  readonly id: string
-  readonly role: "user" | "assistant"
-  readonly content: string
-  readonly references: readonly AiReference[]
-}
 
 type PendingMessage = {
   readonly message: string
@@ -48,7 +37,7 @@ export function AiDrawer({
   const client = useQueryClient()
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [content, setContent] = useState("")
-  const [messages, setMessages] = useState<readonly LocalMessage[]>([])
+  const [messages, setMessages] = useState<readonly AiDrawerMessage[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState("")
   const [memoryContent, setMemoryContent] = useState<string | null>(null)
@@ -140,45 +129,17 @@ export function AiDrawer({
   )
   return (
     <DrawerSurface ariaLabel={`${nickname} AI 助手`} onClose={onClose}>
-      <header className="drawer__header">
-        <div>
-          <span className="drawer__title">
-            <Bot size={19} />
-            <strong>{nickname}</strong>
-          </span>
-          <Badge tone={configured ? "positive" : "waiting"}>
-            {configured ? "已连接" : "未配置"}
-          </Badge>
-        </div>
-        <IconButton label="关闭 AI 助手" onClick={onClose}>
-          <X size={18} />
-        </IconButton>
-      </header>
-      <div className="drawer__toolbar">
-        <button
-          className="text-action"
-          onClick={() => {
-            setConversationId(null)
-            setMessages([])
-          }}
-          type="button"
-        >
-          <Plus size={15} />
-          新会话
-        </button>
-        <button
-          className="text-action"
-          onClick={() => setHistoryOpen((value) => !value)}
-          type="button"
-        >
-          <History size={15} />
-          会话
-        </button>
-        <AiPermissionControl />
-        <span className="drawer__context" title={`当前页：${currentPage}`}>
-          {currentPage}
-        </span>
-      </div>
+      <AiDrawerHeader
+        configured={configured}
+        currentPage={currentPage}
+        nickname={nickname}
+        onClose={onClose}
+        onNewConversation={() => {
+          setConversationId(null)
+          setMessages([])
+        }}
+        onToggleHistory={() => setHistoryOpen((value) => !value)}
+      />
       {historyOpen ? (
         <AiConversationHistory
           conversations={conversations}
@@ -190,80 +151,30 @@ export function AiDrawer({
           selectedId={conversationId}
         />
       ) : null}
-      <div className="drawer__body">
-        {!configured ? (
-          <div className="ai-unavailable">
-            <Bot size={24} />
-            <h3>AI 尚未配置</h3>
-            <p>
-              待办、习惯、项目手动推进和回顾仍可正常使用。<span className="cjk-keep">配置服务</span>
-              后可继续当前会话。
-            </p>
-            <Link
-              className="button button--secondary button--regular"
-              onClick={onClose}
-              to="/settings"
-            >
-              <Settings size={16} />
-              前往设置
-            </Link>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="ai-welcome">
-            <p>今天想一起理清什么？</p>
-            <span>我会先理解精力与阻碍，再把下一步缩小到可以开始。</span>
-          </div>
-        ) : (
-          messages.map((message) => (
-            <AiChatMessage
-              key={message.id}
-              message={message}
-              nickname={nickname}
-              onRemember={setMemoryContent}
-            />
-          ))
-        )}
-        {send.isError ? (
-          <div className="ai-pending">
-            <Badge tone="waiting">等待分析</Badge>
-            <p>{send.error.message}</p>
-          </div>
-        ) : null}
-      </div>
-      {memoryContent === null ? null : (
-        <AiMemoryConfirmation
-          content={memoryContent}
-          onCancel={() => setMemoryContent(null)}
-          onSaved={() => {
-            setMemoryContent(null)
-            void client.invalidateQueries({ queryKey: queryKeys.meta })
-          }}
-        />
-      )}
-      <form
-        className="drawer__composer"
-        onSubmit={(event) => {
-          event.preventDefault()
+      <AiDrawerBody
+        configured={configured}
+        error={send.isError ? send.error.message : null}
+        memoryContent={memoryContent}
+        messages={messages}
+        nickname={nickname}
+        onCancelMemory={() => setMemoryContent(null)}
+        onClose={onClose}
+        onRemember={setMemoryContent}
+        onSavedMemory={() => {
+          setMemoryContent(null)
+          void client.invalidateQueries({ queryKey: queryKeys.meta })
+        }}
+      />
+      <AiDrawerComposer
+        configured={configured}
+        content={content}
+        onChange={setContent}
+        onSubmit={() => {
           const message = content.trim()
           if (message) send.mutate({ message, placeholderId: crypto.randomUUID() })
         }}
-      >
-        <textarea
-          aria-label="给 AI 发送消息"
-          disabled={!configured || send.isPending}
-          onChange={(event) => setContent(event.target.value)}
-          placeholder={configured ? "写下你卡住的地方..." : "请先在设置中配置 AI 服务"}
-          rows={3}
-          value={content}
-        />
-        <IconButton
-          disabled={!configured || !content.trim() || send.isPending}
-          label="发送消息"
-          type="submit"
-        >
-          <Send size={18} />
-        </IconButton>
-      </form>
+        pending={send.isPending}
+      />
     </DrawerSurface>
   )
 }
