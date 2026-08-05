@@ -7,9 +7,9 @@ import { getAiConfigStatus } from "./secrets.js"
 export async function resumeProject(database: DatabaseSync, secretPath: string, projectId: string) {
   const current = getProject(database, projectId)
   if (current.status !== "paused") return current
-  updateProject(database, projectId, { status: "active" })
   if (getAiConfigStatus(secretPath).configured) {
     await startProjectAiClarification(database, secretPath, projectId, "resume")
   }
+  updateProject(database, projectId, { status: "active" })
   return getProject(database, projectId)
 }

@@ -87,4 +87,48 @@ describe("project resume workflow", () => {
       expect.objectContaining({ status: "clarifying", currentQuestion: "当前阶段还准确吗？" }),
     )
   })
+
+  it("keeps a paused project paused when AI reconfirmation is unavailable", async () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-project-resume-error-"))
+    database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const secretPath = join(directory, "secrets.json")
+    writeSecretConfig(secretPath, {
+      chatBaseUrl: "http://127.0.0.1:1/v1",
+      chatModel: "test-model",
+      apiKey: "test-key",
+      transcriptionBaseUrl: "",
+      transcriptionModel: "",
+    })
+    const project = createProject(database, {
+      name: "整理书房",
+      desiredOutcome: "可以安心阅读",
+      reason: null,
+      notes: null,
+      deadlineDate: null,
+      stageTitle: "清理桌面",
+      currentTask: "移走旧文件",
+      nextTask: "擦净桌面",
+    })
+    app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath,
+    })
+
+    await app.inject({
+      method: "PATCH",
+      url: `/api/projects/${project.id}`,
+      payload: { status: "paused" },
+    })
+    const resumed = await app.inject({
+      method: "POST",
+      url: `/api/projects/${project.id}/resume`,
+    })
+
+    expect(resumed.statusCode).toBe(503)
+    const unchanged = await app.inject({ method: "GET", url: `/api/projects/${project.id}` })
+    expect(unchanged.json()).toEqual(expect.objectContaining({ status: "paused" }))
+  })
 })
