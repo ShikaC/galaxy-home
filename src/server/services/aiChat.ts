@@ -1,13 +1,11 @@
 import type { DatabaseSync } from "node:sqlite"
 import type { AiChatInput } from "../../shared/ai.js"
-import type { WorkspaceSettings } from "../../shared/settings.js"
 import { addMessage, createConversation, listMessages } from "../repositories/conversations.js"
 import { getSettings } from "../repositories/settings.js"
 import { type ChatMessage, chat } from "./ai.js"
 import { buildAiContext } from "./aiContext.js"
 
 export type PreparedAiChat = {
-  readonly settings: WorkspaceSettings
   readonly messages: readonly ChatMessage[]
   readonly references: ReturnType<typeof buildAiContext>["references"]
   readonly content: string
@@ -31,7 +29,6 @@ export function prepareAiChat(database: DatabaseSync, input: AiChatInput): Prepa
     input.content,
   )
   return {
-    settings,
     messages: [
       {
         role: "system",

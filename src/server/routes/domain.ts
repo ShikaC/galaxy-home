@@ -41,7 +41,7 @@ import {
   answerProjectAiClarification,
   startProjectAiClarification,
 } from "../services/projectAi.js"
-import { getAiConfigStatus } from "../services/secrets.js"
+import { resumeProject } from "../services/projectResume.js"
 
 const dateQuerySchema = z.object({ localDate: z.string() })
 const localDateInputSchema = z.object({ localDate: z.iso.date() })
@@ -125,14 +125,9 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
       projectAiStartInputSchema.parse(request.body ?? {}).mode,
     ),
   )
-  app.post("/api/projects/:id/resume", async (request) => {
-    const projectId = idSchema.parse(request.params).id
-    updateProject(context.database, projectId, { status: "active" })
-    if (getAiConfigStatus(context.secretPath).configured) {
-      await startProjectAiClarification(context.database, context.secretPath, projectId, "resume")
-    }
-    return getProject(context.database, projectId)
-  })
+  app.post("/api/projects/:id/resume", (request) =>
+    resumeProject(context.database, context.secretPath, idSchema.parse(request.params).id),
+  )
   app.post("/api/projects/:id/ai/answer", (request) =>
     answerProjectAiClarification(
       context.database,

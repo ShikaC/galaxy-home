@@ -1,21 +1,11 @@
-import { z } from "zod"
+import type { z } from "zod"
 import {
   type AiChatInput,
   aiChatInputSchema,
   aiChatResponseSchema,
   aiStreamEventSchema,
 } from "../../shared/ai.js"
-import { ApiError } from "./api.js"
-
-const errorSchema = z.object({ code: z.string(), message: z.string() })
-
-async function throwHttpError(response: Response): Promise<never> {
-  const parsed = errorSchema.safeParse(await response.json().catch(() => null))
-  throw new ApiError(
-    parsed.success ? parsed.data.code : "NETWORK_ERROR",
-    parsed.success ? parsed.data.message : "请求失败，请稍后再试",
-  )
-}
+import { ApiError, throwApiError } from "./api.js"
 
 export async function streamAiChat(
   input: AiChatInput,
@@ -26,7 +16,7 @@ export async function streamAiChat(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(aiChatInputSchema.parse(input)),
   })
-  if (!response.ok) await throwHttpError(response)
+  if (!response.ok) await throwApiError(response)
   if (response.body === null) throw new ApiError("NETWORK_ERROR", "AI 没有返回流式内容")
 
   const reader = response.body.getReader()
