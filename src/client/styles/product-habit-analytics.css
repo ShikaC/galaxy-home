@@ -1,0 +1,101 @@
+.analytics-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.8fr);
+  gap: var(--space-6);
+  border-block: 1px solid var(--color-border);
+  padding-block: var(--space-6);
+}
+.chart-frame,
+.calendar-frame {
+  min-inline-size: 0;
+}
+.trend-stack {
+  display: grid;
+  gap: var(--space-6);
+}
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  text-align: center;
+}
+.calendar-weekdays {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-micro);
+}
+.calendar-grid > button {
+  position: relative;
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: inherit;
+  font-size: var(--font-size-meta);
+  cursor: pointer;
+}
+.calendar-grid > button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+.calendar-grid > button[aria-pressed="true"] {
+  outline: 2px solid var(--color-text);
+  outline-offset: -2px;
+}
+.calendar-grid .outside {
+  color: var(--color-text-faint);
+}
+.calendar-grid .checked {
+  border-color: var(--color-action);
+  background: var(--color-action-soft);
+}
+.calendar-grid small {
+  position: absolute;
+  inset-block-end: 1px;
+  color: var(--color-action);
+  font-size: var(--font-size-nano);
+}
+.habit-day-detail {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+  border-block-start: 1px solid var(--color-border);
+  padding-block-start: var(--space-4);
+}
+.habit-day-detail > p,
+.habit-day-detail small {
+  color: var(--color-text-muted);
+}
+.habit-day-detail ul {
+  display: grid;
+  gap: var(--space-2);
+}
+.habit-day-detail li,
+.habit-day-detail__status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.habit-day-detail__name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.correction-form {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 160px 120px auto auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+.check-line {
+  display: flex;
+  min-block-size: 40px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.success-text {
+  margin-inline-start: var(--space-3);
+  color: var(--color-action);
+  font-size: var(--font-size-meta);
+}

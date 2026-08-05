@@ -1,0 +1,49 @@
+.quote-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  border-block: 1px solid var(--color-border);
+  padding: var(--space-4);
+  background: var(--color-surface-subtle);
+  color: var(--color-action-hover);
+}
+.quote-band blockquote {
+  margin: 0;
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-medium);
+  text-wrap: balance;
+}
+.quote-band button {
+  display: grid;
+  inline-size: 32px;
+  block-size: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  cursor: pointer;
+}
+.quick-start-guide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: center;
+  gap: var(--space-4);
+  margin-block-end: var(--space-5);
+  border-block: 1px solid var(--color-border);
+  padding-block: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.quick-start-guide > div {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.quick-start-guide svg {
+  flex: 0 0 auto;
+  color: var(--color-action);
+}
+.quick-start-guide strong {
+  color: var(--color-text);
+}

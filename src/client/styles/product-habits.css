@@ -1,0 +1,54 @@
+.habit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.habit-row {
+  display: grid;
+  min-block-size: 66px;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-3);
+}
+.habit-row--done {
+  border-color: var(--color-action);
+  background: var(--color-action-soft);
+}
+.habit-complete {
+  display: grid;
+  inline-size: 32px;
+  block-size: 32px;
+  place-items: center;
+  border: 1px solid var(--color-action);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-action);
+  cursor: pointer;
+}
+.habit-complete:disabled {
+  border-color: var(--color-border);
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+.habit-row__body > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.habit-row__body p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.habit-count {
+  font-variant-numeric: tabular-nums;
+}
+.habit-row__actions {
+  display: flex;
+  grid-column: 2 / -1;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}

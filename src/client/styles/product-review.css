@@ -1,0 +1,59 @@
+.review-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  gap: var(--space-8);
+}
+.review-filters {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: var(--space-3);
+  margin-block-end: var(--space-4);
+}
+.review-filters label {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-micro);
+}
+.review-filters input {
+  min-block-size: 38px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  padding-inline: var(--space-2);
+}
+.gain-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  border-block-end: 1px solid var(--color-border);
+  padding-block: var(--space-3);
+}
+.gain-row > div {
+  display: flex;
+}
+.weekly-column {
+  min-inline-size: 0;
+}
+.review-card {
+  display: grid;
+  gap: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+}
+.review-card ul {
+  margin-block: var(--space-2) 0;
+  padding-inline-start: var(--space-5);
+  color: var(--color-text-muted);
+}
+.suggestions > div {
+  display: grid;
+  gap: var(--space-2);
+  border-block-start: 1px solid var(--color-border);
+  margin-block-start: var(--space-2);
+  padding-block-start: var(--space-3);
+}
+.suggestions .button {
+  justify-self: start;
+}

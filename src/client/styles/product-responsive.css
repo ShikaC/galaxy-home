@@ -1,0 +1,99 @@
+@media (max-width: 1120px) {
+  .home-grid,
+  .review-grid,
+  .analytics-grid,
+  .project-detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .feedback-panel {
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--color-border);
+    padding: var(--space-5) 0 0;
+  }
+}
+@media (max-width: 900px) {
+  .habit-grid,
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+  .todo-layout {
+    grid-template-columns: 140px minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .correction-form {
+    grid-template-columns: 1fr 1fr;
+  }
+  .form-grid--three {
+    grid-template-columns: 1fr 1fr;
+  }
+  .project-ai-preview dl {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .quick-start-guide {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+  .quick-start-guide > div {
+    grid-column: 1;
+  }
+  .quick-start-guide > .icon-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .task-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .task-actions-menu > .icon-button {
+    align-self: start;
+  }
+  .todo-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .filter-nav {
+    display: flex;
+    flex-wrap: wrap;
+    padding-block-end: var(--space-2);
+  }
+  .filter-nav strong {
+    display: none;
+  }
+  .filter-nav button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .quote-band {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+  .quote-band > svg {
+    display: none;
+  }
+  .correction-form,
+  .form-grid,
+  .form-grid--three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-card header {
+    flex-direction: column;
+  }
+  .project-card__actions {
+    align-self: stretch;
+    justify-content: flex-end;
+  }
+  .progress-timeline > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .yesterday-review > article,
+  .yesterday-review > article > div {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
