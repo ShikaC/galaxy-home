@@ -271,12 +271,12 @@
   display: inline-flex;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
-  padding: 1px;
+  padding: 0;
 }
 .drawer__permission button {
-  min-block-size: 26px;
+  min-block-size: 36px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-control);
   padding-inline: var(--space-2);
   background: transparent;
   color: var(--color-text-muted);

@@ -183,6 +183,15 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
   await page.keyboard.press("Escape")
   await expect(drawerTrigger).toBeFocused()
 
+  await page.setViewportSize({ width: 768, height: 720 })
+  await drawerTrigger.click()
+  await expect(drawer).toBeVisible()
+  await expectNoHorizontalOverflow(page)
+  await expectAnimationsSettled(drawer)
+  await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer-768.png") })
+  await page.keyboard.press("Escape")
+  await expect(drawerTrigger).toBeFocused()
+
   await page.goto("/design-system")
   await expect(page.getByText("保存失败，请重试")).toBeVisible()
   await expect(page.locator(".skeleton")).toHaveCount(1)
