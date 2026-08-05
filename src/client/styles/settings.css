@@ -276,7 +276,7 @@ kbd {
 .onboarding__optional h2 {
   font-size: var(--font-size-section);
 }
-.onboarding__optional p {
+.onboarding__optional-note {
   margin-block-start: var(--space-2);
 }
 @media (max-width: 980px) {

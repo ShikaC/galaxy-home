@@ -45,7 +45,8 @@ test("optional AI setup can be tested during onboarding", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "今日空间" })).toBeVisible()
 })
 
-test("global search opens the matched AI conversation", async ({ page, request }) => {
+test("global search opens the matched AI conversation", async ({ page, request }, testInfo) => {
+  const searchPhrase = `搜索定位会话-${testInfo.project.name}-${Date.now()}`
   await request.put("/api/ai/config", {
     data: {
       chatBaseUrl: `http://127.0.0.1:${aiPort}/v1`,
@@ -58,7 +59,7 @@ test("global search opens the matched AI conversation", async ({ page, request }
   const conversation = await request.post("/api/ai/chat", {
     data: {
       conversationId: null,
-      content: "搜索定位会话",
+      content: searchPhrase,
       currentPath: "/",
       currentLabel: "首页",
     },
@@ -67,10 +68,10 @@ test("global search opens the matched AI conversation", async ({ page, request }
 
   await page.goto("/")
   await page.getByRole("button", { name: "全局搜索" }).click()
-  await page.getByLabel("搜索空间").fill("搜索定位会话")
-  await page.getByRole("button", { name: /搜索定位会话/ }).click()
+  await page.getByLabel("搜索空间").fill(searchPhrase)
+  await page.getByRole("button", { name: new RegExp(searchPhrase) }).click()
 
   const drawer = page.getByRole("dialog", { name: "星伴 AI 助手" })
   await expect(drawer).toBeVisible()
-  await expect(drawer.getByText("搜索定位会话", { exact: true })).toBeVisible()
+  await expect(drawer.getByText(searchPhrase, { exact: true })).toBeVisible()
 })

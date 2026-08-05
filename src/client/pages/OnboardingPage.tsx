@@ -88,7 +88,9 @@ export function OnboardingPage() {
           <section aria-labelledby="onboarding-ai-title" className="onboarding__optional">
             <div>
               <h2 id="onboarding-ai-title">可选：配置并测试 AI 服务</h2>
-              <p className="muted">需要时再填写。保存后仍可在设置中修改，API Key 只保存在本机。</p>
+              <p className="muted onboarding__optional-note">
+                需要时再填写。保存后仍可在设置中修改，API Key 只保存在本机。
+              </p>
             </div>
             <div className="form-grid">
               <TextField
