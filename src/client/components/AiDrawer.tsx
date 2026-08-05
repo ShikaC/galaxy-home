@@ -3,9 +3,10 @@ import { Bot, History, Plus, Send, Settings, X } from "lucide-react"
 import { useState } from "react"
 import { Link, useLocation } from "react-router"
 import type { AiReference } from "../../shared/ai.js"
+import { streamAiChat } from "../lib/aiStream.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
-import { chatResponseSchema, messagesSchema } from "../lib/schemas.js"
+import { messagesSchema } from "../lib/schemas.js"
 import { AiChatMessage } from "./AiChatMessage.js"
 import { AiConversationHistory } from "./AiConversationHistory.js"
 import { AiMemoryConfirmation } from "./AiMemoryConfirmation.js"
@@ -19,6 +20,11 @@ type LocalMessage = {
   readonly role: "user" | "assistant"
   readonly content: string
   readonly references: readonly AiReference[]
+}
+
+type PendingMessage = {
+  readonly message: string
+  readonly placeholderId: string
 }
 
 const PAGE_LABELS: Readonly<Record<string, string>> = {
@@ -47,30 +53,44 @@ export function AiDrawer({
   const [historySearch, setHistorySearch] = useState("")
   const [memoryContent, setMemoryContent] = useState<string | null>(null)
   const send = useMutation({
-    mutationFn: (message: string) =>
-      apiRequest("/api/ai/chat", chatResponseSchema, {
-        method: "POST",
-        body: jsonBody({
+    mutationFn: ({ message, placeholderId }: PendingMessage) =>
+      streamAiChat(
+        {
           conversationId,
           content: message,
           currentPath: location.pathname,
           currentLabel: location.pathname.startsWith("/projects/")
             ? "项目"
             : (PAGE_LABELS[location.pathname] ?? "当前页"),
-        }),
-      }),
-    onSuccess: (result, sentContent) => {
-      setConversationId(result.conversationId)
+        },
+        (delta) =>
+          setMessages((current) =>
+            current.map((entry) =>
+              entry.id === placeholderId ? { ...entry, content: entry.content + delta } : entry,
+            ),
+          ),
+      ),
+    onMutate: ({ message, placeholderId }) => {
       setMessages((current) => [
         ...current,
-        { id: crypto.randomUUID(), role: "user", content: sentContent, references: [] },
-        {
-          id: result.message.id,
-          role: "assistant",
-          content: result.message.content,
-          references: result.message.references,
-        },
+        { id: crypto.randomUUID(), role: "user", content: message, references: [] },
+        { id: placeholderId, role: "assistant", content: "", references: [] },
       ])
+    },
+    onSuccess: (result, variables) => {
+      setConversationId(result.conversationId)
+      setMessages((current) =>
+        current.map((entry) =>
+          entry.id === variables.placeholderId
+            ? {
+                id: result.message.id,
+                role: "assistant",
+                content: result.message.content,
+                references: result.message.references,
+              }
+            : entry,
+        ),
+      )
       setContent("")
       void client.invalidateQueries({ queryKey: queryKeys.meta })
     },
@@ -221,7 +241,8 @@ export function AiDrawer({
         className="drawer__composer"
         onSubmit={(event) => {
           event.preventDefault()
-          if (content.trim()) send.mutate(content.trim())
+          const message = content.trim()
+          if (message) send.mutate({ message, placeholderId: crypto.randomUUID() })
         }}
       >
         <textarea

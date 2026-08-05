@@ -66,9 +66,25 @@ export const aiChatInputSchema = z
   })
   .readonly()
 
+export type AiChatInput = z.infer<typeof aiChatInputSchema>
+
 export const aiChatResponseSchema = z
   .object({ conversationId: z.string().uuid(), message: aiMessageSchema })
   .readonly()
+
+export const aiStreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("delta"), content: z.string().min(1) }).readonly(),
+  z
+    .object({
+      type: z.literal("done"),
+      conversationId: z.string().uuid(),
+      message: aiMessageSchema,
+    })
+    .readonly(),
+  z.object({ type: z.literal("error"), code: z.string(), message: z.string() }).readonly(),
+])
+
+export type AiStreamEvent = z.infer<typeof aiStreamEventSchema>
 
 export const aiActionSchema = z
   .object({

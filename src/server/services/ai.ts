@@ -4,8 +4,11 @@ import { readSecretConfig } from "./secrets.js"
 const completionSchema = z.object({
   choices: z.array(z.object({ message: z.object({ content: z.string().trim().min(1) }) })).min(1),
 })
+const streamChunkSchema = z.object({
+  choices: z.array(z.object({ delta: z.object({ content: z.string().optional() }) })),
+})
 const transcriptionSchema = z.object({ text: z.string().trim().min(1) })
-type ChatMessage = {
+export type ChatMessage = {
   readonly role: "system" | "user" | "assistant"
   readonly content: string
 }
@@ -43,10 +46,7 @@ async function requestCompletion(
   messages: readonly ChatMessage[],
   structured: boolean,
 ): Promise<string> {
-  const config = readSecretConfig(secretPath)
-  if (config.chatBaseUrl === "" || config.chatModel === "" || config.apiKey === "") {
-    throw new AiServiceError("AI_NOT_CONFIGURED", "AI 尚未配置，手动流程仍可正常使用")
-  }
+  const config = chatConfig(secretPath)
   const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
@@ -67,8 +67,81 @@ async function requestCompletion(
   }
 }
 
+function chatConfig(secretPath: string) {
+  const config = readSecretConfig(secretPath)
+  if (config.chatBaseUrl === "" || config.chatModel === "" || config.apiKey === "") {
+    throw new AiServiceError("AI_NOT_CONFIGURED", "AI 尚未配置，手动流程仍可正常使用")
+  }
+  return config
+}
+
 export function chat(secretPath: string, messages: readonly ChatMessage[]) {
   return requestCompletion(secretPath, messages, false)
+}
+
+export async function streamChat(
+  secretPath: string,
+  messages: readonly ChatMessage[],
+  onDelta: (content: string) => void,
+): Promise<string> {
+  const config = chatConfig(secretPath)
+  const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ model: config.chatModel, messages, stream: true }),
+  })
+  if (response.body === null) throw new AiServiceError("AI_INVALID_RESPONSE", "AI 没有返回流式内容")
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+  let content = ""
+  let completed = false
+  const processLine = (line: string): void => {
+    const value = line.trim()
+    if (!value.startsWith("data:")) return
+    const payload = value.slice("data:".length).trim()
+    if (payload === "[DONE]") {
+      completed = true
+      return
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(payload)
+    } catch {
+      throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的流式内容")
+    }
+    const chunk = streamChunkSchema.safeParse(parsed)
+    if (!chunk.success)
+      throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的流式内容")
+    const delta = chunk.data.choices[0]?.delta.content
+    if (delta === undefined || delta === "") return
+    content += delta
+    onDelta(delta)
+  }
+
+  try {
+    while (!completed) {
+      const result = await reader.read()
+      buffer += decoder.decode(result.value, { stream: !result.done })
+      const lines = buffer.split("\n")
+      buffer = lines.pop() ?? ""
+      for (const line of lines) processLine(line)
+      if (result.done) break
+    }
+    buffer += decoder.decode()
+    if (buffer !== "") processLine(buffer)
+  } catch (error) {
+    if (error instanceof AiServiceError) throw error
+    throw new AiServiceError(
+      "AI_UNAVAILABLE",
+      error instanceof Error ? error.message : "AI 流式响应中断",
+    )
+  } finally {
+    reader.releaseLock()
+  }
+  if (content.trim() === "") throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了空内容")
+  return content
 }
 
 export async function chatStructured<Schema extends z.ZodType>(

@@ -3,16 +3,11 @@ import "@fastify/multipart"
 import { z } from "zod"
 import { aiChatInputSchema } from "../../shared/ai.js"
 import type { AppContext } from "../context.js"
-import {
-  addMessage,
-  createConversation,
-  listMessages,
-  renameConversation,
-} from "../repositories/conversations.js"
-import { getSettings } from "../repositories/settings.js"
+import { listMessages, renameConversation } from "../repositories/conversations.js"
 import { moveToTrash } from "../repositories/trash.js"
-import { chat, transcribe } from "../services/ai.js"
-import { buildAiContext } from "../services/aiContext.js"
+import { AiServiceError, chat, streamChat, transcribe } from "../services/ai.js"
+import { completeAiChat, persistAiChat, prepareAiChat } from "../services/aiChat.js"
+import { getAiConfigStatus } from "../services/secrets.js"
 
 const idSchema = z.object({ id: z.string().uuid() })
 const titleSchema = z.object({ title: z.string().trim().min(1).max(80) })
@@ -39,41 +34,39 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
     return reply.code(204).send()
   })
   app.post("/api/ai/chat", async (request) => {
-    const body = aiChatInputSchema.parse(request.body)
-    const settings = getSettings(context.database)
-    const prior =
-      body.conversationId === null
-        ? []
-        : listMessages(context.database, body.conversationId).map((message) => ({
-            role: message.role === "user" ? ("user" as const) : ("assistant" as const),
-            content: message.content,
-          }))
-    const localContext = buildAiContext(
-      context.database,
-      settings,
-      body.currentPath,
-      body.currentLabel,
-      body.content,
-    )
-    const answer = await chat(context.secretPath, [
-      {
-        role: "system",
-        content: `你是${settings.aiNickname}，称呼用户为${settings.userName}。语气温和务实，不批评、不制造内疚。先识别精力和阻碍，再缩小到当前可做的最小动作，也允许休息和重新规划。不要声称掌握实时新闻、天气或价格。以下是本次允许参考的本地上下文：${localContext.prompt}`,
-      },
-      ...prior,
-      { role: "user", content: body.content },
-    ])
-    const conversationId =
-      body.conversationId ?? createConversation(context.database, body.content.slice(0, 24)).id
-    addMessage(context.database, conversationId, "user", body.content)
-    const message = addMessage(
-      context.database,
-      conversationId,
-      "assistant",
-      answer,
-      localContext.references,
-    )
-    return { conversationId, message }
+    const prepared = prepareAiChat(context.database, aiChatInputSchema.parse(request.body))
+    const answer = await completeAiChat(context.secretPath, prepared)
+    return persistAiChat(context.database, prepared, answer)
+  })
+  app.post("/api/ai/chat/stream", async (request, reply) => {
+    const prepared = prepareAiChat(context.database, aiChatInputSchema.parse(request.body))
+    if (!getAiConfigStatus(context.secretPath).configured) {
+      throw new AiServiceError("AI_NOT_CONFIGURED", "AI 尚未配置，手动流程仍可正常使用")
+    }
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "X-Accel-Buffering": "no",
+    })
+    const writeEvent = (event: unknown) => {
+      reply.raw.write(`data: ${JSON.stringify(event)}\n\n`)
+    }
+    try {
+      const answer = await streamChat(context.secretPath, prepared.messages, (content) => {
+        writeEvent({ type: "delta", content })
+      })
+      writeEvent({ type: "done", ...persistAiChat(context.database, prepared, answer) })
+    } catch (error) {
+      const serviceError =
+        error instanceof AiServiceError
+          ? error
+          : new AiServiceError("AI_UNAVAILABLE", "AI 流式响应中断")
+      writeEvent({ type: "error", code: serviceError.code, message: serviceError.message })
+    } finally {
+      reply.raw.end()
+    }
   })
   app.post("/api/ai/test", async () => ({
     message: await chat(context.secretPath, [{ role: "user", content: "只回复：连接成功" }]),
