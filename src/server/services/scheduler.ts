@@ -111,6 +111,31 @@ function latestDueReviewSunday(now: Date, timezone: string, reviewTime: string):
   return shiftCalendarDate(clock.date, -daysBack)
 }
 
+function readOnboardingCompletedAt(database: DatabaseSync): string | null {
+  const row = z
+    .object({ onboarding_completed_at: z.string().nullable() })
+    .parse(
+      database
+        .prepare("SELECT onboarding_completed_at FROM workspace_settings WHERE id = 1")
+        .get(),
+    )
+  return row.onboarding_completed_at
+}
+
+function dismissWeeklyReviewsBeforeOnboarding(database: DatabaseSync, now: Date): void {
+  const onboardedAt = readOnboardingCompletedAt(database)
+  if (onboardedAt === null) return
+  database
+    .prepare(
+      `UPDATE notification_events
+       SET dismissed_at = COALESCE(dismissed_at, ?)
+       WHERE kind = 'weekly_review'
+         AND dismissed_at IS NULL
+         AND scheduled_at <= ?`,
+    )
+    .run(now.toISOString(), onboardedAt)
+}
+
 function materializeWeeklyReview(
   database: DatabaseSync,
   now: Date,
@@ -122,6 +147,8 @@ function materializeWeeklyReview(
   const weekStart = shiftCalendarDate(sunday, -6)
   const scheduledAt = localDateTimeToInstant(sunday, settings.weeklyReviewTime, settings.timezone)
   if (scheduledAt > now) return
+  const onboardedAt = readOnboardingCompletedAt(database)
+  if (onboardedAt !== null && scheduledAt.getTime() <= new Date(onboardedAt).getTime()) return
   const reviewExists = z
     .object({ value: z.number() })
     .parse(
@@ -265,6 +292,7 @@ export function listDueNotifications(
   now = new Date(),
 ): readonly Notification[] {
   runScheduler(database, now)
+  dismissWeeklyReviewsBeforeOnboarding(database, now)
   const timezone = getSettings(database).timezone
   const rows = database
     .prepare(

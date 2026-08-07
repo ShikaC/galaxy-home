@@ -4,6 +4,7 @@ import { join } from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { z } from "zod"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
+import { completeOnboarding } from "../../src/server/services/onboarding.js"
 import { listDueNotifications, snoozeNotification } from "../../src/server/services/scheduler.js"
 
 const directories: string[] = []
@@ -125,6 +126,48 @@ describe("reminder scheduler", () => {
     expect(review?.completed_json).toContain("完成提案")
     expect(review?.completed_json).toContain("节奏更稳了")
     expect(review?.obstacles_json).toContain("等待确认")
+    database.close()
+  })
+
+  it("does not catch up weekly review banners from before the workspace was onboarded", () => {
+    const database = createDatabase()
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', weekly_review_time = '20:00'",
+      )
+      .run()
+    completeOnboarding(database, {
+      workspaceName: "新空间",
+      aiNickname: "星伴",
+      userName: "你",
+      timezone: "Asia/Shanghai",
+    })
+    // Friday afternoon Asia/Shanghai — previous Sunday's weekly review would otherwise catch up.
+    const due = listDueNotifications(database, new Date("2026-08-07T08:00:00.000Z"))
+    expect(due.some((notification) => notification.kind === "weekly_review")).toBe(false)
+    database.close()
+  })
+
+  it("hides already-materialized weekly reviews that predate onboarding", () => {
+    const database = createDatabase()
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', weekly_review_time = '20:00'",
+      )
+      .run()
+    const beforeOnboarding = listDueNotifications(database, new Date("2026-08-07T08:00:00.000Z"))
+    expect(beforeOnboarding.some((notification) => notification.kind === "weekly_review")).toBe(
+      true,
+    )
+    database
+      .prepare(
+        "UPDATE workspace_settings SET onboarding_completed = 1, onboarding_completed_at = ? WHERE id = 1",
+      )
+      .run("2026-08-07T08:00:00.000Z")
+    const afterOnboarding = listDueNotifications(database, new Date("2026-08-07T08:05:00.000Z"))
+    expect(afterOnboarding.some((notification) => notification.kind === "weekly_review")).toBe(
+      false,
+    )
     database.close()
   })
 })

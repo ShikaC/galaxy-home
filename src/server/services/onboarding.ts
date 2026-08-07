@@ -20,10 +20,10 @@ export function completeOnboarding(database: DatabaseSync, input: OnboardingInpu
       .prepare(
         `UPDATE workspace_settings
          SET workspace_name = ?, ai_nickname = ?, user_name = ?, timezone = ?,
-             onboarding_completed = 1, updated_at = ?
+             onboarding_completed = 1, onboarding_completed_at = ?, updated_at = ?
          WHERE id = 1`,
       )
-      .run(input.workspaceName, input.aiNickname, input.userName, input.timezone, now)
+      .run(input.workspaceName, input.aiNickname, input.userName, input.timezone, now, now)
 
     const insertQuote = database.prepare(
       `INSERT OR IGNORE INTO quotes

@@ -41,6 +41,7 @@ describe("completeOnboarding", () => {
       .get()
     expect(settings?.["workspace_name"]).toBe("岛屿实验室")
     expect(settings?.["onboarding_completed"]).toBe(1)
+    expect(settings?.["onboarding_completed_at"]).toEqual(expect.any(String))
     expect(tutorialItemCount?.["count"]).toBe(1)
     expect(tutorialHabitCount?.["count"]).toBe(1)
     database.close()
