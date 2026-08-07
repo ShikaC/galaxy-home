@@ -583,7 +583,7 @@ describe("AI chat habit actions", () => {
     ).toBe(1)
   })
 
-  it("rejects a batch that would exceed the today primary limit before writing", async () => {
+  it("downgrades overflowing today primary items to secondary instead of failing", async () => {
     const { app, database } = await setup(
       `好的。
 
@@ -608,14 +608,206 @@ describe("AI chat habit actions", () => {
       },
     })
     expect(response.statusCode).toBe(200)
-    expect(response.json().message.content).toContain("今日主要待办最多 3 个")
-    expect(response.json().message.content).toContain("本次未写入")
+    expect(response.json().message.content).toContain("已实际创建待办「超额一」")
+    expect(response.json().message.content).toContain("已实际创建待办「超额四」")
+    expect(response.json().message.content).not.toContain("未能执行")
     const count = database
       .prepare(
         "SELECT COUNT(*) AS value FROM items WHERE title LIKE '超额%' AND deleted_at IS NULL",
       )
       .get() as { value: number }
-    expect(count.value).toBe(0)
+    expect(count.value).toBe(4)
+    const secondary = database
+      .prepare(
+        `SELECT COUNT(*) AS value FROM today_items
+         JOIN items ON items.id = today_items.item_id
+         WHERE items.title = '超额四' AND today_items.is_secondary = 1`,
+      )
+      .get() as { value: number }
+    expect(secondary.value).toBe(1)
+  })
+
+  it("clears weeklyTarget for daily habits from messy model output", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const { listHabits } = await import("../../src/server/repositories/habits.js")
+    const settings = getSettings(database)
+    const result = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"create_habit","name":"每日拉伸纠错","type":"check","frequencyType":"daily","targetCount":1,"weeklyTarget":7,"restDays":[]}
+\`\`\``,
+    )
+    expect(result.text).toContain("已实际创建习惯「每日拉伸纠错」")
+    expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "每日拉伸纠错")).toBe(
+      true,
+    )
+  })
+
+  it("accepts create_item aliases for project and todayMode", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    applyAiChatActions(
+      database,
+      settings,
+      `建项目。
+
+\`\`\`json
+{"action":"create_project","name":"别名项目","desiredOutcome":"验证别名"}
+\`\`\``,
+    )
+    const created = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"create_item","name":"别名待办","project":"别名项目","today":"次要"}
+\`\`\``,
+    )
+    expect(created.text).toContain("已实际创建待办「别名待办」")
+    const row = database
+      .prepare(
+        `SELECT items.title AS title, today_items.is_secondary AS secondary
+         FROM items
+         JOIN item_projects ON item_projects.item_id = items.id
+         JOIN projects ON projects.id = item_projects.project_id
+         LEFT JOIN today_items ON today_items.item_id = items.id
+         WHERE items.title = ? AND projects.name = ? AND items.deleted_at IS NULL`,
+      )
+      .get("别名待办", "别名项目") as { title: string; secondary: number | null } | undefined
+    expect(row?.title).toBe("别名待办")
+    expect(row?.secondary).toBe(1)
+  })
+
+  it("keeps valid actions when a batch has one invalid entry", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    const result = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+[
+  {"action":"create_todo","title":"部分成功待办","todayMode":"secondary"},
+  {"action":"create_habit","name":"坏习惯","type":"banana"}
+]
+\`\`\``,
+    )
+    expect(result.text).toContain("已实际创建待办「部分成功待办」")
+    expect(result.text).toContain("已跳过")
+    expect(result.text).not.toContain("未能执行：操作块格式不正确")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("部分成功待办") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
+  it("reuses an existing active item instead of creating a duplicate title", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    applyAiChatActions(
+      database,
+      settings,
+      `创建。
+
+\`\`\`json
+{"action":"create_item","title":"去重待办"}
+\`\`\``,
+    )
+    const again = applyAiChatActions(
+      database,
+      settings,
+      `再来一次。
+
+\`\`\`json
+{"action":"create_item","title":"去重待办","todayMode":"secondary"}
+\`\`\``,
+    )
+    expect(again.text).toContain("已有待办「去重待办」")
+    expect(again.text).toContain("未重复创建")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("去重待办") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
+  it("prefers active items when resolving the same title", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const { createCategory } = await import("../../src/server/repositories/items.js")
+    const settings = getSettings(database)
+    const category = createCategory(database, { name: "学习", color: "#3b82f6", icon: "book" })
+    applyAiChatActions(
+      database,
+      settings,
+      `创建两条。
+
+\`\`\`json
+[
+  {"action":"create_item","title":"同名解析待办","as":"old"},
+  {"action":"create_item","title":"同名解析待办备用"}
+]
+\`\`\``,
+    )
+    // complete first by title would hit most recent active - create one, complete it, create another same title
+    applyAiChatActions(
+      database,
+      settings,
+      `完成旧的。
+
+\`\`\`json
+{"action":"complete_item","itemId":"同名解析待办"}
+\`\`\``,
+    )
+    applyAiChatActions(
+      database,
+      settings,
+      `再建活跃同名。
+
+\`\`\`json
+{"action":"create_item","title":"同名解析待办"}
+\`\`\``,
+    )
+    const categorized = applyAiChatActions(
+      database,
+      settings,
+      `分类。
+
+\`\`\`json
+{"action":"set_item_categories","itemId":"同名解析待办","categoryIds":["学习"]}
+\`\`\``,
+    )
+    expect(categorized.text).toContain("已更新待办分类")
+    const activeCats = database
+      .prepare(
+        `SELECT items.status AS status, item_categories.category_id AS categoryId
+         FROM items
+         LEFT JOIN item_categories ON item_categories.item_id = items.id
+         WHERE items.title = ? AND items.deleted_at IS NULL
+         ORDER BY CASE items.status WHEN 'active' THEN 0 ELSE 1 END, items.updated_at DESC`,
+      )
+      .all("同名解析待办") as { status: string; categoryId: string | null }[]
+    const active = activeCats.find((row) => row.status === "active")
+    expect(active?.categoryId).toBe(category.id)
   })
 
   it("reports partial success when a later step fails", async () => {

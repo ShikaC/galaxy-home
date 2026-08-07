@@ -18,6 +18,7 @@ import {
   updateItem,
 } from "../repositories/items.js"
 import { createProject, updateProjectProgress } from "../repositories/projects.js"
+import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { clearTodayItem, setTodayItem } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { localClock } from "./time.js"
@@ -73,7 +74,9 @@ function resolveItemRef(
       database
         .prepare(
           `SELECT id FROM items WHERE deleted_at IS NULL AND title = ?
-           ORDER BY updated_at DESC LIMIT 1`,
+           ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'completed' THEN 1 ELSE 2 END,
+                    updated_at DESC
+           LIMIT 1`,
         )
         .get(resolved),
     )
@@ -117,47 +120,108 @@ export function extractChatActions(answer: string): {
   readonly actions: readonly ChatAction[]
   readonly parseFailed: boolean
   readonly parseFailureKind: "incomplete_project" | "generic" | null
+  readonly skippedInvalidCount: number
 } {
   const match = ACTION_BLOCK_PATTERN.exec(answer)
   if (match === null) {
-    return { text: answer.trimEnd(), actions: [], parseFailed: false, parseFailureKind: null }
+    return {
+      text: answer.trimEnd(),
+      actions: [],
+      parseFailed: false,
+      parseFailureKind: null,
+      skippedInvalidCount: 0,
+    }
   }
   const raw = match[1]
   const stripped = answer.slice(0, match.index).trimEnd()
   if (raw === undefined) {
-    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
+    return {
+      text: stripped,
+      actions: [],
+      parseFailed: true,
+      parseFailureKind: "generic",
+      skippedInvalidCount: 0,
+    }
   }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
+  const parsed = tryParseActionJson(raw)
+  if (parsed === undefined) {
+    return {
+      text: stripped,
+      actions: [],
+      parseFailed: true,
+      parseFailureKind: "generic",
+      skippedInvalidCount: 0,
+    }
   }
   const candidates = Array.isArray(parsed) ? parsed : [parsed]
   if (candidates.length === 0 || candidates.length > MAX_ACTIONS_PER_TURN) {
-    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
+    return {
+      text: stripped,
+      actions: [],
+      parseFailed: true,
+      parseFailureKind: "generic",
+      skippedInvalidCount: 0,
+    }
   }
   const actions: ChatAction[] = []
+  let skippedInvalidCount = 0
+  let sawIncompleteProject = false
   for (const candidate of candidates) {
     const action = chatActionSchema.safeParse(normalizeActionCandidate(candidate))
-    if (!action.success) {
-      return {
-        text: stripped,
-        actions: [],
-        parseFailed: true,
-        parseFailureKind: isIncompleteProjectCandidate(candidate) ? "incomplete_project" : "generic",
-      }
+    if (action.success) {
+      actions.push(action.data)
+      continue
     }
-    actions.push(action.data)
+    if (isIncompleteProjectCandidate(candidate)) sawIncompleteProject = true
+    skippedInvalidCount += 1
   }
-  return { text: stripped, actions, parseFailed: false, parseFailureKind: null }
+  if (actions.length === 0) {
+    return {
+      text: stripped,
+      actions: [],
+      parseFailed: true,
+      parseFailureKind: sawIncompleteProject ? "incomplete_project" : "generic",
+      skippedInvalidCount,
+    }
+  }
+  return {
+    text: stripped,
+    actions,
+    parseFailed: false,
+    parseFailureKind: null,
+    skippedInvalidCount,
+  }
+}
+
+function tryParseActionJson(raw: string): unknown | undefined {
+  const attempts = [raw, repairActionJson(raw)]
+  for (const candidate of attempts) {
+    try {
+      return JSON.parse(candidate)
+    } catch {
+      /* try next */
+    }
+  }
+  return undefined
+}
+
+function repairActionJson(raw: string): string {
+  return raw
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/,\s*([\]}])/g, "$1")
 }
 
 function isIncompleteProjectCandidate(candidate: unknown): boolean {
   if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) return false
   const value = candidate as Record<string, unknown>
   const action = typeof value["action"] === "string" ? value["action"].trim().toLowerCase() : ""
-  return action === "create_project" || action === "createproject" || action === "create_plan"
+  return (
+    action === "create_project" ||
+    action === "createproject" ||
+    action === "create_plan" ||
+    action === "createplan"
+  )
 }
 
 function looksLikeClarifyingQuestions(text: string): boolean {
@@ -184,19 +248,30 @@ function normalizeActionCandidate(raw: unknown): unknown {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw
   const value = { ...(raw as Record<string, unknown>) }
   if (typeof value["action"] === "string") {
-    const action = value["action"].trim().toLowerCase()
-    if (
-      [
-        "set_categories",
-        "set_category",
-        "set_item_category",
-        "update_item_categories",
-        "assign_categories",
-        "update_categories",
-      ].includes(action)
-    ) {
-      value["action"] = "set_item_categories"
+    const action = value["action"].trim().toLowerCase().replace(/[\s-]+/g, "_")
+    const aliases: Record<string, string> = {
+      create_todo: "create_item",
+      add_item: "create_item",
+      add_todo: "create_item",
+      create_task: "create_item",
+      add_task: "create_item",
+      create_plan: "create_project",
+      createproject: "create_project",
+      createplan: "create_project",
+      set_categories: "set_item_categories",
+      set_category: "set_item_categories",
+      set_item_category: "set_item_categories",
+      update_item_categories: "set_item_categories",
+      assign_categories: "set_item_categories",
+      update_categories: "set_item_categories",
+      delete_item: "trash_item",
+      remove_item: "trash_item",
+      soft_delete: "trash_item",
+      mark_done: "complete_item",
+      complete: "complete_item",
+      finish_item: "complete_item",
     }
+    value["action"] = aliases[action] ?? action
   }
   if (value["action"] === "create_habit") {
     if (value["type"] === undefined) {
@@ -250,17 +325,36 @@ function normalizeActionCandidate(raw: unknown): unknown {
       if (Number.isFinite(parsed)) value["weeklyTarget"] = parsed
     }
     if (value["weeklyTarget"] === undefined) value["weeklyTarget"] = null
+    if (value["frequencyType"] === "daily") value["weeklyTarget"] = null
     if (value["restDays"] === undefined) value["restDays"] = []
   }
   if (value["action"] === "create_item") {
-    if (value["projectIds"] === undefined && typeof value["projectId"] === "string") {
-      value["projectIds"] = [value["projectId"]]
+    if (value["projectIds"] === undefined) {
+      const projectAlias = value["projectId"] ?? value["project"] ?? value["projects"]
+      if (typeof projectAlias === "string") value["projectIds"] = [projectAlias]
+      else if (Array.isArray(projectAlias)) value["projectIds"] = projectAlias
     }
-    if (value["categoryIds"] === undefined && typeof value["categoryId"] === "string") {
-      value["categoryIds"] = [value["categoryId"]]
+    if (value["categoryIds"] === undefined) {
+      const categoryAlias = value["categoryId"] ?? value["category"] ?? value["categories"]
+      if (typeof categoryAlias === "string") value["categoryIds"] = [categoryAlias]
+      else if (Array.isArray(categoryAlias)) value["categoryIds"] = categoryAlias
     }
     value["projectIds"] = coerceEntityRefList(value["projectIds"])
     value["categoryIds"] = coerceEntityRefList(value["categoryIds"])
+    if (value["todayMode"] === undefined) {
+      const todayAlias = value["today"] ?? value["mode"]
+      if (typeof todayAlias === "string") value["todayMode"] = todayAlias
+      else if (todayAlias === true) value["todayMode"] = "today"
+    }
+    if (typeof value["todayMode"] === "string") {
+      const todayMode = value["todayMode"].trim().toLowerCase()
+      if (["today", "今日", "主要", "加入今日"].includes(todayMode)) value["todayMode"] = "today"
+      else if (["focus", "焦点", "焦点待办"].includes(todayMode)) value["todayMode"] = "focus"
+      else if (["secondary", "次要", "今日次要"].includes(todayMode)) value["todayMode"] = "secondary"
+    }
+    if (value["title"] === undefined && typeof value["name"] === "string") {
+      value["title"] = value["name"]
+    }
   }
   if (
     value["action"] === "update_item" ||
@@ -376,26 +470,32 @@ function countPrimaryTodayItems(database: DatabaseSync, localDate: string): numb
     ).count
 }
 
-function assertBatchTodayCapacity(
+function fitTodayActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
   actions: readonly ChatAction[],
-): void {
+): readonly ChatAction[] {
   const localDate = localClock(new Date(), settings.timezone).date
-  const existing = countPrimaryTodayItems(database, localDate)
-  const needed = actions.reduce((count, action) => {
+  let remaining = Math.max(0, 3 - countPrimaryTodayItems(database, localDate))
+  return actions.map((action) => {
     if (action.action === "create_item") {
-      return action.todayMode === "today" || action.todayMode === "focus" ? count + 1 : count
+      if (action.todayMode !== "today" && action.todayMode !== "focus") return action
+      if (remaining > 0) {
+        remaining -= 1
+        return action
+      }
+      return { ...action, todayMode: "secondary" as const }
     }
     if (action.action === "set_today") {
-      return action.mode === "today" || action.mode === "focus" ? count + 1 : count
+      if (action.mode !== "today" && action.mode !== "focus") return action
+      if (remaining > 0) {
+        remaining -= 1
+        return action
+      }
+      return { ...action, mode: "secondary" as const }
     }
-    return count
-  }, 0)
-  if (existing + needed <= 3) return
-  throw new Error(
-    `今日主要待办最多 3 个（当前 ${existing}，本批还要加入 ${needed}）。请将超出项改为 todayMode/mode: secondary，或先移出部分今日待办。`,
-  )
+    return action
+  })
 }
 
 function recordAction(
@@ -501,12 +601,49 @@ export function executeChatAction(
       return `已实际创建习惯「${habit.name}」，可在操作记录中撤销。`
     }
     case "create_item": {
+      const categoryIds = action.categoryIds.map((id) => resolveCategoryRef(database, id, refs))
+      const projectIds = action.projectIds.map((id) => resolveProjectRef(database, id, refs))
+      const existingId = z
+        .object({ id: z.string().uuid() })
+        .optional()
+        .parse(
+          database
+            .prepare(
+              `SELECT id FROM items
+               WHERE deleted_at IS NULL AND status = 'active' AND title = ?
+               ORDER BY updated_at DESC LIMIT 1`,
+            )
+            .get(action.title),
+        )?.id
+      if (existingId !== undefined) {
+        const before = getItem(database, existingId, localDate)
+        rememberAlias(refs, action.as, existingId)
+        if (projectIds.length > 0) {
+          const mergedProjects = [...new Set([...before.projectIds, ...projectIds])]
+          replaceItemProjects(database, itemIdSchema.parse(existingId), mergedProjects)
+        }
+        if (categoryIds.length > 0) {
+          replaceItemCategories(database, itemIdSchema.parse(existingId), categoryIds)
+        }
+        if (action.todayMode !== undefined) {
+          placeItemToday(database, existingId, localDate, action.todayMode)
+        }
+        const todayNote =
+          action.todayMode === undefined
+            ? ""
+            : action.todayMode === "secondary"
+              ? "，并已加入今日次要"
+              : action.todayMode === "focus"
+                ? "，并已设为今日焦点"
+                : "，并已加入今日"
+        return `已有待办「${action.title}」，未重复创建${todayNote}。`
+      }
       const item = createItem(
         database,
         {
           title: action.title,
-          categoryIds: action.categoryIds.map((id) => resolveCategoryRef(database, id, refs)),
-          projectIds: action.projectIds.map((id) => resolveProjectRef(database, id, refs)),
+          categoryIds,
+          projectIds,
           ...(action.notes === undefined ? {} : { notes: action.notes }),
         },
         localDate,
@@ -711,19 +848,25 @@ export function executeChatActions(
       throw new Error("保守模式不支持删除或归档，请切换到开放模式后再试")
     }
   }
-  assertBatchTodayCapacity(database, settings, executable)
+  const fitted = fitTodayActions(database, settings, executable)
   const refs = new Map<string, string>()
   const confirmations: string[] = []
-  for (const [index, action] of executable.entries()) {
+  for (const [index, action] of fitted.entries()) {
     try {
       confirmations.push(executeChatAction(database, settings, action, refs))
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败"
       const head = confirmations.length === 0 ? "" : `${confirmations.join("\n")}\n\n`
-      return `${head}（第 ${index + 1}/${executable.length} 步未能执行：${summarizeAction(action)} — ${message}。已成功 ${confirmations.length} 步，后续未继续；可在操作记录撤销已写入项后重试。）`
+      return `${head}（第 ${index + 1}/${fitted.length} 步未能执行：${summarizeAction(action)} — ${message}。已成功 ${confirmations.length} 步，后续未继续；可在操作记录撤销已写入项后重试。）`
     }
   }
   return confirmations.join("\n")
+}
+
+function withSkippedNote(text: string, skippedInvalidCount: number): string {
+  if (skippedInvalidCount <= 0) return text
+  const note = `（另有 ${skippedInvalidCount} 个操作因格式不完整已跳过，其余已按有效项处理。）`
+  return text === "" ? note : `${text}\n\n${note}`
 }
 
 export function applyAiChatActions(
@@ -789,7 +932,10 @@ export function applyAiChatActions(
     if (allowed.length === 0) {
       const base = extracted.text === "" ? "" : `${extracted.text}\n\n`
       return {
-        text: `${base}${blockedNote || "（保守模式不支持删除或归档，请切换到开放模式后再试。）"}`,
+        text: withSkippedNote(
+          `${base}${blockedNote || "（保守模式不支持删除或归档，请切换到开放模式后再试。）"}`,
+          extracted.skippedInvalidCount,
+        ),
         pendingAction: null,
         proposedMemory,
       }
@@ -800,7 +946,10 @@ export function applyAiChatActions(
         ? `我准备执行 ${allowed.length} 项改动，需要你确认。`
         : extracted.text
     return {
-      text: `${base}\n\n（待确认：${summary}）${blockedNote === "" ? "" : `\n\n${blockedNote}`}`,
+      text: withSkippedNote(
+        `${base}\n\n（待确认：${summary}）${blockedNote === "" ? "" : `\n\n${blockedNote}`}`,
+        extracted.skippedInvalidCount,
+      ),
       pendingAction: { status: "pending", actions: [...allowed], summary },
       proposedMemory,
     }
@@ -813,20 +962,24 @@ export function applyAiChatActions(
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败"
       return {
-        text: `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}。本次未写入；可调整后重试。）`,
+        text: withSkippedNote(
+          `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}。本次未写入；可调整后重试。）`,
+          extracted.skippedInvalidCount,
+        ),
         pendingAction: null,
         proposedMemory: null,
       }
     }
   }
   if (needsConfirm.length === 0) {
+    const combined =
+      extracted.text === ""
+        ? executedText
+        : executedText === ""
+          ? extracted.text
+          : `${extracted.text}\n\n${executedText}`
     return {
-      text:
-        extracted.text === ""
-          ? executedText
-          : executedText === ""
-            ? extracted.text
-            : `${extracted.text}\n\n${executedText}`,
+      text: withSkippedNote(combined, extracted.skippedInvalidCount),
       pendingAction: null,
       proposedMemory,
     }
@@ -838,7 +991,7 @@ export function applyAiChatActions(
     `（待确认：${summary}）`,
   ].filter((part) => part !== "")
   return {
-    text: parts.join("\n\n"),
+    text: withSkippedNote(parts.join("\n\n"), extracted.skippedInvalidCount),
     pendingAction: { status: "pending", actions: [...needsConfirm], summary },
     proposedMemory,
   }
@@ -861,7 +1014,9 @@ export function buildAiChatSystemPrompt(
       ? ""
       : `用户正聚焦待办 ${options.focusItemId}。若要求「缩小」，优先输出 update_item，把标题改成今天可完成的一小步；可用 notes 保留原意图摘要。`
   const protocol = `可在回复末尾附加一个 JSON 代码块：单个操作对象，或最多 ${MAX_ACTIONS_PER_TURN} 个操作的数组（按顺序执行）。用户一次要求多项改动时，必须在同一数组里写全，不要只做第一步。
-同一批内可用 "as":"别名" 命名新建对象，后续用 "$别名" 引用（如 projectIds、itemId）。也可直接使用上下文里的 UUID，或用准确的待办标题 / 项目名 / 分类名引用。create_item 可带 todayMode: today|focus|secondary；今日主要待办最多 3 个，超出用 secondary。
+同一批内可用 "as":"别名" 命名新建对象，后续用 "$别名" 引用（如 projectIds、itemId）。也可直接使用上下文里的 UUID，或用准确的待办标题 / 项目名 / 分类名引用。create_item 可带 todayMode: today|focus|secondary；今日主要待办最多 3 个，超出请用 secondary（服务器也会自动把超额主要项降为次要）。
+用户口语简短且意图清楚时（如「记一下买菜」「加个每天喝水的习惯」），用合理默认值直接执行，不要反复确认字段；习惯默认 type=check、frequencyType=daily、targetCount=1、weeklyTarget=null。
+写建议待办或关联任务时，标题避免与现有活跃待办完全相同；若只需推进已有事项，优先 complete_item / set_today，不要重复 create_item。
 示例：
 \`\`\`json
 [
@@ -874,7 +1029,7 @@ export function buildAiChatSystemPrompt(
 \`\`\`json
 {"action":"set_item_categories","itemId":"学 JSX","categoryIds":["学习"]}
 \`\`\`
-create_project 只创建项目骨架，必填 name 与 desiredOutcome（可观察的成功标准）。用户想要计划/项目但目标、频率或成功标准不清楚时，先用 1～3 个简短问题追问，不要附加不完整的 create_project，也不要用操作失败的口吻说话；信息够了再创建。若用户同时要待办，用 create_item 另建并用 projectIds 关联。禁止永久删除、导出、擅自改项目阶段结构。其他操作信息不足时也先追问，不要附加代码块。`
+按标题引用待办时，优先匹配活跃项；同名多条时取最近更新的活跃待办。create_project 只创建项目骨架，必填 name 与 desiredOutcome（可观察的成功标准）。用户想要计划/项目但目标、频率或成功标准不清楚时，先用 1～3 个简短问题追问，不要附加不完整的 create_project，也不要用操作失败的口吻说话；信息够了再创建。若用户同时要待办，用 create_item 另建并用 projectIds 关联。禁止永久删除、导出、擅自改项目阶段结构。`
   const capability =
     settings.aiPermission === "open"
       ? `当前为开放模式。支持 action：create_habit, create_item, create_project, update_item, set_today(mode: today|focus|secondary|clear), trash_item, set_item_categories, complete_item, archive_item, update_project_progress, propose_memory。除 trash_item 外，附加操作块后服务器会立即执行；archive_item 会立即归档。trash_item（软删进回收站）仍须附加操作块，服务器会挂起并由界面确认后执行——不要只口头问「确认吗」而不附代码块。${protocol}`
