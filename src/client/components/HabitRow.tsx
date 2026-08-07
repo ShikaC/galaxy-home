@@ -30,7 +30,7 @@ export function HabitRow({
         <Plus size={17} />
       </button>
       <div className="habit-row__body">
-        <div>
+        <div className="habit-row__title">
           <strong>{habit.name}</strong>
           {habit.isTutorial ? <Badge tone="waiting">教学示例</Badge> : null}
           {habit.todayStatus === "leave" ? <Badge tone="waiting">今日请假</Badge> : null}

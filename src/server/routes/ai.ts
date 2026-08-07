@@ -1,16 +1,28 @@
 import type { FastifyInstance } from "fastify"
 import "@fastify/multipart"
 import { z } from "zod"
-import { aiChatInputSchema } from "../../shared/ai.js"
+import { aiChatInputSchema, aiMessageSchema } from "../../shared/ai.js"
+import { pendingChatActionSchema } from "../../shared/aiChatActions.js"
 import { type AppContext, getAppClock } from "../context.js"
-import { listMessages, renameConversation } from "../repositories/conversations.js"
+import {
+  clearMessageProposedMemory,
+  getMessage,
+  listMessages,
+  renameConversation,
+  updateMessagePendingAction,
+} from "../repositories/conversations.js"
+import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { AiServiceError, chat, streamChat, transcribe } from "../services/ai.js"
 import { completeAiChat, persistAiChat, prepareAiChat } from "../services/aiChat.js"
+import { executeChatActions } from "../services/aiChatActions.js"
 import { getAiConfigStatus } from "../services/secrets.js"
+import { suggestItemCategories } from "../services/aiCategorySuggest.js"
 
 const idSchema = z.object({ id: z.string().uuid() })
 const titleSchema = z.object({ title: z.string().trim().min(1).max(80) })
+const messageIdSchema = z.object({ messageId: z.string().uuid() })
+const suggestBodySchema = z.object({ itemId: z.string().uuid() })
 
 export function registerAiRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)
@@ -72,6 +84,48 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
   app.post("/api/ai/test", async () => ({
     message: await chat(context.secretPath, [{ role: "user", content: "只回复：连接成功" }]),
   }))
+  app.post("/api/ai/messages/:messageId/confirm-action", (request) => {
+    const { messageId } = messageIdSchema.parse(request.params)
+    const message = getMessage(context.database, messageId)
+    if (message === null || message.pendingAction === null || message.pendingAction.status !== "pending")
+      throw new Error("没有待确认的操作")
+    const settings = getSettings(context.database)
+    const confirmation = executeChatActions(
+      context.database,
+      settings,
+      message.pendingAction.actions,
+    )
+    const next = pendingChatActionSchema.parse({
+      ...message.pendingAction,
+      status: "confirmed",
+    })
+    updateMessagePendingAction(context.database, messageId, next)
+    const updated = getMessage(context.database, messageId)
+    return {
+      message: aiMessageSchema.parse(updated),
+      confirmation,
+    }
+  })
+  app.post("/api/ai/messages/:messageId/reject-action", (request) => {
+    const { messageId } = messageIdSchema.parse(request.params)
+    const message = getMessage(context.database, messageId)
+    if (message === null || message.pendingAction === null || message.pendingAction.status !== "pending")
+      throw new Error("没有待确认的操作")
+    updateMessagePendingAction(
+      context.database,
+      messageId,
+      pendingChatActionSchema.parse({ ...message.pendingAction, status: "rejected" }),
+    )
+    return { message: aiMessageSchema.parse(getMessage(context.database, messageId)) }
+  })
+  app.post("/api/ai/messages/:messageId/dismiss-memory", (request, reply) => {
+    clearMessageProposedMemory(context.database, messageIdSchema.parse(request.params).messageId)
+    return reply.code(204).send()
+  })
+  app.post("/api/ai/suggest-categories", async (request) => {
+    const body = suggestBodySchema.parse(request.body)
+    return suggestItemCategories(context.database, context.secretPath, body.itemId)
+  })
   app.post("/api/transcribe", async (request) => {
     const part = await request.file()
     if (part === undefined) throw new Error("没有收到录音")

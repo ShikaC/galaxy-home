@@ -18,6 +18,7 @@ afterEach(() => {
 
 describe("AiDrawer focus draft", () => {
   it("prefills draft and sends focusItemId with the first message", async () => {
+    Element.prototype.scrollIntoView = vi.fn()
     const focusItemId = crypto.randomUUID()
     vi.mocked(useMeta).mockReturnValue({
       data: {
@@ -36,6 +37,8 @@ describe("AiDrawer focus draft", () => {
         role: "assistant",
         content: "先写标题。",
         references: [],
+        pendingAction: null,
+        proposedMemory: null,
         createdAt: new Date().toISOString(),
       },
     })

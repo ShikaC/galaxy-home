@@ -51,7 +51,7 @@ export function YesterdayReview() {
             <Button
               onClick={() =>
                 actions.openAi({
-                  draft: `请帮我把「${item.title}」缩小成今天能完成的一小步`,
+                  draft: `请帮我把「${item.title}」缩小成今天能完成的一小步，并更新这条待办的标题`,
                   focusItemId: item.id,
                 })
               }

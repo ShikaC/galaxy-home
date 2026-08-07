@@ -26,6 +26,9 @@ export const onboardingInputSchema = z
 
 export type OnboardingInput = z.infer<typeof onboardingInputSchema>
 
+export const DEFAULT_AI_PERSONALITY_PROMPT =
+  "语气温和务实，不批评、不制造内疚。先识别精力和阻碍，再缩小到当前可做的最小动作，也允许休息和重新规划。" as const
+
 export const workspaceSettingsSchema = z
   .object({
     workspaceName: z.string(),
@@ -33,6 +36,7 @@ export const workspaceSettingsSchema = z
     userName: z.string(),
     timezone: z.string(),
     aiPermission: aiPermissionSchema,
+    aiPersonalityPrompt: z.string(),
     onboardingCompleted: z.boolean(),
     backupRetentionDays: z.number().int(),
     trashRetentionDays: z.number().int(),

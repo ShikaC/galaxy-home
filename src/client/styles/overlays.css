@@ -206,6 +206,17 @@
   box-shadow: var(--shadow-overlay);
   animation: drawer-in var(--motion-base) var(--motion-ease);
 }
+.ai-drawer--docked {
+  position: relative;
+  z-index: auto;
+  inline-size: 100%;
+  min-block-size: 0;
+  flex: 1;
+  inset: auto;
+  border-inline-start: 0;
+  box-shadow: none;
+  animation: none;
+}
 .drawer__history {
   display: grid;
   max-block-size: 240px;
@@ -335,6 +346,19 @@
 .ai-pending p {
   color: var(--color-text-muted);
 }
+.ai-pending-action {
+  display: grid;
+  gap: var(--space-2);
+  margin-block: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: var(--space-3);
+  background: var(--color-surface-subtle);
+  font-size: var(--font-size-meta);
+}
+.ai-pending-action--done {
+  color: var(--color-text-muted);
+}
 .chat-message__remember {
   justify-self: end;
 }
@@ -385,6 +409,11 @@
 }
 .chat-message--user p {
   background: var(--color-action-soft);
+  user-select: text;
+}
+.chat-message--user p::selection {
+  background: color-mix(in srgb, var(--color-action) 28%, var(--color-action-soft));
+  color: var(--color-text);
 }
 .drawer__composer {
   display: flex;

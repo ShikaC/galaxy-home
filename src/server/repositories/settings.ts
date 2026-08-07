@@ -9,6 +9,7 @@ const settingsRowSchema = z.object({
   user_name: z.string(),
   timezone: z.string(),
   ai_permission: z.enum(["conservative", "open"]),
+  ai_personality_prompt: z.string(),
   onboarding_completed: z.number().int(),
   backup_retention_days: z.number().int(),
   trash_retention_days: z.number().int(),
@@ -30,6 +31,7 @@ export function getSettings(database: DatabaseSync): WorkspaceSettings {
     userName: row.user_name,
     timezone: row.timezone,
     aiPermission: row.ai_permission,
+    aiPersonalityPrompt: row.ai_personality_prompt,
     onboardingCompleted: row.onboarding_completed === 1,
     backupRetentionDays: row.backup_retention_days,
     trashRetentionDays: row.trash_retention_days,
@@ -50,7 +52,7 @@ export function updateSettings(
   database
     .prepare(
       `UPDATE workspace_settings SET workspace_name = ?, ai_nickname = ?, user_name = ?, timezone = ?,
-     ai_permission = ?, backup_retention_days = ?, trash_retention_days = ?,
+     ai_permission = ?, ai_personality_prompt = ?, backup_retention_days = ?, trash_retention_days = ?,
      morning_reminder_time = ?, morning_reminder_enabled = ?, evening_reminder_time = ?,
      evening_reminder_enabled = ?, weekly_review_time = ?, weekly_review_enabled = ?, updated_at = ? WHERE id = 1`,
     )
@@ -60,6 +62,7 @@ export function updateSettings(
       input.userName ?? current.userName,
       input.timezone ?? current.timezone,
       input.aiPermission ?? current.aiPermission,
+      input.aiPersonalityPrompt ?? current.aiPersonalityPrompt,
       input.backupRetentionDays ?? current.backupRetentionDays,
       input.trashRetentionDays ?? current.trashRetentionDays,
       input.morningReminderTime ?? current.morningReminderTime,

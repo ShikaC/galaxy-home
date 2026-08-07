@@ -7,7 +7,9 @@ import { purgeExpiredTrash } from "./repositories/trash.js"
 import { ensureDailyBackup } from "./services/backup.js"
 import type { Clock } from "./services/clock.js"
 import { systemClock } from "./services/clock.js"
+import { maybeGenerateScheduledAiWeeklyReview } from "./services/scheduledAiReview.js"
 import { runScheduler } from "./services/scheduler.js"
+import { getAiConfigStatus } from "./services/secrets.js"
 
 function resolveClock(): Clock {
   const fixed = process.env["GALAXY_CLOCK_NOW"]
@@ -31,7 +33,17 @@ const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone
 )
 await ensureDailyBackup(database, backupDirectory, localDate, settings.backupRetentionDays)
 purgeExpiredTrash(database)
-runScheduler(database, clock.now())
+const secretPath = resolve(dataDirectory, "secrets.json")
+const deferAiReview =
+  getSettings(database).aiPermission === "open" && getAiConfigStatus(secretPath).configured
+runScheduler(database, clock.now(), { deferAiReview })
+if (deferAiReview) {
+  try {
+    await maybeGenerateScheduledAiWeeklyReview(database, secretPath, clock.now())
+  } catch {
+    runScheduler(database, clock.now(), { deferAiReview: false })
+  }
+}
 
 const production = process.env["NODE_ENV"] === "production"
 const port = Number(process.env[production ? "PORT" : "API_PORT"] ?? (production ? 4173 : 3001))
@@ -40,7 +52,7 @@ const app = await buildApp(
     database,
     dataDirectory,
     backupDirectory,
-    secretPath: resolve(dataDirectory, "secrets.json"),
+    secretPath,
     clock,
   },
   production,

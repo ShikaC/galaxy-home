@@ -54,6 +54,10 @@ export function setTodayItem(database: DatabaseSync, input: TodayItemInput) {
   }
 }
 
+export function clearTodayItem(database: DatabaseSync, itemId: string, localDate: string): void {
+  database.prepare("DELETE FROM today_items WHERE item_id = ? AND local_date = ?").run(itemId, localDate)
+}
+
 export function reorderTodayItems(
   database: DatabaseSync,
   localDate: string,

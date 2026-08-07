@@ -10,6 +10,7 @@ export const updateSettingsInputSchema = z
     userName: z.string().trim().min(1).max(30).optional(),
     timezone: timezoneSchema.optional(),
     aiPermission: z.enum(["conservative", "open"]).optional(),
+    aiPersonalityPrompt: z.string().trim().min(1).max(4_000).optional(),
     backupRetentionDays: z.number().int().min(7).max(365).optional(),
     trashRetentionDays: z.number().int().min(1).max(365).optional(),
     morningReminderTime: clockTimeSchema.optional(),

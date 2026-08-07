@@ -27,6 +27,11 @@
   max-inline-size: 65ch;
   color: var(--color-text-muted);
 }
+.settings-section h3 {
+  margin: 0;
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-semibold);
+}
 .settings-form {
   max-inline-size: 720px;
 }

@@ -55,6 +55,7 @@ const DATA_TABLES = [
   "ai_messages",
   "ai_memories",
   "ai_action_log",
+  "item_ai_suggestions",
   "reminders",
   "notification_events",
   "scheduler_state",

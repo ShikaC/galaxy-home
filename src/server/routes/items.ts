@@ -19,7 +19,9 @@ import { convertItemToProject } from "../repositories/projects.js"
 import { getSettings } from "../repositories/settings.js"
 import { reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
+import { queueCaptureAnalysis } from "../services/aiCaptureAnalysis.js"
 import { localClock } from "../services/time.js"
+import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
 
 const querySchema = z.object({
   view: itemViewSchema.default("active"),
@@ -57,9 +59,13 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   })
   app.post("/api/items", (request, reply) => {
     const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
-    return reply
-      .code(201)
-      .send(createItem(context.database, createItemInputSchema.parse(request.body), localDate))
+    const item = createItem(context.database, createItemInputSchema.parse(request.body), localDate)
+    queueCaptureAnalysis(context.database, context.secretPath, item.id)
+    return reply.code(201).send(item)
+  })
+  app.get("/api/items/:id/ai-suggestion", (request) => {
+    const suggestion = getItemAiSuggestion(context.database, idSchema.parse(request.params).id)
+    return suggestion ?? { status: "none" }
   })
   app.patch("/api/items/:id", (request) => {
     const { id } = idSchema.parse(request.params)

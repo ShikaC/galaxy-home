@@ -3,6 +3,7 @@ import type { AiChatInput } from "../../shared/ai.js"
 import { addMessage, createConversation, listMessages } from "../repositories/conversations.js"
 import { getSettings } from "../repositories/settings.js"
 import { type ChatMessage, chat } from "./ai.js"
+import { applyAiChatActions, buildAiChatSystemPrompt } from "./aiChatActions.js"
 import { buildAiContext } from "./aiContext.js"
 
 export type PreparedAiChat = {
@@ -10,6 +11,7 @@ export type PreparedAiChat = {
   readonly references: ReturnType<typeof buildAiContext>["references"]
   readonly content: string
   readonly conversationId: string | null
+  readonly focusItemId?: string
 }
 
 const MAX_HISTORY_CHARS = 60_000
@@ -44,7 +46,9 @@ export function prepareAiChat(database: DatabaseSync, input: AiChatInput): Prepa
     messages: [
       {
         role: "system",
-        content: `你是${settings.aiNickname}，称呼用户为${settings.userName}。语气温和务实，不批评、不制造内疚。先识别精力和阻碍，再缩小到当前可做的最小动作，也允许休息和重新规划。不要声称掌握实时新闻、天气或价格。以下是本次允许参考的本地上下文：${localContext.prompt}`,
+        content: buildAiChatSystemPrompt(settings, localContext.prompt, {
+          ...(input.focusItemId === undefined ? {} : { focusItemId: input.focusItemId }),
+        }),
       },
       ...prior,
       { role: "user", content: input.content },
@@ -52,6 +56,7 @@ export function prepareAiChat(database: DatabaseSync, input: AiChatInput): Prepa
     references: localContext.references,
     content: input.content,
     conversationId: input.conversationId,
+    ...(input.focusItemId === undefined ? {} : { focusItemId: input.focusItemId }),
   }
 }
 
@@ -63,9 +68,24 @@ export async function completeAiChat(
 }
 
 export function persistAiChat(database: DatabaseSync, prepared: PreparedAiChat, answer: string) {
+  const settings = getSettings(database)
+  const finalized = applyAiChatActions(database, settings, answer)
   const conversationId =
     prepared.conversationId ?? createConversation(database, prepared.content.slice(0, 24)).id
   addMessage(database, conversationId, "user", prepared.content)
-  const message = addMessage(database, conversationId, "assistant", answer, prepared.references)
+  const message = addMessage(
+    database,
+    conversationId,
+    "assistant",
+    finalized.text,
+    prepared.references,
+    {
+      pendingAction: finalized.pendingAction,
+      proposedMemory:
+        finalized.proposedMemory === null
+          ? null
+          : { content: finalized.proposedMemory.content, kind: finalized.proposedMemory.kind },
+    },
+  )
   return { conversationId, message }
 }

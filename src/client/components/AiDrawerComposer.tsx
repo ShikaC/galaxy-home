@@ -26,7 +26,17 @@ export function AiDrawerComposer({
         aria-label="给 AI 发送消息"
         disabled={!configured || pending}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={configured ? "写下你卡住的地方..." : "请先在设置中配置 AI 服务"}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return
+          event.preventDefault()
+          if (!configured || pending || content.trim() === "") return
+          onSubmit()
+        }}
+        placeholder={
+          configured
+            ? "写下你卡住的地方...（Enter 发送，Shift+Enter 换行）"
+            : "请先在设置中配置 AI 服务"
+        }
         rows={3}
         value={content}
       />

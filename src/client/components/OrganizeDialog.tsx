@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { X } from "lucide-react"
+import { Sparkles, X } from "lucide-react"
 import { useEffect, useState } from "react"
+import { z } from "zod"
 import type { Item } from "../../shared/items.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { instantForLocalDateTimeInput, localDateTimeInputFor } from "../lib/date.js"
@@ -30,6 +31,7 @@ export function OrganizeDialog({
   const [reminder, setReminder] = useState("")
   const [categories, setCategories] = useState<readonly string[]>([])
   const [projectIds, setProjectIds] = useState<readonly string[]>([])
+  const [suggestNote, setSuggestNote] = useState<string | null>(null)
   useEffect(() => {
     if (item === null) return
     setTitle(item.title)
@@ -38,7 +40,49 @@ export function OrganizeDialog({
     setReminder(item.reminderMinutes?.toString() ?? "")
     setCategories(item.categoryIds)
     setProjectIds(item.projectIds)
+    setSuggestNote(null)
+    void apiRequest(
+      `/api/items/${item.id}/ai-suggestion`,
+      z.object({
+        status: z.enum(["waiting", "ready", "failed", "none"]).optional(),
+        categoryIds: z.array(z.string().uuid()).optional(),
+        suggestToday: z.boolean().optional(),
+        note: z.string().nullable().optional(),
+      }),
+    )
+      .then((data) => {
+        if (data.status === "waiting") setSuggestNote("AI 正在分析这条随手记…")
+        else if (data.status === "ready" && data.categoryIds !== undefined) {
+          setCategories(data.categoryIds)
+          setSuggestNote(
+            data.note ??
+              (data.suggestToday
+                ? "已预填捕获分析建议；可修改后保存。建议也考虑加入今日。"
+                : "已预填捕获分析建议；可修改后保存。"),
+          )
+        } else if (data.status === "failed") setSuggestNote(data.note ?? "上次分析未完成")
+      })
+      .catch(() => undefined)
   }, [item, timezone])
+  const suggest = useMutation({
+    mutationFn: () =>
+      apiRequest(
+        "/api/ai/suggest-categories",
+        z.object({
+          categoryIds: z.array(z.string().uuid()),
+          suggestToday: z.boolean(),
+          note: z.string().nullable(),
+        }),
+        { method: "POST", body: jsonBody({ itemId: item?.id }) },
+      ),
+    onSuccess: (data) => {
+      setCategories(data.categoryIds)
+      setSuggestNote(
+        data.note ??
+          (data.suggestToday ? "建议也考虑加入今日（需在首页自行添加）。" : "已填入建议分类，保存后生效。"),
+      )
+    },
+  })
   const save = useMutation({
     mutationFn: async () => {
       if (item === null) return
@@ -122,8 +166,25 @@ export function OrganizeDialog({
         </div>
         <fieldset className="choice-group">
           <legend>分类（可多选）</legend>
+          {meta.data?.ai.configured ? (
+            <div className="button-row">
+              <Button
+                disabled={(meta.data?.categories.length ?? 0) === 0}
+                loading={suggest.isPending}
+                onClick={() => suggest.mutate()}
+                size="compact"
+                type="button"
+                variant="secondary"
+              >
+                <Sparkles size={14} />
+                请 AI 建议分类
+              </Button>
+            </div>
+          ) : null}
+          {suggestNote === null ? null : <p className="setting-note">{suggestNote}</p>}
+          {suggest.isError ? <p className="inline-error">{suggest.error.message}</p> : null}
           {meta.data?.categories.length === 0 ? (
-            <p>还没有分类，可在设置中创建。</p>
+            <p>还没有分类，可在待办页侧栏或设置中创建。</p>
           ) : (
             meta.data?.categories.map((category) => (
               <label key={category.id}>

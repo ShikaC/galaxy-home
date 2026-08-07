@@ -111,7 +111,11 @@ function latestDueReviewSunday(now: Date, timezone: string, reviewTime: string):
   return shiftCalendarDate(clock.date, -daysBack)
 }
 
-function materializeWeeklyReview(database: DatabaseSync, now: Date): void {
+function materializeWeeklyReview(
+  database: DatabaseSync,
+  now: Date,
+  options: { readonly deferAiReview: boolean } = { deferAiReview: false },
+): void {
   const settings = getSettings(database)
   if (!settings.weeklyReviewEnabled) return
   const sunday = latestDueReviewSunday(now, settings.timezone, settings.weeklyReviewTime)
@@ -127,9 +131,20 @@ function materializeWeeklyReview(database: DatabaseSync, now: Date): void {
         )
         .get(weekStart),
     ).value
-  if (reviewExists === 0) generateLocalReview(database, weekStart, sunday, settings.timezone)
+  if (reviewExists === 0 && !options.deferAiReview)
+    generateLocalReview(database, weekStart, sunday, settings.timezone)
   const id = ensureReminder(database, "weekly_review", weekStart, scheduledAt.toISOString())
   ensureEvent(database, id, "weekly_review", scheduledAt.toISOString())
+}
+
+export function dueWeeklyReviewWindow(database: DatabaseSync, now = new Date()) {
+  const settings = getSettings(database)
+  if (!settings.weeklyReviewEnabled) return null
+  const sunday = latestDueReviewSunday(now, settings.timezone, settings.weeklyReviewTime)
+  const weekStart = shiftCalendarDate(sunday, -6)
+  const scheduledAt = localDateTimeToInstant(sunday, settings.weeklyReviewTime, settings.timezone)
+  if (scheduledAt > now) return null
+  return { weekStart, weekEnd: sunday }
 }
 
 function materializeDeadlines(database: DatabaseSync, now: Date): void {
@@ -153,7 +168,11 @@ function materializeDeadlines(database: DatabaseSync, now: Date): void {
   }
 }
 
-export function runScheduler(database: DatabaseSync, now = new Date()): void {
+export function runScheduler(
+  database: DatabaseSync,
+  now = new Date(),
+  options: { readonly deferAiReview?: boolean } = {},
+): void {
   database.exec("BEGIN IMMEDIATE")
   try {
     database.prepare("DELETE FROM notification_events WHERE scheduled_at NOT LIKE '%Z'").run()
@@ -162,7 +181,9 @@ export function runScheduler(database: DatabaseSync, now = new Date()): void {
       database.prepare("SELECT last_run_at FROM scheduler_state WHERE id = 1").get(),
     )
     materializeDailyReminders(database, now, schedulerState.last_run_at)
-    materializeWeeklyReview(database, now)
+    materializeWeeklyReview(database, now, {
+      deferAiReview: options.deferAiReview === true,
+    })
     materializeDeadlines(database, now)
     database
       .prepare("UPDATE scheduler_state SET last_run_at = ? WHERE id = 1")

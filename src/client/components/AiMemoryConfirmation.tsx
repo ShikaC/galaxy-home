@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query"
 import { Check, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { AiMemoryKind } from "../../shared/ai.js"
 import { aiMemoryKindSchema, aiMemorySchema } from "../../shared/ai.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
@@ -8,14 +8,19 @@ import { Button } from "./ui/Button.js"
 
 export function AiMemoryConfirmation({
   content,
+  initialKind = "preference",
   onCancel,
   onSaved,
 }: {
   readonly content: string
+  readonly initialKind?: AiMemoryKind
   readonly onCancel: () => void
   readonly onSaved: () => void
 }) {
-  const [kind, setKind] = useState<AiMemoryKind>("preference")
+  const [kind, setKind] = useState<AiMemoryKind>(initialKind)
+  useEffect(() => {
+    setKind(initialKind)
+  }, [initialKind])
   const save = useMutation({
     mutationFn: () =>
       apiRequest("/api/ai/memories", aiMemorySchema, {

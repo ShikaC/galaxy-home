@@ -184,3 +184,16 @@ export function advanceProject(
     throw error
   }
 }
+
+export function updateProjectProgress(
+  database: DatabaseSync,
+  rawProjectId: string,
+  progress: number,
+): Project {
+  const project = getProject(database, rawProjectId)
+  const now = new Date().toISOString()
+  database
+    .prepare("UPDATE projects SET progress = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+    .run(progress, now, project.id)
+  return getProject(database, project.id)
+}

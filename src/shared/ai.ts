@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { pendingChatActionSchema } from "./aiChatActions.js"
 
 export const aiReferenceSchema = z
   .object({
@@ -20,6 +21,13 @@ export const aiReferenceSchema = z
 
 export type AiReference = z.infer<typeof aiReferenceSchema>
 
+export const proposedMemorySchema = z
+  .object({
+    content: z.string(),
+    kind: z.enum(["preference", "goal", "background"]),
+  })
+  .readonly()
+
 export const aiMessageSchema = z
   .object({
     id: z.string().uuid(),
@@ -27,6 +35,8 @@ export const aiMessageSchema = z
     role: z.enum(["user", "assistant", "system"]),
     content: z.string(),
     references: z.array(aiReferenceSchema).readonly(),
+    pendingAction: pendingChatActionSchema.nullable().default(null),
+    proposedMemory: proposedMemorySchema.nullable().default(null),
     createdAt: z.string(),
   })
   .readonly()

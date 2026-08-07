@@ -6,7 +6,7 @@
 .habit-row {
   display: grid;
   min-block-size: 66px;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--space-3);
   border: 1px solid var(--color-border);
@@ -33,11 +33,18 @@
   color: var(--color-text-faint);
   cursor: not-allowed;
 }
-.habit-row__body > div {
+.habit-row__body > .habit-row__title {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-2);
+  min-inline-size: 0;
+}
+.habit-row__title > strong {
+  overflow: hidden;
+  min-inline-size: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .habit-row__body p {
   color: var(--color-text-muted);
@@ -48,7 +55,6 @@
 }
 .habit-row__actions {
   display: flex;
-  grid-column: 2 / -1;
-  justify-content: flex-end;
+  flex: 0 0 auto;
   gap: var(--space-1);
 }

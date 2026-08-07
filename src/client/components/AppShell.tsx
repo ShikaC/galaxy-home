@@ -11,7 +11,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent } from "react"
 import { NavLink, Outlet } from "react-router"
 import { localDateFor } from "../lib/date.js"
 import { useMeta } from "../lib/queries.js"
@@ -31,6 +31,22 @@ const NAV_ITEMS = [
   { to: "/review", label: "回顾", icon: Archive, end: false },
 ] as const
 
+const AI_DRAWER_WIDTH_KEY = "galaxy:ai-drawer-width"
+const AI_DRAWER_WIDTH_DEFAULT = 360
+const AI_DRAWER_WIDTH_MIN = 280
+const AI_DRAWER_WIDTH_MAX = 560
+
+function clampAiDrawerWidth(value: number): number {
+  return Math.min(AI_DRAWER_WIDTH_MAX, Math.max(AI_DRAWER_WIDTH_MIN, value))
+}
+
+function readAiDrawerWidth(): number {
+  const raw = window.localStorage.getItem(AI_DRAWER_WIDTH_KEY)
+  if (raw === null) return AI_DRAWER_WIDTH_DEFAULT
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) ? clampAiDrawerWidth(parsed) : AI_DRAWER_WIDTH_DEFAULT
+}
+
 export function AppShell() {
   const meta = useMeta()
   const [captureOpen, setCaptureOpen] = useState(false)
@@ -39,6 +55,7 @@ export function AppShell() {
   const [aiConversationId, setAiConversationId] = useState<string | null>(null)
   const [aiDraft, setAiDraft] = useState<string | null>(null)
   const [aiFocusItemId, setAiFocusItemId] = useState<string | null>(null)
+  const [aiWidth, setAiWidth] = useState(readAiDrawerWidth)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
   )
@@ -85,9 +102,28 @@ export function AppShell() {
     window.localStorage.setItem("galaxy:sidebar-collapsed", sidebarCollapsed ? "1" : "0")
   }, [sidebarCollapsed])
   useEffect(() => {
+    window.localStorage.setItem(AI_DRAWER_WIDTH_KEY, String(aiWidth))
+  }, [aiWidth])
+  useEffect(() => {
     const timer = window.setInterval(() => setClockTick(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  const onAiResizePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    const startX = event.clientX
+    const startWidth = aiWidth
+    const onMove = (moveEvent: globalThis.PointerEvent) => {
+      setAiWidth(clampAiDrawerWidth(startWidth + (startX - moveEvent.clientX)))
+    }
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", onUp)
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", onUp)
+  }
+
   if (meta.isLoading) return <div className="page-loading">正在打开你的空间...</div>
   if (meta.isError || meta.data === undefined)
     return (
@@ -95,10 +131,21 @@ export function AppShell() {
     )
   if (!meta.data.settings.onboardingCompleted) return <OnboardingPage />
 
+  const shellClassName = [
+    "app-shell",
+    sidebarCollapsed ? "app-shell--sidebar-collapsed" : "",
+    aiOpen ? "app-shell--ai-open" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const shellStyle = {
+    "--ai-panel-width": `${aiWidth}px`,
+  } as CSSProperties
+
   return (
     <AppTimeContext.Provider value={time}>
       <AppActionsContext.Provider value={actions}>
-        <div className={`app-shell${sidebarCollapsed ? " app-shell--sidebar-collapsed" : ""}`}>
+        <div className={shellClassName} style={shellStyle}>
           <aside
             className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}
             data-app-background
@@ -159,29 +206,40 @@ export function AppShell() {
             <ReminderBanner />
             <Outlet />
           </main>
-          <aside className="ai-rail" data-app-background>
-            <IconButton
-              label={`打开 ${meta.data.settings.aiNickname}`}
-              onClick={() => setAiOpen(true)}
-            >
-              <PanelRightOpen size={19} />
-            </IconButton>
-            <span>AI</span>
-          </aside>
+          {aiOpen ? (
+            <div className="ai-panel" data-app-background>
+              <button
+                aria-label="调整 AI 侧栏宽度"
+                className="ai-panel__resize"
+                onPointerDown={onAiResizePointerDown}
+                type="button"
+              />
+              <AiDrawer
+                draft={aiDraft}
+                focusItemId={aiFocusItemId}
+                onClose={() => {
+                  setAiOpen(false)
+                  setAiDraft(null)
+                  setAiFocusItemId(null)
+                }}
+                onConversationChange={setAiConversationId}
+                open={aiOpen}
+                requestedConversationId={aiConversationId}
+              />
+            </div>
+          ) : (
+            <aside className="ai-rail" data-app-background>
+              <IconButton
+                label={`打开 ${meta.data.settings.aiNickname}`}
+                onClick={() => setAiOpen(true)}
+              >
+                <PanelRightOpen size={19} />
+              </IconButton>
+              <span>AI</span>
+            </aside>
+          )}
           <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
           <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
-          <AiDrawer
-            draft={aiDraft}
-            focusItemId={aiFocusItemId}
-            onClose={() => {
-              setAiOpen(false)
-              setAiDraft(null)
-              setAiFocusItemId(null)
-            }}
-            onConversationChange={setAiConversationId}
-            open={aiOpen}
-            requestedConversationId={aiConversationId}
-          />
         </div>
       </AppActionsContext.Provider>
     </AppTimeContext.Provider>

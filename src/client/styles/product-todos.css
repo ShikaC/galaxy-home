@@ -13,7 +13,7 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
 }
-.filter-nav button,
+.filter-nav button:not(.icon-button),
 .settings-nav button {
   display: flex;
   align-items: center;
@@ -25,7 +25,7 @@
   text-align: start;
   cursor: pointer;
 }
-.filter-nav button.selected,
+.filter-nav button:not(.icon-button).selected,
 .settings-nav button.selected {
   background: var(--color-surface-selected);
   color: var(--color-action-hover);
@@ -37,6 +37,29 @@
   block-size: 12px;
   flex: 0 0 12px;
   border-radius: 3px;
+}
+.filter-nav__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-block: var(--space-3) var(--space-1);
+}
+.filter-nav__heading strong {
+  margin: 0;
+}
+.filter-nav__heading .icon-button {
+  inline-size: 24px;
+  block-size: 24px;
+  flex: 0 0 24px;
+  padding: 0;
+  color: var(--color-action);
+}
+.filter-nav__hint {
+  margin: 0;
+  padding-inline: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
 }
 .todo-list {
   min-inline-size: 0;

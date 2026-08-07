@@ -1,4 +1,5 @@
 .app-shell {
+  --ai-panel-width: 360px;
   display: grid;
   grid-template-columns: 224px minmax(0, 1fr) 52px;
   min-block-size: 100dvb;
@@ -6,6 +7,12 @@
 }
 .app-shell--sidebar-collapsed {
   grid-template-columns: 68px minmax(0, 1fr) 52px;
+}
+.app-shell--ai-open {
+  grid-template-columns: 224px minmax(0, 1fr) var(--ai-panel-width);
+}
+.app-shell--sidebar-collapsed.app-shell--ai-open {
+  grid-template-columns: 68px minmax(0, 1fr) var(--ai-panel-width);
 }
 .sidebar {
   display: flex;
@@ -68,15 +75,6 @@
   background: var(--color-surface-selected);
   color: var(--color-action-hover);
 }
-.nav-item--active::before {
-  position: absolute;
-  inline-size: 3px;
-  block-size: 22px;
-  margin-inline-start: -12px;
-  border-radius: 2px;
-  background: var(--color-action);
-  content: "";
-}
 .sidebar__bottom {
   display: grid;
   gap: var(--space-1);
@@ -88,8 +86,14 @@
   align-items: center;
   padding-inline: var(--space-2);
 }
-:where(.sidebar--collapsed) :where(.brand strong, .workspace-name, .nav-item span) {
+:where(.sidebar--collapsed) :where(.brand strong, .nav-item span) {
   display: none;
+}
+:where(.sidebar--collapsed) .workspace-name {
+  visibility: hidden;
+  overflow: hidden;
+  max-inline-size: 100%;
+  padding-inline: 0;
 }
 .sidebar--collapsed nav {
   inline-size: 100%;
@@ -117,6 +121,30 @@
 }
 .ai-rail .icon-button {
   color: var(--color-action);
+}
+.ai-panel {
+  position: relative;
+  display: flex;
+  min-block-size: 0;
+  min-inline-size: 0;
+  flex-direction: column;
+  border-inline-start: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.ai-panel__resize {
+  position: absolute;
+  z-index: 2;
+  inset-block: 0;
+  inset-inline-start: -3px;
+  inline-size: 6px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+.ai-panel__resize:hover,
+.ai-panel__resize:focus-visible {
+  background: var(--color-action-soft);
 }
 .page {
   inline-size: min(100%, 1180px);
@@ -227,14 +255,23 @@
   .app-shell {
     grid-template-columns: 68px minmax(0, 1fr) 52px;
   }
+  .app-shell--ai-open,
+  .app-shell--sidebar-collapsed.app-shell--ai-open {
+    grid-template-columns: 68px minmax(0, 1fr) var(--ai-panel-width);
+  }
   .sidebar {
     align-items: center;
     padding-inline: var(--space-2);
   }
   .brand strong,
-  .workspace-name,
   .nav-item span {
     display: none;
+  }
+  .workspace-name {
+    visibility: hidden;
+    overflow: hidden;
+    max-inline-size: 100%;
+    padding-inline: 0;
   }
   .nav-item {
     justify-content: center;
@@ -250,6 +287,10 @@
 @media (max-width: 640px) {
   .app-shell {
     grid-template-columns: 52px minmax(0, 1fr) 42px;
+  }
+  .app-shell--ai-open,
+  .app-shell--sidebar-collapsed.app-shell--ai-open {
+    grid-template-columns: 52px minmax(0, 1fr) min(var(--ai-panel-width), 70vi);
   }
   .sidebar {
     padding-inline: var(--space-1);

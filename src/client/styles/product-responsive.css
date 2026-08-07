@@ -61,10 +61,13 @@
     flex-wrap: wrap;
     padding-block-end: var(--space-2);
   }
-  .filter-nav strong {
+  .filter-nav > strong {
     display: none;
   }
-  .filter-nav button {
+  .filter-nav__heading {
+    flex: 1 0 100%;
+  }
+  .filter-nav button:not(.icon-button) {
     flex: 0 0 auto;
     white-space: nowrap;
   }

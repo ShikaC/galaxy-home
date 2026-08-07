@@ -4,12 +4,14 @@ import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router"
 import type { Item } from "../../shared/items.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
+import { CategoryDialog } from "../components/CategoryDialog.js"
 import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { PageHeader } from "../components/PageHeader.js"
 import { SortableItemList } from "../components/SortableItemList.js"
 import { TaskRow } from "../components/TaskRow.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
+import { IconButton } from "../components/ui/IconButton.js"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useMeta } from "../lib/queries.js"
@@ -34,6 +36,7 @@ export function TodosPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState<Item | null>(null)
   const [editing, setEditing] = useState<Item | null>(null)
+  const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   useEffect(() => {
     const requested = searchParameters.get("category")
     if (requested !== null && meta.data?.categories.some((category) => category.id === requested)) {
@@ -138,21 +141,30 @@ export function TodosPage() {
               {option.label}
             </button>
           ))}
-          <strong>分类</strong>
-          {meta.data?.categories.map((category) => (
-            <button
-              className={categoryId === category.id ? "selected" : ""}
-              key={category.id}
-              onClick={() => {
-                setCategoryId(category.id)
-                setView("active")
-              }}
-              type="button"
-            >
-              <span className="color-swatch" style={{ background: category.color }} />
-              {category.name}
-            </button>
-          ))}
+          <div className="filter-nav__heading">
+            <strong>分类</strong>
+            <IconButton label="新建分类" onClick={() => setCreateCategoryOpen(true)}>
+              <Plus size={15} />
+            </IconButton>
+          </div>
+          {(meta.data?.categories.length ?? 0) === 0 ? (
+            <p className="filter-nav__hint">还没有分类，点加号创建。</p>
+          ) : (
+            meta.data?.categories.map((category) => (
+              <button
+                className={categoryId === category.id ? "selected" : ""}
+                key={category.id}
+                onClick={() => {
+                  setCategoryId(category.id)
+                  setView("active")
+                }}
+                type="button"
+              >
+                <span className="color-swatch" style={{ background: category.color }} />
+                {category.name}
+              </button>
+            ))
+          )}
         </aside>
         <section className="todo-list">
           <header className="list-heading">
@@ -192,6 +204,14 @@ export function TodosPage() {
           ) : null}
         </section>
       </div>
+      <CategoryDialog
+        onClose={() => setCreateCategoryOpen(false)}
+        onCreated={(id) => {
+          setCategoryId(id)
+          setView("active")
+        }}
+        open={createCategoryOpen}
+      />
       <OrganizeDialog
         item={editing ?? organizing}
         mode={editing === null ? "organize" : "edit"}

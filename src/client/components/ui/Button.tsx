@@ -29,7 +29,7 @@ export function Button({
       type={type}
     >
       {loading ? <LoaderCircle aria-hidden="true" className="button__loader" size={16} /> : null}
-      <span>{children}</span>
+      {children}
     </button>
   )
 }

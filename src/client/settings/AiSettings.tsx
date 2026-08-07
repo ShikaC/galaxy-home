@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { z } from "zod"
-import { workspaceSettingsSchema } from "../../shared/settings.js"
+import { DEFAULT_AI_PERSONALITY_PROMPT, workspaceSettingsSchema } from "../../shared/settings.js"
 import { AiActionLog } from "../components/AiActionLog.js"
 import { Button } from "../components/ui/Button.js"
-import { TextField } from "../components/ui/Field.js"
+import { TextArea, TextField } from "../components/ui/Field.js"
 import { Badge } from "../components/ui/Status.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
@@ -18,12 +18,18 @@ export function AiSettings() {
   const [apiKey, setApiKey] = useState("")
   const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState("")
   const [transcriptionModel, setTranscriptionModel] = useState("")
+  const [personalityPrompt, setPersonalityPrompt] = useState<string>(DEFAULT_AI_PERSONALITY_PROMPT)
+  const [aiNickname, setAiNickname] = useState("")
+  const [userName, setUserName] = useState("")
   useEffect(() => {
     if (meta.data) {
       setChatBaseUrl(meta.data.ai.chatBaseUrl)
       setChatModel(meta.data.ai.chatModel)
       setTranscriptionBaseUrl(meta.data.ai.transcriptionBaseUrl)
       setTranscriptionModel(meta.data.ai.transcriptionModel)
+      setPersonalityPrompt(meta.data.settings.aiPersonalityPrompt)
+      setAiNickname(meta.data.settings.aiNickname)
+      setUserName(meta.data.settings.userName)
     }
   }, [meta.data])
   const save = useMutation({
@@ -52,6 +58,22 @@ export function AiSettings() {
       apiRequest("/api/settings", workspaceSettingsSchema, {
         method: "PATCH",
         body: jsonBody({ aiPermission }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.meta }),
+  })
+  const savePersonality = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/settings", workspaceSettingsSchema, {
+        method: "PATCH",
+        body: jsonBody({ aiPersonalityPrompt: personalityPrompt }),
+      }),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.meta }),
+  })
+  const saveNames = useMutation({
+    mutationFn: () =>
+      apiRequest("/api/settings", workspaceSettingsSchema, {
+        method: "PATCH",
+        body: jsonBody({ aiNickname, userName }),
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.meta }),
   })
@@ -84,8 +106,82 @@ export function AiSettings() {
         </button>
       </fieldset>
       <p className="setting-note">
-        保守模式在修改前确认；开放模式可自动执行低风险且可撤销的操作。永久删除、导出和核心目标变更始终需要确认。
+        保守模式少读本地内容，侧栏改动需你确认后执行。开放模式可读更广，并自动执行已支持的低风险可撤销操作（创建习惯/待办、更新待办、今日安排、软删、分类、项目进度；周日可自动生成
+        AI 周报）。永久删除、导出和核心目标变更始终需要确认；项目拆解仍在项目页确认。
       </p>
+      <form
+        className="form-stack settings-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          saveNames.mutate()
+        }}
+      >
+        <h3>称呼</h3>
+        <p className="setting-note">可随时修改，会立刻用于新的对话提示词；也可在「个人空间」中调整。</p>
+        <div className="form-grid">
+          <TextField
+            label="AI 助手昵称"
+            onChange={(event) => setAiNickname(event.target.value)}
+            value={aiNickname}
+          />
+          <TextField
+            label="AI 对你的称呼"
+            onChange={(event) => setUserName(event.target.value)}
+            value={userName}
+          />
+        </div>
+        <div className="button-row">
+          <Button
+            disabled={aiNickname.trim() === "" || userName.trim() === ""}
+            loading={saveNames.isPending}
+            type="submit"
+          >
+            保存称呼
+          </Button>
+          {saveNames.isSuccess ? <span className="success-text">已保存</span> : null}
+        </div>
+        {saveNames.isError ? <p className="inline-error">{saveNames.error.message}</p> : null}
+      </form>
+      <form
+        className="form-stack settings-form"
+        onSubmit={(event) => {
+          event.preventDefault()
+          savePersonality.mutate()
+        }}
+      >
+        <h3>性格提示词</h3>
+        <p className="setting-note">
+          对话时会组合为：「你是{aiNickname.trim() || "助手"}，称呼用户为
+          {userName.trim() || "你"}。」+ 下方性格文字。能力边界与诚实规则由应用维护，不可在此修改。
+        </p>
+        <TextArea
+          hint="可写成你希望 AI 如何说话、如何处理拖延与休息的偏好。"
+          label="性格与语气"
+          onChange={(event) => setPersonalityPrompt(event.target.value)}
+          rows={5}
+          value={personalityPrompt}
+        />
+        <div className="button-row">
+          <Button
+            disabled={personalityPrompt.trim() === ""}
+            loading={savePersonality.isPending}
+            type="submit"
+          >
+            保存性格提示词
+          </Button>
+          <Button
+            onClick={() => setPersonalityPrompt(DEFAULT_AI_PERSONALITY_PROMPT)}
+            type="button"
+            variant="secondary"
+          >
+            恢复默认
+          </Button>
+          {savePersonality.isSuccess ? <span className="success-text">已保存</span> : null}
+        </div>
+        {savePersonality.isError ? (
+          <p className="inline-error">{savePersonality.error.message}</p>
+        ) : null}
+      </form>
       <form
         className="form-stack settings-form"
         onSubmit={(event) => {

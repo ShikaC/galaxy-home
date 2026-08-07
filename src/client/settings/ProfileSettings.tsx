@@ -33,7 +33,7 @@ export function ProfileSettings() {
     <section className="settings-section">
       <header>
         <h2>个人空间</h2>
-        <p>品牌名称与个人空间名称相互独立。</p>
+        <p>空间名称、AI 昵称与你的称呼都可随时修改，不限于首次引导。</p>
       </header>
       <form
         className="form-stack settings-form"

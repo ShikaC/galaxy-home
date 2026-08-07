@@ -9,7 +9,6 @@ import { AiConversationHistory } from "./AiConversationHistory.js"
 import { AiDrawerBody, type AiDrawerMessage } from "./AiDrawerBody.js"
 import { AiDrawerComposer } from "./AiDrawerComposer.js"
 import { AiDrawerHeader } from "./AiDrawerHeader.js"
-import { DrawerSurface } from "./ui/ModalSurface.js"
 
 type PendingMessage = {
   readonly message: string
@@ -50,6 +49,7 @@ export function AiDrawer({
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState("")
   const [memoryContent, setMemoryContent] = useState<string | null>(null)
+  const [memoryKind, setMemoryKind] = useState<"preference" | "goal" | "background">("preference")
   const send = useMutation({
     mutationFn: ({ message, placeholderId }: PendingMessage) =>
       streamAiChat(
@@ -86,6 +86,8 @@ export function AiDrawer({
                 role: "assistant",
                 content: result.message.content,
                 references: result.message.references,
+                pendingAction: result.message.pendingAction,
+                proposedMemory: result.message.proposedMemory,
               }
             : entry,
         ),
@@ -93,6 +95,10 @@ export function AiDrawer({
       setContent("")
       setActiveFocusItemId(null)
       void client.invalidateQueries({ queryKey: queryKeys.meta })
+      void client.invalidateQueries({ queryKey: ["habits"] })
+      void client.invalidateQueries({ queryKey: ["items"] })
+      void client.invalidateQueries({ queryKey: ["projects"] })
+      void client.invalidateQueries({ queryKey: ["ai-actions"] })
     },
   })
   const loadConversation = useMutation({
@@ -105,6 +111,8 @@ export function AiDrawer({
           role: message.role === "user" ? "user" : "assistant",
           content: message.content,
           references: message.references,
+          pendingAction: message.pendingAction,
+          proposedMemory: message.proposedMemory,
         })),
       )
       setHistoryOpen(false)
@@ -147,7 +155,7 @@ export function AiDrawer({
     conversation.title.toLowerCase().includes(historySearch.toLowerCase()),
   )
   return (
-    <DrawerSurface ariaLabel={`${nickname} AI 助手`} onClose={onClose}>
+    <aside aria-label={`${nickname} AI 助手`} className="ai-drawer ai-drawer--docked">
       <AiDrawerHeader
         configured={configured}
         currentPage={currentPage}
@@ -175,11 +183,38 @@ export function AiDrawer({
         configured={configured}
         error={send.isError ? send.error.message : null}
         memoryContent={memoryContent}
+        memoryKind={memoryKind}
         messages={messages}
         nickname={nickname}
+        onAcceptProposedMemory={(content, kind) => {
+          setMemoryKind(kind)
+          setMemoryContent(content)
+        }}
         onCancelMemory={() => setMemoryContent(null)}
         onClose={onClose}
-        onRemember={setMemoryContent}
+        onMessageUpdate={(message, confirmation) => {
+          setMessages((current) =>
+            current.map((entry) =>
+              entry.id === message.id
+                ? {
+                    id: message.id,
+                    role: "assistant",
+                    content:
+                      confirmation === undefined
+                        ? message.content
+                        : `${message.content}\n\n${confirmation}`,
+                    references: message.references,
+                    pendingAction: message.pendingAction,
+                    proposedMemory: message.proposedMemory,
+                  }
+                : entry,
+            ),
+          )
+        }}
+        onRemember={(content) => {
+          setMemoryKind("preference")
+          setMemoryContent(content)
+        }}
         onSavedMemory={() => {
           setMemoryContent(null)
           void client.invalidateQueries({ queryKey: queryKeys.meta })
@@ -195,6 +230,6 @@ export function AiDrawer({
         }}
         pending={send.isPending}
       />
-    </DrawerSurface>
+    </aside>
   )
 }

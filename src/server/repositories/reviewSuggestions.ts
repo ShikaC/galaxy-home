@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { reviewSuggestionConversionSchema, reviewSuggestionSchema } from "../../shared/app.js"
+import { recordReviewConvertAction } from "./aiActions.js"
 
 const reviewRowSchema = z.object({ suggestions_json: z.string() })
 const conversionRowSchema = z.object({
@@ -125,6 +126,7 @@ export function convertReviewSuggestion(
          VALUES (?, ?, ?, ?, ?)`,
       )
       .run(reviewId, suggestion.id, suggestion.type, entityId, now)
+    recordReviewConvertAction(database, reviewId, suggestion.id, suggestion.type, entityId)
     database.exec("COMMIT")
     return reviewSuggestionConversionSchema.parse({
       reviewId,
