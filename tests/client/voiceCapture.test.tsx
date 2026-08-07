@@ -46,6 +46,12 @@ afterEach(() => {
 })
 
 describe("VoiceCapture", () => {
+  it("explains that voice needs AI configuration", () => {
+    render(<VoiceCapture configured={false} onText={vi.fn()} />)
+    expect(screen.getByText(/语音需先在设置中配置/)).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "语音未配置" })).toBeDisabled()
+  })
+
   it("keeps a failed recording available for retry", async () => {
     vi.stubGlobal("MediaRecorder", FakeMediaRecorder)
     Object.defineProperty(navigator, "mediaDevices", {

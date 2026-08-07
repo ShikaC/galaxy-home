@@ -6,7 +6,13 @@ import { IconButton } from "./ui/IconButton.js"
 
 const transcriptionSchema = z.object({ text: z.string() })
 
-export function VoiceCapture({ onText }: { readonly onText: (text: string) => void }) {
+export function VoiceCapture({
+  configured = true,
+  onText,
+}: {
+  readonly configured?: boolean
+  readonly onText: (text: string) => void
+}) {
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const audioRef = useRef<Blob | null>(null)
@@ -109,6 +115,16 @@ export function VoiceCapture({ onText }: { readonly onText: (text: string) => vo
     setError(null)
     setState("idle")
     setSeconds(0)
+  }
+  if (!configured) {
+    return (
+      <div className="voice-row">
+        <IconButton disabled label="语音未配置" onClick={() => undefined}>
+          <Mic size={18} />
+        </IconButton>
+        <span>语音需先在设置中配置 AI 或转写服务；未配置时不会创建空条目。</span>
+      </div>
+    )
   }
   if (state === "idle")
     return (

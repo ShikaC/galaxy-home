@@ -3,6 +3,7 @@ import { X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { itemSchema } from "../../shared/items.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
+import { useMeta } from "../lib/queries.js"
 import { Button } from "./ui/Button.js"
 import { TextArea, TextField } from "./ui/Field.js"
 import { IconButton } from "./ui/IconButton.js"
@@ -17,6 +18,7 @@ export function CaptureDialog({
   readonly open: boolean
 }) {
   const client = useQueryClient()
+  const meta = useMeta()
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
   useEffect(() => {
@@ -70,7 +72,10 @@ export function CaptureDialog({
           rows={4}
           value={notes}
         />
-        <VoiceCapture onText={(text) => setTitle(text)} />
+        <VoiceCapture
+          configured={meta.data?.ai.configured ?? false}
+          onText={(text) => setTitle(text)}
+        />
         {capture.isError ? <p className="inline-error">{capture.error.message}</p> : null}
         <footer className="dialog__actions">
           <Button onClick={onClose} variant="ghost">

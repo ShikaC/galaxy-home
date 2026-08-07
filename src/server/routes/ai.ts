@@ -127,6 +127,12 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
     return suggestItemCategories(context.database, context.secretPath, body.itemId)
   })
   app.post("/api/transcribe", async (request) => {
+    if (!getAiConfigStatus(context.secretPath).configured) {
+      throw new AiServiceError(
+        "AI_NOT_CONFIGURED",
+        "尚未配置转写服务；请先在设置中填写 AI 或转写地址。未转写成功时不会创建条目。",
+      )
+    }
     const part = await request.file()
     if (part === undefined) throw new Error("没有收到录音")
     const bytes = await part.toBuffer()

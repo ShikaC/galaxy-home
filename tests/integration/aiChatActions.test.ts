@@ -256,4 +256,129 @@ describe("AI chat habit actions", () => {
     )
     expect(items.every((item) => item.secondary === 0)).toBe(true)
   })
+
+  it("queues a multi-action batch in conservative mode until confirmed", async () => {
+    const { app, database } = await setup(
+      `准备一起做这些。
+
+\`\`\`json
+[
+  {"action":"create_project","as":"p","name":"保守批次","desiredOutcome":"验证确认流"},
+  {"action":"create_item","title":"第一步","projectIds":["$p"],"todayMode":"today"}
+]
+\`\`\``,
+      "conservative",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "建项目和第一步待办",
+        currentPath: "/projects",
+        currentLabel: "项目",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("待确认")
+    expect(response.json().message.pendingAction?.status).toBe("pending")
+    expect(response.json().message.pendingAction?.summary).toContain("1.")
+    expect(response.json().message.pendingAction?.actions).toHaveLength(2)
+    expect(
+      database
+        .prepare("SELECT COUNT(*) AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+        .get("保守批次") as { value: number },
+    ).toEqual({ value: 0 })
+    const messageId = response.json().message.id as string
+    const confirmed = await app.inject({
+      method: "POST",
+      url: `/api/ai/messages/${messageId}/confirm-action`,
+    })
+    expect(confirmed.statusCode).toBe(200)
+    expect(confirmed.json().confirmation).toContain("已实际创建项目「保守批次」")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+          .get("保守批次") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
+  it("rejects a batch that would exceed the today primary limit before writing", async () => {
+    const { app, database } = await setup(
+      `好的。
+
+\`\`\`json
+[
+  {"action":"create_item","title":"超额一","todayMode":"today"},
+  {"action":"create_item","title":"超额二","todayMode":"today"},
+  {"action":"create_item","title":"超额三","todayMode":"today"},
+  {"action":"create_item","title":"超额四","todayMode":"today"}
+]
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "一次加四个今日主要待办",
+        currentPath: "/todos",
+        currentLabel: "待办",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("今日主要待办最多 3 个")
+    expect(response.json().message.content).toContain("本次未写入")
+    const count = database
+      .prepare(
+        "SELECT COUNT(*) AS value FROM items WHERE title LIKE '超额%' AND deleted_at IS NULL",
+      )
+      .get() as { value: number }
+    expect(count.value).toBe(0)
+  })
+
+  it("reports partial success when a later step fails", async () => {
+    const { app, database } = await setup(
+      `先建项目。
+
+\`\`\`json
+[
+  {"action":"create_project","name":"半程项目","desiredOutcome":"测部分失败"},
+  {"action":"create_item","title":"坏引用","projectIds":["$missing"]}
+]
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "建项目再挂坏引用待办",
+        currentPath: "/projects",
+        currentLabel: "项目",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("已实际创建项目「半程项目」")
+    expect(response.json().message.content).toContain("第 2/2 步未能执行")
+    expect(response.json().message.content).toContain("已成功 1 步")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+          .get("半程项目") as { value: number }
+      ).value,
+    ).toBe(1)
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("坏引用") as { value: number }
+      ).value,
+    ).toBe(0)
+  })
 })

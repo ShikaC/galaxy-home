@@ -317,6 +317,7 @@
   }
   .page-header__actions .button {
     inline-size: 100%;
+    flex-wrap: nowrap;
   }
   .ai-rail {
     padding-block-start: var(--space-3);

@@ -127,7 +127,44 @@ function summarizeAction(action: ChatAction): string {
 }
 
 function summarizeActions(actions: readonly ChatAction[]): string {
-  return actions.map(summarizeAction).join("；")
+  return actions.map((action, index) => `${index + 1}. ${summarizeAction(action)}`).join("；")
+}
+
+function countPrimaryTodayItems(database: DatabaseSync, localDate: string): number {
+  return z
+    .object({ count: z.number().int().nonnegative() })
+    .parse(
+      database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM today_items
+           JOIN items ON items.id = today_items.item_id
+           WHERE today_items.local_date = ? AND today_items.is_secondary = 0
+             AND items.status = 'active' AND items.deleted_at IS NULL`,
+        )
+        .get(localDate),
+    ).count
+}
+
+function assertBatchTodayCapacity(
+  database: DatabaseSync,
+  settings: WorkspaceSettings,
+  actions: readonly ChatAction[],
+): void {
+  const localDate = localClock(new Date(), settings.timezone).date
+  const existing = countPrimaryTodayItems(database, localDate)
+  const needed = actions.reduce((count, action) => {
+    if (action.action === "create_item") {
+      return action.todayMode === "today" || action.todayMode === "focus" ? count + 1 : count
+    }
+    if (action.action === "set_today") {
+      return action.mode === "today" || action.mode === "focus" ? count + 1 : count
+    }
+    return count
+  }, 0)
+  if (existing + needed <= 3) return
+  throw new Error(
+    `今日主要待办最多 3 个（当前 ${existing}，本批还要加入 ${needed}）。请将超出项改为 todayMode/mode: secondary，或先移出部分今日待办。`,
+  )
 }
 
 function recordAction(
@@ -412,13 +449,20 @@ export function executeChatActions(
   settings: WorkspaceSettings,
   actions: readonly ChatAction[],
 ): string {
+  const executable = actions.filter((action) => action.action !== "propose_memory")
+  if (executable.length === 0) throw new Error("没有可执行的操作")
+  assertBatchTodayCapacity(database, settings, executable)
   const refs = new Map<string, string>()
   const confirmations: string[] = []
-  for (const action of actions) {
-    if (action.action === "propose_memory") continue
-    confirmations.push(executeChatAction(database, settings, action, refs))
+  for (const [index, action] of executable.entries()) {
+    try {
+      confirmations.push(executeChatAction(database, settings, action, refs))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "操作失败"
+      const head = confirmations.length === 0 ? "" : `${confirmations.join("\n")}\n\n`
+      return `${head}（第 ${index + 1}/${executable.length} 步未能执行：${summarizeAction(action)} — ${message}。已成功 ${confirmations.length} 步，后续未继续；可在操作记录撤销已写入项后重试。）`
+    }
   }
-  if (confirmations.length === 0) throw new Error("没有可执行的操作")
   return confirmations.join("\n")
 }
 
@@ -478,7 +522,7 @@ export function applyAiChatActions(
   } catch (error) {
     const message = error instanceof Error ? error.message : "操作失败"
     return {
-      text: `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}）`,
+      text: `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}。本次未写入；可调整后重试。）`,
       pendingAction: null,
       proposedMemory: null,
     }

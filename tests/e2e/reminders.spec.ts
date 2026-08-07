@@ -32,11 +32,11 @@ test.describe("reminder banner", () => {
       expect((await request.post(`/api/notifications/${notification.id}/dismiss`)).ok()).toBe(true)
     }
     await page.reload()
-    const banner = page.getByRole("status")
+    const banner = page.locator(".reminder-banner")
     await expect(banner.getByText("今天最想推进什么？")).toBeVisible()
     await banner.getByRole("button", { name: /30 分钟后/ }).click()
     await expect(banner.getByText("今天有什么值得留下？")).toBeVisible()
     await banner.getByRole("button", { name: "今天不再提醒" }).click()
-    await expect(page.getByRole("status")).toHaveCount(0)
+    await expect(page.locator(".reminder-banner")).toHaveCount(0)
   })
 })

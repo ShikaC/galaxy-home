@@ -44,7 +44,9 @@ export function ReminderSettings() {
     <section className="settings-section">
       <header>
         <h2>提醒</h2>
-        <p>浏览器运行期间显示；关闭期间错过的提醒会在下次启动补显示。</p>
+        <p>
+          仅在本应用服务运行且浏览器打开时弹出，不是系统闹钟。关闭服务或浏览器后，错过的提醒会在下次启动时补显。
+        </p>
       </header>
       <form
         className="reminder-list"

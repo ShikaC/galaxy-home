@@ -81,7 +81,10 @@ export function DataSettings() {
     <section className="settings-section">
       <header>
         <h2>本地数据</h2>
-        <p>自动快照默认保留 30 天；恢复前会先创建恢复点。</p>
+        <p>
+          自动快照默认保留 30 天；恢复前会先创建恢复点。手动导出只含业务数据库，不含{" "}
+          <code>secrets.json</code>（API Key 不会进 ZIP）。
+        </p>
       </header>
       <div className="backup-status">
         <div>

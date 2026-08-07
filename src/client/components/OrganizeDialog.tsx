@@ -53,14 +53,17 @@ export function OrganizeDialog({
       .then((data) => {
         if (data.status === "waiting") setSuggestNote("AI 正在分析这条随手记…")
         else if (data.status === "ready" && data.categoryIds !== undefined) {
-          setCategories(data.categoryIds)
+          if (data.categoryIds.length > 0) setCategories(data.categoryIds)
           setSuggestNote(
             data.note ??
-              (data.suggestToday
-                ? "已预填捕获分析建议；可修改后保存。建议也考虑加入今日。"
-                : "已预填捕获分析建议；可修改后保存。"),
+              (data.categoryIds.length === 0
+                ? "捕获分析未给出分类，可手动选择或再请 AI 建议。"
+                : data.suggestToday
+                  ? "已预填捕获分析建议；可修改后保存。建议也考虑加入今日。"
+                  : "已预填捕获分析建议；可修改后保存。"),
           )
-        } else if (data.status === "failed") setSuggestNote(data.note ?? "上次分析未完成")
+        } else if (data.status === "failed")
+          setSuggestNote(data.note ?? "上次分析未完成，可稍后重试「请 AI 建议分类」。")
       })
       .catch(() => undefined)
   }, [item, timezone])
@@ -76,11 +79,18 @@ export function OrganizeDialog({
         { method: "POST", body: jsonBody({ itemId: item?.id }) },
       ),
     onSuccess: (data) => {
-      setCategories(data.categoryIds)
+      if (data.categoryIds.length > 0) setCategories(data.categoryIds)
       setSuggestNote(
         data.note ??
-          (data.suggestToday ? "建议也考虑加入今日（需在首页自行添加）。" : "已填入建议分类，保存后生效。"),
+          (data.categoryIds.length === 0
+            ? "AI 未建议分类，可手动选择后再保存。"
+            : data.suggestToday
+              ? "建议也考虑加入今日（需在首页自行添加）。"
+              : "已填入建议分类，保存后生效。"),
       )
+    },
+    onError: (error) => {
+      setSuggestNote(error instanceof Error ? error.message : "建议失败，未改动当前选择")
     },
   })
   const save = useMutation({
