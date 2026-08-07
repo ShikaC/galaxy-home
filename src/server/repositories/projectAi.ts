@@ -61,6 +61,10 @@ function toPublicSession(session: ProjectAiSessionData): ProjectAiSession {
     answeredCount: session.answers.length,
     totalQuestions: session.questions.length,
     draft: session.draft,
+    history: session.questions.slice(0, session.answers.length).map((question, index) => ({
+      question,
+      answer: session.answers[index] ?? "",
+    })),
   })
 }
 

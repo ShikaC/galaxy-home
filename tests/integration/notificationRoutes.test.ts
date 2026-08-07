@@ -81,4 +81,49 @@ describe("notification routes", () => {
     await app.close()
     database.close()
   })
+
+  it("switches morning reminder copy when today focus is set", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-morning-focus-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', morning_reminder_enabled = 1",
+      )
+      .run()
+    const itemId = crypto.randomUUID()
+    const nowIso = "2026-08-04T02:00:00.000Z"
+    database
+      .prepare(
+        `INSERT INTO items (id, title, notes, status, sort_order, created_at, updated_at)
+         VALUES (?, '推进 React', NULL, 'active', 0, ?, ?)`,
+      )
+      .run(itemId, nowIso, nowIso)
+    database
+      .prepare(
+        `INSERT INTO today_items (item_id, local_date, is_focus, is_secondary, sort_order)
+         VALUES (?, '2026-08-04', 1, 0, 0)`,
+      )
+      .run(itemId)
+
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+      clock: { now: () => new Date(nowIso) },
+    })
+    const due = await app.inject({ method: "GET", url: "/api/notifications" })
+    const morning = due
+      .json<readonly { kind: string; title: string; detail: string }[]>()
+      .find((notification) => notification.kind === "morning")
+    expect(morning).toMatchObject({
+      title: "今日重点已就位",
+      detail: "专注推进「推进 React」即可，不必再另找一件。",
+    })
+
+    await app.close()
+    database.close()
+  })
 })

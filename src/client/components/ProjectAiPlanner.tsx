@@ -80,6 +80,22 @@ export function ProjectAiPlanner({
             if (answer.trim()) submitAnswer.mutate()
           }}
         >
+          {current.history.length > 0 ? (
+            <ol className="project-ai-history">
+              {current.history.map((entry) => (
+                <li key={`${entry.question}:${entry.answer}`}>
+                  <p>
+                    <strong>问：</strong>
+                    {entry.question}
+                  </p>
+                  <p>
+                    <strong>答：</strong>
+                    {entry.answer}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : null}
           <p className="project-ai-panel__question">{current.currentQuestion}</p>
           <small>
             {current.answeredCount + 1}/{current.totalQuestions}
@@ -97,6 +113,22 @@ export function ProjectAiPlanner({
         </form>
       ) : current.status === "ready" && current.draft !== null ? (
         <div className="project-ai-preview">
+          {current.history.length > 0 ? (
+            <ol className="project-ai-history">
+              {current.history.map((entry) => (
+                <li key={`${entry.question}:${entry.answer}`}>
+                  <p>
+                    <strong>问：</strong>
+                    {entry.question}
+                  </p>
+                  <p>
+                    <strong>答：</strong>
+                    {entry.answer}
+                  </p>
+                </li>
+              ))}
+            </ol>
+          ) : null}
           <dl>
             <div>
               <dt>当前阶段</dt>

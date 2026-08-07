@@ -1,10 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Sparkles, X } from "lucide-react"
+import { CalendarPlus, Sparkles, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { z } from "zod"
 import type { Item } from "../../shared/items.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { instantForLocalDateTimeInput, localDateTimeInputFor } from "../lib/date.js"
+import { useTodayMutation } from "../lib/mutations.js"
 import { useMeta, useProjects } from "../lib/queries.js"
 import { itemSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
@@ -16,14 +17,17 @@ export function OrganizeDialog({
   item,
   mode = "organize",
   onClose,
+  onSaved,
 }: {
   readonly item: Item | null
   readonly mode?: "organize" | "edit"
   readonly onClose: () => void
+  readonly onSaved?: (item: Item, detail: { readonly leftInbox: boolean }) => void
 }) {
   const meta = useMeta()
   const projects = useProjects()
   const client = useQueryClient()
+  const today = useTodayMutation()
   const timezone = meta.data?.settings.timezone ?? "UTC"
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
@@ -32,6 +36,8 @@ export function OrganizeDialog({
   const [categories, setCategories] = useState<readonly string[]>([])
   const [projectIds, setProjectIds] = useState<readonly string[]>([])
   const [suggestNote, setSuggestNote] = useState<string | null>(null)
+  const [suggestToday, setSuggestToday] = useState(false)
+  const [addedToday, setAddedToday] = useState(false)
   useEffect(() => {
     if (item === null) return
     setTitle(item.title)
@@ -41,6 +47,8 @@ export function OrganizeDialog({
     setCategories(item.categoryIds)
     setProjectIds(item.projectIds)
     setSuggestNote(null)
+    setSuggestToday(false)
+    setAddedToday(item.inToday)
     void apiRequest(
       `/api/items/${item.id}/ai-suggestion`,
       z.object({
@@ -54,6 +62,7 @@ export function OrganizeDialog({
         if (data.status === "waiting") setSuggestNote("AI 正在分析这条随手记…")
         else if (data.status === "ready" && data.categoryIds !== undefined) {
           if (data.categoryIds.length > 0) setCategories(data.categoryIds)
+          setSuggestToday(Boolean(data.suggestToday) && !item.inToday)
           setSuggestNote(
             data.note ??
               (data.categoryIds.length === 0
@@ -80,12 +89,13 @@ export function OrganizeDialog({
       ),
     onSuccess: (data) => {
       if (data.categoryIds.length > 0) setCategories(data.categoryIds)
+      setSuggestToday(data.suggestToday && !(item?.inToday ?? false) && !addedToday)
       setSuggestNote(
         data.note ??
           (data.categoryIds.length === 0
             ? "AI 未建议分类，可手动选择后再保存。"
             : data.suggestToday
-              ? "建议也考虑加入今日（需在首页自行添加）。"
+              ? "建议也考虑加入今日。"
               : "已填入建议分类，保存后生效。"),
       )
     },
@@ -118,7 +128,11 @@ export function OrganizeDialog({
       ])
     },
     onSuccess: () => {
+      if (item === null) return
+      const wasInbox = item.categoryIds.length === 0 && item.projectIds.length === 0
+      const leftInbox = wasInbox && (categories.length > 0 || projectIds.length > 0)
       void client.invalidateQueries({ queryKey: ["items"] })
+      onSaved?.(item, { leftInbox })
       onClose()
     },
   })
@@ -191,8 +205,36 @@ export function OrganizeDialog({
               </Button>
             </div>
           ) : null}
+          {suggestToday && !addedToday ? (
+            <div className="button-row">
+              <Button
+                loading={today.isPending}
+                onClick={() =>
+                  today.mutate(
+                    { id: item.id, focus: false },
+                    {
+                      onSuccess: () => {
+                        setAddedToday(true)
+                        setSuggestToday(false)
+                        setSuggestNote(
+                          "已加入今日。保存整理后仍会离开收集箱（若已选分类或项目）。",
+                        )
+                      },
+                    },
+                  )
+                }
+                size="compact"
+                type="button"
+                variant="secondary"
+              >
+                <CalendarPlus size={14} />
+                加入今日
+              </Button>
+            </div>
+          ) : null}
           {suggestNote === null ? null : <p className="setting-note">{suggestNote}</p>}
           {suggest.isError ? <p className="inline-error">{suggest.error.message}</p> : null}
+          {today.isError ? <p className="inline-error">{today.error.message}</p> : null}
           {meta.data?.categories.length === 0 ? (
             <p>还没有分类，可在待办页侧栏或设置中创建。</p>
           ) : (
@@ -200,6 +242,7 @@ export function OrganizeDialog({
               <label key={category.id}>
                 <input
                   checked={categories.includes(category.id)}
+                  name={`organize-category-${category.id}`}
                   onChange={() => setCategories(toggle(categories, category.id))}
                   type="checkbox"
                 />
@@ -215,6 +258,7 @@ export function OrganizeDialog({
             <label key={project.id}>
               <input
                 checked={projectIds.includes(project.id)}
+                name={`organize-project-${project.id}`}
                 onChange={() => setProjectIds(toggle(projectIds, project.id))}
                 type="checkbox"
               />

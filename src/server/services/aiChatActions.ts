@@ -51,29 +51,46 @@ function rememberAlias(
 export function extractChatActions(answer: string): {
   readonly text: string
   readonly actions: readonly ChatAction[]
+  readonly parseFailed: boolean
 } {
   const match = ACTION_BLOCK_PATTERN.exec(answer)
-  if (match === null) return { text: answer.trimEnd(), actions: [] }
+  if (match === null) return { text: answer.trimEnd(), actions: [], parseFailed: false }
   const raw = match[1]
-  if (raw === undefined) return { text: answer.trimEnd(), actions: [] }
+  const stripped = answer.slice(0, match.index).trimEnd()
+  if (raw === undefined) return { text: stripped, actions: [], parseFailed: true }
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return { text: answer.trimEnd(), actions: [] }
+    return { text: stripped, actions: [], parseFailed: true }
   }
-  const text = answer.slice(0, match.index).trimEnd()
   const candidates = Array.isArray(parsed) ? parsed : [parsed]
   if (candidates.length === 0 || candidates.length > MAX_ACTIONS_PER_TURN) {
-    return { text: answer.trimEnd(), actions: [] }
+    return { text: stripped, actions: [], parseFailed: true }
   }
   const actions: ChatAction[] = []
   for (const candidate of candidates) {
-    const action = chatActionSchema.safeParse(candidate)
-    if (!action.success) return { text: answer.trimEnd(), actions: [] }
+    const action = chatActionSchema.safeParse(normalizeActionCandidate(candidate))
+    if (!action.success) return { text: stripped, actions: [], parseFailed: true }
     actions.push(action.data)
   }
-  return { text, actions }
+  return { text: stripped, actions, parseFailed: false }
+}
+
+function normalizeActionCandidate(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw
+  const value = { ...(raw as Record<string, unknown>) }
+  if (value["action"] === "create_habit") {
+    if (value["frequencyType"] === undefined && typeof value["frequency"] === "string") {
+      value["frequencyType"] = value["frequency"]
+    }
+    if (value["targetCount"] === undefined && typeof value["target"] === "number") {
+      value["targetCount"] = value["target"]
+    }
+    if (value["weeklyTarget"] === undefined) value["weeklyTarget"] = null
+    if (value["restDays"] === undefined) value["restDays"] = []
+  }
+  return value
 }
 
 /** @deprecated use extractChatActions */
@@ -473,6 +490,14 @@ export function applyAiChatActions(
 ): ApplyChatActionsResult {
   const extracted = extractChatActions(answer)
   if (extracted.actions.length === 0) {
+    if (extracted.parseFailed) {
+      const base = extracted.text
+      return {
+        text: `${base === "" ? "" : `${base}\n\n`}（未能执行：操作块格式不正确或字段不完整，工作空间未改动。请按协议字段重试，例如 create_habit 需要 frequencyType、targetCount、weeklyTarget、restDays。）`,
+        pendingAction: null,
+        proposedMemory: null,
+      }
+    }
     const text = extracted.text === "" ? answer.trim() : extracted.text
     if (!claimsCompletedMutation(text))
       return { text, pendingAction: null, proposedMemory: null }

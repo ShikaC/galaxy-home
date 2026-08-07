@@ -136,7 +136,12 @@ export function generateLocalReview(
   const projects = database
     .prepare(
       `SELECT name, progress, status FROM projects
-       WHERE deleted_at IS NULL AND updated_at >= ? AND updated_at < ? ORDER BY updated_at DESC`,
+       WHERE deleted_at IS NULL AND (
+         status IN ('active', 'paused')
+         OR (updated_at >= ? AND updated_at < ?)
+       )
+       ORDER BY CASE status WHEN 'active' THEN 0 WHEN 'paused' THEN 1 ELSE 2 END,
+         updated_at DESC`,
     )
     .all(periodStart, periodEnd)
     .map((row) =>

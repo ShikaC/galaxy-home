@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { ArrowRight, CheckSquare2, Plus, RefreshCw, Sparkles } from "lucide-react"
+import { ArrowRight, CheckSquare2, FolderKanban, Plus, RefreshCw, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router"
 import { gainSchema, quoteSchema } from "../../shared/app.js"
@@ -183,10 +183,25 @@ export function HomePage() {
               title="周期项目"
             />
             <div className="project-summary-list">
-              {projects.data
-                ?.filter((project) => project.status === "active" && project.pinned)
-                .slice(0, 3)
-                .map((project) => (
+              {(() => {
+                const pinned = projects.data
+                  ?.filter((project) => project.status === "active" && project.pinned)
+                  .slice(0, 3)
+                if (pinned === undefined || pinned.length === 0) {
+                  return (
+                    <EmptyState
+                      action={
+                        <Link className="text-action" to="/projects">
+                          去项目页置顶
+                        </Link>
+                      }
+                      description="把正在推进的周期项目置顶后，会出现在这里。"
+                      icon={FolderKanban}
+                      title="还没有置顶项目"
+                    />
+                  )
+                }
+                return pinned.map((project) => (
                   <Link className="project-summary" key={project.id} to={`/projects/${project.id}`}>
                     <strong>{project.name}</strong>
                     <p>{project.currentTask?.title ?? "等待设置当前任务"}</p>
@@ -195,7 +210,8 @@ export function HomePage() {
                       value={project.progress}
                     />
                   </Link>
-                ))}
+                ))
+              })()}
             </div>
           </section>
           <section className="section-band">

@@ -124,6 +124,13 @@ export const projectAiPlanSchema = z
 
 export type ProjectAiPlan = z.infer<typeof projectAiPlanSchema>
 
+export const projectAiHistoryEntrySchema = z
+  .object({
+    question: z.string(),
+    answer: z.string(),
+  })
+  .readonly()
+
 export const projectAiSessionSchema = z
   .object({
     projectId: projectIdSchema,
@@ -132,6 +139,7 @@ export const projectAiSessionSchema = z
     answeredCount: z.number().int().nonnegative(),
     totalQuestions: z.number().int().min(1).max(3),
     draft: projectAiPlanSchema.nullable(),
+    history: z.array(projectAiHistoryEntrySchema).readonly().default([]),
   })
   .readonly()
 

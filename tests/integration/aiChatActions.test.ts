@@ -98,6 +98,59 @@ describe("AI chat habit actions", () => {
     )
   })
 
+  it("accepts create_habit aliases for frequency and target", async () => {
+    const { app, database } = await setup(
+      `好的，我来创建习惯。
+
+\`\`\`json
+{"action":"create_habit","name":"喝水","type":"check","frequency":"daily","target":1}
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我创建一个每天喝水的习惯",
+        currentPath: "/habits",
+        currentLabel: "习惯",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    const content = response.json().message.content as string
+    expect(content).toContain("已实际创建习惯「喝水」")
+    expect(content).not.toContain("```")
+    expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "喝水")).toBe(true)
+  })
+
+  it("strips invalid action blocks and reports failure without leaking raw JSON", async () => {
+    const { app, database } = await setup(
+      `好的，我来创建习惯。
+
+\`\`\`json
+{"action":"create_habit","name":"坏习惯","bogus":true}
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我创建一个习惯",
+        currentPath: "/habits",
+        currentLabel: "习惯",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    const content = response.json().message.content as string
+    expect(content).toContain("未能执行")
+    expect(content).not.toContain("```")
+    expect(content).not.toContain('"bogus"')
+    expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "坏习惯")).toBe(false)
+  })
+
   it("does not create a habit when the model only claims success", async () => {
     const { app, database } = await setup(
       "已创建习惯「晨间拉伸」，你今天就可以开始打卡了。",

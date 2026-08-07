@@ -130,6 +130,56 @@
 .project-facts dd {
   margin: 0;
 }
+.linked-items {
+  display: grid;
+  gap: var(--space-2);
+}
+.linked-items__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.linked-items__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.linked-items__list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  padding: var(--space-2) var(--space-3);
+}
+.linked-items__list > li > span {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.project-ai-history {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.project-ai-history > li {
+  display: grid;
+  gap: var(--space-1);
+  border-inline-start: 2px solid var(--color-border-strong);
+  padding-inline-start: var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.project-ai-history > li p {
+  margin: 0;
+}
+.project-ai-history strong {
+  color: var(--color-text);
+}
 .project-editor {
   margin-block-start: var(--space-8);
   border-block: 1px solid var(--color-border);

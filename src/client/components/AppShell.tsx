@@ -11,7 +11,7 @@ import {
   Sparkles,
   Target,
 } from "lucide-react"
-import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent } from "react"
+import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent } from "react"
 import { NavLink, Outlet } from "react-router"
 import { localDateFor } from "../lib/date.js"
 import { useMeta } from "../lib/queries.js"
@@ -82,6 +82,7 @@ export function AppShell() {
     }),
     [],
   )
+  const clearAiDraft = useCallback(() => setAiDraft(null), [])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -160,7 +161,9 @@ export function AppShell() {
             <nav aria-label="主导航">
               {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
                 <NavLink
-                  className={({ isActive }) => `nav-item${isActive ? " nav-item--active" : ""}`}
+                  className={({ isActive, isPending }) =>
+                    `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
+                  }
                   end={end}
                   key={to}
                   to={to}
@@ -204,7 +207,9 @@ export function AppShell() {
           </aside>
           <main className="main-scroll" data-app-background>
             <ReminderBanner />
-            <Outlet />
+            <Suspense fallback={<p className="page-loading">正在打开你的空间...</p>}>
+              <Outlet />
+            </Suspense>
           </main>
           {aiOpen ? (
             <div className="ai-panel" data-app-background>
@@ -223,6 +228,7 @@ export function AppShell() {
                   setAiFocusItemId(null)
                 }}
                 onConversationChange={setAiConversationId}
+                onDraftConsumed={clearAiDraft}
                 open={aiOpen}
                 requestedConversationId={aiConversationId}
               />

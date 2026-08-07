@@ -195,7 +195,12 @@ export function runScheduler(
   }
 }
 
-function notificationCopy(row: z.infer<typeof dueRowSchema>, timezone: string) {
+function notificationCopy(
+  database: DatabaseSync,
+  row: z.infer<typeof dueRowSchema>,
+  timezone: string,
+  now: Date,
+) {
   if (row.kind === "deadline") {
     const due =
       row.item_due_at === null
@@ -213,6 +218,45 @@ function notificationCopy(row: z.infer<typeof dueRowSchema>, timezone: string) {
     return { title: "本周可以轻轻收尾了", detail: "回顾已汇总完成、习惯、项目与收获。" }
   if (row.kind === "evening")
     return { title: "今天有什么值得留下？", detail: "写下一条收获就好，不必总结完整的一天。" }
+  const localDate = localClock(now, timezone).date
+  const focus = z
+    .object({ title: z.string() })
+    .optional()
+    .parse(
+      database
+        .prepare(
+          `SELECT items.title AS title FROM today_items
+           JOIN items ON items.id = today_items.item_id
+           WHERE today_items.local_date = ? AND today_items.is_focus = 1
+             AND items.status = 'active' AND items.deleted_at IS NULL
+           LIMIT 1`,
+        )
+        .get(localDate),
+    )
+  if (focus !== undefined) {
+    return {
+      title: "今日重点已就位",
+      detail: `专注推进「${focus.title}」即可，不必再另找一件。`,
+    }
+  }
+  const primaryCount = z
+    .object({ count: z.number().int() })
+    .parse(
+      database
+        .prepare(
+          `SELECT COUNT(*) AS count FROM today_items
+           JOIN items ON items.id = today_items.item_id
+           WHERE today_items.local_date = ? AND today_items.is_secondary = 0
+             AND items.status = 'active' AND items.deleted_at IS NULL`,
+        )
+        .get(localDate),
+    ).count
+  if (primaryCount > 0) {
+    return {
+      title: "今天的主要待办已安排",
+      detail: "从首页挑一件推进即可；想换重点时可在待办里重新设置。",
+    }
+  }
   return { title: "今天最想推进什么？", detail: "从收集箱选择一件，或保留一个足够小的今日重点。" }
 }
 
@@ -246,7 +290,7 @@ export function listDueNotifications(
       id: row.id,
       reminderId: row.reminder_id,
       kind: row.kind,
-      ...notificationCopy(row, timezone),
+      ...notificationCopy(database, row, timezone, now),
       scheduledAt: row.scheduled_at,
       entityId: row.entity_id,
     })

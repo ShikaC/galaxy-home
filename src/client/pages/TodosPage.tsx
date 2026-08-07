@@ -11,6 +11,7 @@ import { SortableItemList } from "../components/SortableItemList.js"
 import { TaskRow } from "../components/TaskRow.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
+import { Toast } from "../components/ui/Feedback.js"
 import { IconButton } from "../components/ui/IconButton.js"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
@@ -37,13 +38,23 @@ export function TodosPage() {
   const [organizing, setOrganizing] = useState<Item | null>(null)
   const [editing, setEditing] = useState<Item | null>(null)
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
+  const [organizeNote, setOrganizeNote] = useState<string | null>(null)
   useEffect(() => {
     const requested = searchParameters.get("category")
-    if (requested !== null && meta.data?.categories.some((category) => category.id === requested)) {
+    if (requested === null) {
+      setCategoryId(null)
+      return
+    }
+    if (meta.data?.categories.some((category) => category.id === requested)) {
       setCategoryId(requested)
       setView("active")
     }
   }, [meta.data?.categories, searchParameters])
+  useEffect(() => {
+    if (organizeNote === null) return
+    const timer = window.setTimeout(() => setOrganizeNote(null), 4_000)
+    return () => window.clearTimeout(timer)
+  }, [organizeNote])
   const status = useItemStatusMutation()
   const today = useTodayMutation()
   const items = useQuery({
@@ -113,6 +124,11 @@ export function TodosPage() {
       body: JSON.stringify({ itemIds }),
     }).then(() => client.invalidateQueries({ queryKey: ["items"] }))
   }
+  const selectView = (next: View) => {
+    setView(next)
+    setCategoryId(null)
+    if (searchParameters.get("category") !== null) void navigate("/todos")
+  }
   return (
     <div className="page">
       <PageHeader
@@ -125,6 +141,7 @@ export function TodosPage() {
         subtitle="先捕捉，再整理；想法会慢慢找到归处。"
         title="待办"
       />
+      {organizeNote === null ? null : <Toast>{organizeNote}</Toast>}
       <div className="todo-layout">
         <aside className="filter-nav">
           <strong>视图</strong>
@@ -132,10 +149,7 @@ export function TodosPage() {
             <button
               className={view === option.id && categoryId === null ? "selected" : ""}
               key={option.id}
-              onClick={() => {
-                setView(option.id)
-                setCategoryId(null)
-              }}
+              onClick={() => selectView(option.id)}
               type="button"
             >
               {option.label}
@@ -157,6 +171,7 @@ export function TodosPage() {
                 onClick={() => {
                   setCategoryId(category.id)
                   setView("active")
+                  void navigate(`/todos?category=${category.id}`)
                 }}
                 type="button"
               >
@@ -178,13 +193,25 @@ export function TodosPage() {
           {items.data?.length === 0 ? (
             <EmptyState
               action={
-                <Button onClick={actions.openCapture} size="compact">
-                  写下一件事
-                </Button>
+                view === "inbox" && categoryId === null ? (
+                  <Button onClick={() => selectView("active")} size="compact" variant="secondary">
+                    查看全部活跃
+                  </Button>
+                ) : (
+                  <Button onClick={actions.openCapture} size="compact">
+                    写下一件事
+                  </Button>
+                )
               }
-              description="这里目前没有条目。"
+              description={
+                view === "inbox" && categoryId === null
+                  ? "已分类或关联项目的条目会离开收集箱，可在「全部活跃」中找到。"
+                  : "这里目前没有条目。"
+              }
               icon={Inbox}
-              title="一切都已安放"
+              title={
+                view === "inbox" && categoryId === null ? "收集箱是空的" : "一切都已安放"
+              }
             />
           ) : categoryId === null ? (
             <div className="list-stack">
@@ -209,6 +236,7 @@ export function TodosPage() {
         onCreated={(id) => {
           setCategoryId(id)
           setView("active")
+          void navigate(`/todos?category=${id}`)
         }}
         open={createCategoryOpen}
       />
@@ -218,6 +246,11 @@ export function TodosPage() {
         onClose={() => {
           setEditing(null)
           setOrganizing(null)
+        }}
+        onSaved={(item, detail) => {
+          if (detail.leftInbox && view === "inbox") {
+            setOrganizeNote(`「${item.title}」已整理，可在「全部活跃」中找到。`)
+          }
         }}
       />
     </div>

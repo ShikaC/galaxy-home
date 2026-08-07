@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Bot, CalendarPlus, Check, Pause, Play } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router"
+import type { Item } from "../../shared/items.js"
 import type { Project } from "../../shared/projects.js"
 import { useAppTime } from "../components/AppContext.js"
 import { NextProjectStageForm } from "../components/NextProjectStageForm.js"
@@ -14,7 +15,7 @@ import { TextArea, TextField } from "../components/ui/Field.js"
 import { Badge, ProgressBar } from "../components/ui/Status.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta, useProjects } from "../lib/queries.js"
-import { itemSchema, projectSchema } from "../lib/schemas.js"
+import { itemSchema, itemsSchema, projectSchema } from "../lib/schemas.js"
 
 export function ProjectDetailPage() {
   const { id } = useParams()
@@ -26,6 +27,15 @@ export function ProjectDetailPage() {
   const [outcome, setOutcome] = useState("")
   const [obstacle, setObstacle] = useState("")
   const [nextTask, setNextTask] = useState("")
+  const linkedItems = useQuery({
+    queryKey: ["items", "project", id, today],
+    enabled: id !== undefined,
+    queryFn: () =>
+      apiRequest(
+        `/api/items?projectId=${id ?? ""}&view=active&localDate=${today}`,
+        itemsSchema,
+      ),
+  })
   const advance = useMutation({
     mutationFn: () =>
       apiVoid(`/api/projects/${id ?? ""}/advance`, {
@@ -63,6 +73,16 @@ export function ProjectDetailPage() {
         body: jsonBody({ localDate: today }),
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
+  })
+  const setCurrentFromItem = useMutation({
+    mutationFn: (item: Item) =>
+      apiRequest(`/api/projects/${id ?? ""}`, projectSchema, {
+        method: "PATCH",
+        body: jsonBody({ currentTask: item.title }),
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.projects })
+    },
   })
   const changeStatus = useMutation({
     mutationFn: (status: Project["status"]) =>
@@ -169,6 +189,38 @@ export function ProjectDetailPage() {
               <dd>{project.reason ?? "未设置"}</dd>
             </div>
           </dl>
+          <section className="linked-items">
+            <span className="project-section-label">关联待办</span>
+            {(linkedItems.data?.length ?? 0) === 0 ? (
+              <p className="linked-items__empty">
+                还没有关联待办。在整理条目时可勾选本项目，关联后会出现在这里。
+              </p>
+            ) : (
+              <ul className="linked-items__list">
+                {linkedItems.data?.map((item) => {
+                  const isCurrent = project.currentTask?.title === item.title
+                  return (
+                    <li key={item.id}>
+                      <span>{item.title}</span>
+                      <Button
+                        disabled={
+                          project.status !== "active" || isCurrent || setCurrentFromItem.isPending
+                        }
+                        onClick={() => setCurrentFromItem.mutate(item)}
+                        size="compact"
+                        variant="ghost"
+                      >
+                        {isCurrent ? "当前任务" : "设为当前任务"}
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            {setCurrentFromItem.isError ? (
+              <p className="inline-error">{setCurrentFromItem.error.message}</p>
+            ) : null}
+          </section>
         </section>
         {project.currentTask === null && project.nextTask === null ? (
           <NextProjectStageForm project={project} />

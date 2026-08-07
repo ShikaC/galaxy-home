@@ -75,6 +75,10 @@
   background: var(--color-surface-selected);
   color: var(--color-action-hover);
 }
+.nav-item--pending {
+  color: var(--color-text);
+  opacity: 0.72;
+}
 .sidebar__bottom {
   display: grid;
   gap: var(--space-1);

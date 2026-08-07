@@ -29,6 +29,7 @@ export function AiDrawer({
   focusItemId = null,
   onClose,
   onConversationChange,
+  onDraftConsumed,
   open,
   requestedConversationId,
 }: {
@@ -36,6 +37,7 @@ export function AiDrawer({
   readonly focusItemId?: string | null
   readonly onClose: () => void
   readonly onConversationChange: (conversationId: string | null) => void
+  readonly onDraftConsumed?: () => void
   readonly open: boolean
   readonly requestedConversationId: string | null
 }) {
@@ -70,6 +72,8 @@ export function AiDrawer({
           ),
       ),
     onMutate: ({ message, placeholderId }) => {
+      setContent("")
+      onDraftConsumed?.()
       setMessages((current) => [
         ...current,
         { id: crypto.randomUUID(), role: "user", content: message, references: [] },
@@ -92,7 +96,6 @@ export function AiDrawer({
             : entry,
         ),
       )
-      setContent("")
       setActiveFocusItemId(null)
       void client.invalidateQueries({ queryKey: queryKeys.meta })
       void client.invalidateQueries({ queryKey: ["habits"] })
@@ -123,9 +126,12 @@ export function AiDrawer({
   }, [loadConversation.mutate, open, requestedConversationId])
   useEffect(() => {
     if (!open) return
-    if (draft !== null) setContent(draft)
+    if (draft !== null) {
+      setContent(draft)
+      onDraftConsumed?.()
+    }
     setActiveFocusItemId(focusItemId)
-  }, [draft, focusItemId, open])
+  }, [draft, focusItemId, onDraftConsumed, open])
   const rename = useMutation({
     mutationFn: ({ id, title }: { readonly id: string; readonly title: string }) =>
       apiVoid(`/api/ai/conversations/${id}`, {

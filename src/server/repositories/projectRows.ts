@@ -49,7 +49,7 @@ function readTask(database: DatabaseSync, projectId: string, position: "current"
 }
 
 function readRecentProgress(database: DatabaseSync, projectId: string) {
-  return database
+  const rows = database
     .prepare(
       `SELECT project_feedback.id, project_tasks.title AS taskTitle,
        project_feedback.outcome, project_feedback.obstacle,
@@ -57,10 +57,26 @@ function readRecentProgress(database: DatabaseSync, projectId: string) {
        FROM project_feedback
        LEFT JOIN project_tasks ON project_tasks.id = project_feedback.task_id
        WHERE project_feedback.project_id = ?
-       ORDER BY project_feedback.created_at DESC LIMIT 8`,
+       ORDER BY project_feedback.created_at DESC LIMIT 16`,
     )
     .all(projectId)
     .map((progress) => progressRowSchema.parse(progress))
+  const deduped: typeof rows = []
+  for (const row of rows) {
+    const previous = deduped.at(-1)
+    if (
+      previous !== undefined &&
+      previous.taskTitle === row.taskTitle &&
+      previous.outcome === row.outcome &&
+      previous.obstacle === row.obstacle &&
+      previous.createdAt.slice(0, 10) === row.createdAt.slice(0, 10)
+    ) {
+      continue
+    }
+    deduped.push(row)
+    if (deduped.length >= 8) break
+  }
+  return deduped
 }
 
 function readCompletedStages(database: DatabaseSync, projectId: string) {

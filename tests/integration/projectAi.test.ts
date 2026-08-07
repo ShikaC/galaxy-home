@@ -109,7 +109,16 @@ describe("project AI workflow", () => {
       payload: { answer: "所有箱子运到并归位" },
     })
     expect(firstAnswer.json()).toEqual(
-      expect.objectContaining({ currentQuestion: "现在最大的不确定是什么？", answeredCount: 1 }),
+      expect.objectContaining({
+        currentQuestion: "现在最大的不确定是什么？",
+        answeredCount: 1,
+        history: [
+          {
+            question: "什么样算搬家完成？",
+            answer: "所有箱子运到并归位",
+          },
+        ],
+      }),
     )
     expect(responseIndex).toBe(1)
     const planned = await app.inject({
