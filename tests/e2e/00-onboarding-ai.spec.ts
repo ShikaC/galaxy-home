@@ -73,7 +73,7 @@ test("global search opens the matched AI conversation", async ({ page, request }
   await page.getByLabel("搜索空间").fill(searchPhrase)
   await page.getByRole("button", { name: new RegExp(searchPhrase) }).click()
 
-  const drawer = page.getByRole("dialog", { name: "星伴 AI 助手" })
+  const drawer = page.getByRole("complementary", { name: "星伴 AI 助手" })
   await expect(drawer).toBeVisible()
   await expect(drawer.getByText(searchPhrase, { exact: true })).toBeVisible()
 })
