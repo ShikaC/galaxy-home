@@ -48,7 +48,7 @@ npm start
 桌面壳（Tauri）：
 
 ```bash
-npm run desktop          # 开发：窗口 + 现有 Vite/API；数据目录默认用户 Application Support
+npm run desktop          # 开发：窗口 + Vite/API（默认 Web :5180 / API :3010，可与浏览器 :5173 并行）
 npm run desktop:build    # 打包：构建前端/服务资源后产出安装包
 ```
 

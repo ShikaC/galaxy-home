@@ -4,7 +4,7 @@
 
 ## 实现进度
 
-- [x] `src-tauri/` 桌面壳；开发 `npm run desktop`（数据目录默认用户 Application Support）
+- [x] `src-tauri/` 桌面壳；开发 `npm run desktop`（Web/API 默认 `5180/3010`，与浏览器 `5173/3001` 并行；数据目录默认用户 Application Support）
 - [x] 生产包启动时拉起本机 `node dist/server/index.js`（优先 `4177`，占用则在 `4177–4199` 选空闲端口；`GALAXY_DATA_DIR` = app data）
 - [x] due 提醒在桌面壳内镜像系统通知（应用运行期间；关机后调度仍不做）
 - [x] 启动前窗口隐藏，服务就绪后再导航并显示，避免空白加载

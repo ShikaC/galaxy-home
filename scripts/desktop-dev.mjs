@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process"
+import { createConnection } from "node:net"
 import { mkdirSync } from "node:fs"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
@@ -7,6 +8,10 @@ import { fileURLToPath } from "node:url"
 
 const identifier = "app.galaxyhome.desktop"
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
+
+/** Dedicated ports so `npm run desktop` can run alongside browser `npm run dev` on 5173/3001. */
+const webPort = Number(process.env["VITE_PORT"] ?? 5180)
+const apiPort = Number(process.env["API_PORT"] ?? process.env["VITE_API_PORT"] ?? 3010)
 
 function defaultDataDir() {
   if (process.platform === "darwin") {
@@ -18,12 +23,46 @@ function defaultDataDir() {
   return join(process.env["XDG_DATA_HOME"] ?? join(homedir(), ".local", "share"), identifier)
 }
 
+function portInUse(port) {
+  return new Promise((resolve) => {
+    const socket = createConnection({ host: "127.0.0.1", port })
+    socket.once("connect", () => {
+      socket.destroy()
+      resolve(true)
+    })
+    socket.once("error", () => resolve(false))
+  })
+}
+
 const dataDir = process.env["GALAXY_DATA_DIR"] ?? defaultDataDir()
 mkdirSync(dataDir, { recursive: true })
 
+if (await portInUse(webPort)) {
+  console.error(
+    `桌面开发端口 ${webPort} 已被占用。请先结束占用进程，或设置 VITE_PORT / API_PORT 后重试。\n（浏览器开发默认仍是 5173/3001，桌面默认 5180/3010，可并行。）`,
+  )
+  process.exit(1)
+}
+if (await portInUse(apiPort)) {
+  console.error(
+    `桌面 API 端口 ${apiPort} 已被占用。请先结束占用进程，或设置 API_PORT / VITE_API_PORT 后重试。`,
+  )
+  process.exit(1)
+}
+
+console.log(`桌面开发：Web http://127.0.0.1:${webPort}  API :${apiPort}`)
+console.log(`数据目录：${dataDir}`)
+
 const child = spawn("npm", ["run", "dev"], {
   cwd: root,
-  env: { ...process.env, GALAXY_DATA_DIR: dataDir },
+  env: {
+    ...process.env,
+    GALAXY_DATA_DIR: dataDir,
+    VITE_PORT: String(webPort),
+    VITE_API_PORT: String(apiPort),
+    API_PORT: String(apiPort),
+    VITE_DISABLE_REACT_DEVTOOLS: process.env["VITE_DISABLE_REACT_DEVTOOLS"] ?? "1",
+  },
   stdio: "inherit",
   shell: process.platform === "win32",
 })

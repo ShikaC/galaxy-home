@@ -5,7 +5,7 @@
   "identifier": "app.galaxyhome.desktop",
   "build": {
     "frontendDist": "http://127.0.0.1:4177",
-    "devUrl": "http://127.0.0.1:5173",
+    "devUrl": "http://127.0.0.1:5180",
     "beforeDevCommand": "node scripts/desktop-dev.mjs",
     "beforeBuildCommand": "npm run build && node scripts/prepare-desktop-resources.mjs"
   },
