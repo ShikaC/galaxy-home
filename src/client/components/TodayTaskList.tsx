@@ -13,7 +13,13 @@ import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useAppTime } from "./AppContext.js"
 import { TaskRow } from "./TaskRow.js"
 
-function SortableTask({ item, onEdit }: { readonly item: Item; readonly onEdit?: (item: Item) => void }) {
+function SortableTask({
+  item,
+  onEdit,
+}: {
+  readonly item: Item
+  readonly onEdit?: (item: Item) => void
+}) {
   const status = useItemStatusMutation()
   const today = useTodayMutation()
   const sortable = useSortable({ id: item.id })
@@ -77,11 +83,7 @@ export function TodayTaskList({
       <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
         <div className="list-stack">
           {items.map((item) => (
-            <SortableTask
-              item={item}
-              key={item.id}
-              {...(onEdit === undefined ? {} : { onEdit })}
-            />
+            <SortableTask item={item} key={item.id} {...(onEdit === undefined ? {} : { onEdit })} />
           ))}
         </div>
       </SortableContext>

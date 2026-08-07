@@ -154,12 +154,7 @@ export function DrawerSurface({
     return () => document.removeEventListener("keydown", onKeyDown)
   }, [onClose])
   return createPortal(
-    <aside
-      aria-label={ariaLabel}
-      className="ai-drawer"
-      ref={surfaceRef}
-      role="complementary"
-    >
+    <aside aria-label={ariaLabel} className="ai-drawer" ref={surfaceRef}>
       {children}
     </aside>,
     document.body,
