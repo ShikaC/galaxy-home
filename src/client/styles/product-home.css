@@ -3,10 +3,14 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  border-block: 1px solid var(--color-border);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
   padding: var(--space-4);
-  background: var(--color-surface-subtle);
+  background:
+    linear-gradient(105deg, var(--color-action-soft), transparent 42%),
+    var(--color-surface);
   color: var(--color-action-hover);
+  box-shadow: 0 1px 0 rgb(32 35 31 / 3%);
 }
 .quote-band blockquote {
   margin: 0;
@@ -16,13 +20,18 @@
 }
 .quote-band button {
   display: grid;
-  inline-size: 32px;
-  block-size: 32px;
+  inline-size: 36px;
+  block-size: 36px;
   place-items: center;
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
   cursor: pointer;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+.quote-band button:hover,
+.quote-band button:focus-visible {
+  background: var(--color-surface-hover);
 }
 .quick-start-guide {
   display: grid;

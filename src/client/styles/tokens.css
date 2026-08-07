@@ -1,23 +1,26 @@
 :root {
   color-scheme: light;
-  --color-canvas: #f4f5f2;
+  --color-canvas: #f3f5f1;
   --color-surface: #ffffff;
-  --color-surface-subtle: #f7f8f5;
-  --color-surface-selected: #e9f0e9;
-  --color-text: #20231f;
-  --color-text-muted: #667066;
-  --color-text-faint: #8c958c;
-  --color-border: #dde2dc;
-  --color-border-strong: #c6cec6;
-  --color-action: #26734d;
-  --color-action-hover: #1f6040;
-  --color-action-soft: #e6f2eb;
+  --color-surface-subtle: #f6f8f4;
+  --color-surface-selected: #e7f0e8;
+  --color-surface-hover: #eef3ee;
+  --color-text: #1f241f;
+  --color-text-muted: #5f6a5f;
+  --color-text-faint: #879087;
+  --color-border: #d9e0d8;
+  --color-border-strong: #c2cbc2;
+  --color-action: #246f4b;
+  --color-action-hover: #1c5c3c;
+  --color-action-soft: #e4f1ea;
   --color-attention: #d65f45;
   --color-attention-soft: #fff0eb;
   --color-reminder: #b7791f;
   --color-reminder-soft: #fff7e3;
   --color-chart-secondary: #4f7f86;
   --color-overlay-scrim: rgb(32 35 31 / 24%);
+  --color-star-trail: rgb(36 111 75 / 10%);
+  --color-star-glow: rgb(79 127 134 / 8%);
   --font-family-ui: "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-size-display: 28px;
   --font-size-title: 18px;
@@ -50,5 +53,8 @@
   font-synthesis: none;
   letter-spacing: 0;
   color: var(--color-text);
-  background: var(--color-canvas);
+  background:
+    radial-gradient(ellipse 80% 50% at 12% -10%, var(--color-star-glow), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 88% 0%, var(--color-star-trail), transparent 50%),
+    var(--color-canvas);
 }
