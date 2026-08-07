@@ -13,9 +13,11 @@ import { DialogSurface } from "./ui/ModalSurface.js"
 
 export function OrganizeDialog({
   item,
+  mode = "organize",
   onClose,
 }: {
   readonly item: Item | null
+  readonly mode?: "organize" | "edit"
   readonly onClose: () => void
 }) {
   const meta = useMeta()
@@ -73,10 +75,12 @@ export function OrganizeDialog({
     <DialogSurface ariaLabelledBy="organize-title" onClose={onClose}>
       <header className="dialog__header">
         <div>
-          <p className="eyebrow">整理条目</p>
-          <h2 id="organize-title">决定它接下来去哪里</h2>
+          <p className="eyebrow">{mode === "edit" ? "编辑待办" : "整理条目"}</p>
+          <h2 id="organize-title">
+            {mode === "edit" ? "把内容改成现在准确的样子" : "决定它接下来去哪里"}
+          </h2>
         </div>
-        <IconButton label="关闭整理面板" onClick={onClose}>
+        <IconButton label={mode === "edit" ? "关闭编辑面板" : "关闭整理面板"} onClick={onClose}>
           <X size={18} />
         </IconButton>
       </header>
@@ -153,7 +157,7 @@ export function OrganizeDialog({
             取消
           </Button>
           <Button disabled={!title.trim()} loading={save.isPending} type="submit">
-            保存整理
+            {mode === "edit" ? "保存修改" : "保存整理"}
           </Button>
         </footer>
       </form>

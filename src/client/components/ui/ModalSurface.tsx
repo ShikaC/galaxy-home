@@ -144,16 +144,21 @@ export function DrawerSurface({
   readonly onClose: () => void
 }) {
   const surfaceRef = useRef<HTMLElement>(null)
-  useModalFocus(surfaceRef, onClose)
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      onClose()
+    }
+    document.addEventListener("keydown", onKeyDown)
+    return () => document.removeEventListener("keydown", onKeyDown)
+  }, [onClose])
   return createPortal(
     <aside
       aria-label={ariaLabel}
-      aria-modal="true"
       className="ai-drawer"
-      data-modal-root
       ref={surfaceRef}
-      role="dialog"
-      tabIndex={-1}
+      role="complementary"
     >
       {children}
     </aside>,

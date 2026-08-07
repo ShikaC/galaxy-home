@@ -1,7 +1,9 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useState } from "react"
-import { describe, expect, it } from "vitest"
-import { DialogSurface } from "../../src/client/components/ui/ModalSurface.js"
+import { afterEach, describe, expect, it } from "vitest"
+import { DialogSurface, DrawerSurface } from "../../src/client/components/ui/ModalSurface.js"
+
+afterEach(cleanup)
 
 function ModalHarness() {
   const [open, setOpen] = useState(false)
@@ -16,6 +18,29 @@ function ModalHarness() {
           <button type="button">第一个操作</button>
           <button type="button">最后一个操作</button>
         </DialogSurface>
+      ) : null}
+    </div>
+  )
+}
+
+function DrawerHarness() {
+  const [open, setOpen] = useState(false)
+  const [navigationClicks, setNavigationClicks] = useState(0)
+  return (
+    <div>
+      <main data-app-background>
+        <button onClick={() => setNavigationClicks((value) => value + 1)} type="button">
+          左侧导航
+        </button>
+        <output>{navigationClicks}</output>
+      </main>
+      <button onClick={() => setOpen(true)} type="button">
+        打开 AI
+      </button>
+      {open ? (
+        <DrawerSurface ariaLabel="测试 AI 抽屉" onClose={() => setOpen(false)}>
+          <button type="button">抽屉操作</button>
+        </DrawerSurface>
       ) : null}
     </div>
   )
@@ -48,5 +73,23 @@ describe("DialogSurface", () => {
     expect(background).not.toHaveAttribute("inert")
     expect(document.body.style.overflow).toBe("")
     expect(trigger).toHaveFocus()
+  })
+})
+
+describe("DrawerSurface", () => {
+  it("keeps app navigation interactive while the drawer is open", async () => {
+    render(<DrawerHarness />)
+    fireEvent.click(screen.getByRole("button", { name: "打开 AI" }))
+
+    const background = screen.getByRole("main", { hidden: true })
+    const navigation = screen.getByRole("button", { name: "左侧导航", hidden: true })
+    expect(background).not.toHaveAttribute("inert")
+    expect(document.body.style.overflow).toBe("")
+
+    fireEvent.click(navigation)
+    expect(screen.getByText("1")).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: "Escape" })
+    await waitFor(() => expect(screen.queryByRole("complementary")).not.toBeInTheDocument())
   })
 })

@@ -3,8 +3,10 @@ import { ArrowRight, CheckSquare2, Plus, RefreshCw, Sparkles } from "lucide-reac
 import { useState } from "react"
 import { Link } from "react-router"
 import { gainSchema, quoteSchema } from "../../shared/app.js"
+import type { Item } from "../../shared/items.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { HabitRow } from "../components/HabitRow.js"
+import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
 import { QuickStartGuide } from "../components/QuickStartGuide.js"
 import { TaskRow } from "../components/TaskRow.js"
@@ -39,6 +41,7 @@ export function HomePage() {
   const undo = useHabitMutation("undo")
   const itemStatus = useItemStatusMutation()
   const [gain, setGain] = useState("")
+  const [editing, setEditing] = useState<Item | null>(null)
   const addGain = useMutation({
     mutationFn: () =>
       apiRequest("/api/gains", gainSchema, {
@@ -122,6 +125,7 @@ export function HomePage() {
             ) : (
               <TodayTaskList
                 items={primaryToday}
+                onEdit={setEditing}
                 onReordered={() => void client.invalidateQueries({ queryKey: ["items"] })}
               />
             )}
@@ -133,6 +137,7 @@ export function HomePage() {
                     item={item}
                     key={item.id}
                     onComplete={() => itemStatus.mutate({ id: item.id, status: "completed" })}
+                    onEdit={() => setEditing(item)}
                   />
                 ))}
               </details>
@@ -234,6 +239,7 @@ export function HomePage() {
           </section>
         </aside>
       </div>
+      <OrganizeDialog item={editing} mode="edit" onClose={() => setEditing(null)} />
     </div>
   )
 }

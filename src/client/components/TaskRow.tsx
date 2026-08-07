@@ -1,4 +1,13 @@
-import { Archive, CalendarPlus, Copy, Focus, FolderPlus, ListPlus, Trash2 } from "lucide-react"
+import {
+  Archive,
+  CalendarPlus,
+  Copy,
+  Focus,
+  FolderPlus,
+  ListPlus,
+  Pencil,
+  Trash2,
+} from "lucide-react"
 import type { Item } from "../../shared/items.js"
 import { useAppTime } from "./AppContext.js"
 import { type TaskAction, TaskActionsMenu } from "./TaskActionsMenu.js"
@@ -12,6 +21,7 @@ export function TaskRow({
   onConvertProject,
   onCopy,
   onDelete,
+  onEdit,
   onFocus,
   onOrganize,
   onSecondary,
@@ -23,6 +33,7 @@ export function TaskRow({
   readonly onConvertProject?: (() => void) | undefined
   readonly onCopy?: (() => void) | undefined
   readonly onDelete?: (() => void) | undefined
+  readonly onEdit?: (() => void) | undefined
   readonly onFocus?: (() => void) | undefined
   readonly onOrganize?: (() => void) | undefined
   readonly onSecondary?: (() => void) | undefined
@@ -51,6 +62,7 @@ export function TaskRow({
           },
         ]
       : []),
+    ...(onEdit ? [{ icon: Pencil, label: "编辑待办", onSelect: onEdit }] : []),
     ...(onCopy ? [{ icon: Copy, label: "复制待办", onSelect: onCopy }] : []),
     ...(onConvertProject
       ? [{ icon: FolderPlus, label: "转为新项目", onSelect: onConvertProject }]

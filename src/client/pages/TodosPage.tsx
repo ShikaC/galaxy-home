@@ -33,6 +33,7 @@ export function TodosPage() {
   const [view, setView] = useState<View>("inbox")
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState<Item | null>(null)
+  const [editing, setEditing] = useState<Item | null>(null)
   useEffect(() => {
     const requested = searchParameters.get("category")
     if (requested !== null && meta.data?.categories.some((category) => category.id === requested)) {
@@ -85,6 +86,7 @@ export function TodosPage() {
       onConvertProject={item.status === "active" ? () => convert.mutate(item) : undefined}
       onCopy={() => copy.mutate(item)}
       onDelete={() => remove.mutate(item)}
+      onEdit={() => setEditing(item)}
       onFocus={
         item.status === "active" ? () => today.mutate({ id: item.id, focus: true }) : undefined
       }
@@ -190,7 +192,14 @@ export function TodosPage() {
           ) : null}
         </section>
       </div>
-      <OrganizeDialog item={organizing} onClose={() => setOrganizing(null)} />
+      <OrganizeDialog
+        item={editing ?? organizing}
+        mode={editing === null ? "organize" : "edit"}
+        onClose={() => {
+          setEditing(null)
+          setOrganizing(null)
+        }}
+      />
     </div>
   )
 }
