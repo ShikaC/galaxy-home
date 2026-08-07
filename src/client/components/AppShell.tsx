@@ -153,7 +153,7 @@ export function AppShell() {
           >
             <div className="brand">
               <span className="brand-mark">
-                <Sparkles size={18} />
+                <Sparkles aria-hidden="true" size={18} />
               </span>
               <strong>银河居所</strong>
             </div>
@@ -161,6 +161,7 @@ export function AppShell() {
             <nav aria-label="主导航">
               {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
                 <NavLink
+                  aria-label={label}
                   className={({ isActive, isPending }) =>
                     `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
                   }
@@ -182,7 +183,11 @@ export function AppShell() {
                 title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
                 type="button"
               >
-                {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                {sidebarCollapsed ? (
+                  <PanelLeftOpen aria-hidden="true" size={18} />
+                ) : (
+                  <PanelLeftClose aria-hidden="true" size={18} />
+                )}
                 <span>{sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}</span>
               </button>
               <button

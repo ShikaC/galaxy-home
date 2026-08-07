@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Archive, ArrowRight, Inbox, Sparkles } from "lucide-react"
+import { Archive, ArrowRight, Inbox, ListPlus, Sparkles } from "lucide-react"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { previousCalendarDate } from "../lib/date.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
@@ -40,6 +40,13 @@ export function YesterdayReview() {
           <div>
             <Button onClick={() => today.mutate({ id: item.id, focus: false })} size="compact">
               <ArrowRight size={14} /> 加入今天
+            </Button>
+            <Button
+              onClick={() => today.mutate({ id: item.id, focus: false, secondary: true })}
+              size="compact"
+              variant="secondary"
+            >
+              <ListPlus size={14} /> 加入临时小事
             </Button>
             <Button
               onClick={() => removeFromDay.mutate(item.id)}

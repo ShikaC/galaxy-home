@@ -88,6 +88,37 @@ describe("habit repository", () => {
     expect(listHabits(database, "2026-08-04")[0]?.streak).toBe(2)
   })
 
+  it("rejects recording on a rest day unless the log is an explicit correction", () => {
+    const habit = createHabit(database, {
+      name: "休息日阅读",
+      type: "check",
+      targetCount: 1,
+      frequencyType: "daily",
+      weeklyTarget: null,
+      restDays: [3],
+    })
+
+    expect(() => recordHabit(database, habit.id, "2026-08-05")).toThrowError(/休息日/)
+    expect(() =>
+      setHabitLog(database, {
+        habitId: habit.id,
+        localDate: "2026-08-05",
+        count: 1,
+        status: "active",
+        corrected: false,
+      }),
+    ).toThrowError(/休息日/)
+
+    setHabitLog(database, {
+      habitId: habit.id,
+      localDate: "2026-08-05",
+      count: 1,
+      status: "active",
+      corrected: true,
+    })
+    expect(listHabits(database, "2026-08-05")[0]?.currentCount).toBe(1)
+  })
+
   it("counts weekly target progress inside the current Monday-to-Sunday week", () => {
     const habit = createHabit(database, {
       name: "本周阅读",

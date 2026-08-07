@@ -19,10 +19,6 @@ test.describe("reminder banner", () => {
     page,
     request,
   }) => {
-    test.skip(
-      test.info().project.name !== "desktop-wide",
-      "Reminder clock seam is only enabled on the desktop-wide server",
-    )
     await ensureOnboarding(page)
     const notifications = await request.get("/api/notifications")
     expect(notifications.ok()).toBe(true)

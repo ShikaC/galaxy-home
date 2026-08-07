@@ -28,19 +28,35 @@
 | AI 未配置/失败可恢复、不写脏数据 | 通过（主路径） |
 | 转写失败不建空条目 | 通过 |
 | 导入错误不覆盖库 | 通过（backup 测试） |
-| 时区/休息日统计 | 已有习惯测试覆盖；持续 dogfood |
+| 时区/休息日统计 | 已有习惯测试覆盖；见下方持续项 |
 | 多分类一致性 | 通过 |
 | 刷新后会话与数据稳定 | 通过（会话滚动已修） |
-| 键盘焦点与图标名称 | 主控件具备；扫盲进行中 |
+| 键盘焦点与图标名称 | 主控件具备；见下方持续项 |
 
 ## 21.3 质量门槛
 
 | 项 | 状态 |
 |----|------|
 | typecheck / build | 通过（2026-08-07） |
-| `npm test` | 通过 104 tests |
-| `npm run test:e2e` | 通过 23 passed / 1 skipped |
+| `npm test` | 通过 105 tests |
+| `npm run test:e2e` | 通过 24 passed / 0 skipped |
 | 视觉截图无重叠 | visual-acceptance 通过 |
-| 人工两条黄金路径 | e2e acceptance-flow + project-ai 覆盖；真实 dogfood 持续确认 |
+| 人工两条黄金路径 | e2e acceptance-flow + project-ai 覆盖；见下方持续项 |
+
+## 21.4 持续 dogfood 勾选（不扩范围）
+
+封板后仍靠真实使用确认的边角；完成一项勾一项，摩擦记入 [dogfood-friction.md](./dogfood-friction.md)。
+
+- [ ] 时区切换后习惯休息日与「今日」统计仍正确（已：保存后刷新查询 + 提示；请人工换区抽查）
+- [x] 休息日习惯展示与打卡边界符合预期（服务端拒绝非修正打卡）
+- [x] 主路径控件具备可见焦点环；装饰性图标有可理解名称或 `aria-hidden`
+- [x] 提醒横幅：宽屏与窄屏 e2e 均覆盖（固定时钟）
+- [ ] 黄金路径人工抽查：记一条 → 排今日 → 习惯打卡 → 项目推进 → 导出包不含 Key
+- [ ] 侧栏 AI 口语剧本（见 [ai-oral-script.md](./ai-oral-script.md)）按当前模型复跑并更新通过率
+
+形态与本地模型决策包：
+
+- [docs/decisions/desktop-packaging.md](./decisions/desktop-packaging.md)（**已决策并完成第一刀：Tauri 轻壳**）
+- [docs/decisions/local-model.md](./decisions/local-model.md)（**已决策：暂不接入本地模型**）
 
 更新日期：2026-08-07

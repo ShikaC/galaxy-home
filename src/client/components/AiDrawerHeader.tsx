@@ -23,7 +23,7 @@ export function AiDrawerHeader({
       <header className="drawer__header">
         <div>
           <span className="drawer__title">
-            <Bot size={19} />
+            <Bot aria-hidden="true" size={19} />
             <strong>{nickname}</strong>
           </span>
           <Badge tone={configured ? "positive" : "waiting"}>

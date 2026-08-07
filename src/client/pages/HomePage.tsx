@@ -88,7 +88,7 @@ export function HomePage() {
       />
       {meta.data?.tutorial.guideDismissed === false ? <QuickStartGuide /> : null}
       <section className="quote-band">
-        <Sparkles size={18} />
+        <Sparkles aria-hidden="true" size={18} />
         <blockquote>{quote.data?.content ?? "先记下一件小事，今天就从这里开始。"}</blockquote>
         <button
           aria-label="换一句每日短语"
@@ -96,7 +96,7 @@ export function HomePage() {
           title="换一句"
           type="button"
         >
-          <RefreshCw size={16} />
+          <RefreshCw aria-hidden="true" size={16} />
         </button>
       </section>
       <YesterdayReview />
@@ -146,7 +146,12 @@ export function HomePage() {
               <details className="completed-fold">
                 <summary>今日已完成 {completedToday.length} 项</summary>
                 {completedToday.map((item) => (
-                  <p key={item.id}>{item.title}</p>
+                  <TaskRow
+                    item={item}
+                    key={item.id}
+                    onComplete={() => itemStatus.mutate({ id: item.id, status: "active" })}
+                    onEdit={() => setEditing(item)}
+                  />
                 ))}
               </details>
             ) : null}
@@ -244,6 +249,7 @@ export function HomePage() {
                 <article key={entry.id}>
                   <time>
                     {new Date(entry.createdAt).toLocaleTimeString("zh-CN", {
+                      timeZone: timezone,
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
