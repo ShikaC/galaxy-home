@@ -81,11 +81,55 @@ function normalizeActionCandidate(raw: unknown): unknown {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw
   const value = { ...(raw as Record<string, unknown>) }
   if (value["action"] === "create_habit") {
-    if (value["frequencyType"] === undefined && typeof value["frequency"] === "string") {
-      value["frequencyType"] = value["frequency"]
+    if (value["type"] === undefined) {
+      const typeAlias = value["habitType"] ?? value["kind"] ?? value["checkType"]
+      if (typeof typeAlias === "string") value["type"] = typeAlias
     }
-    if (value["targetCount"] === undefined && typeof value["target"] === "number") {
-      value["targetCount"] = value["target"]
+    if (typeof value["type"] === "string") {
+      const type = value["type"].trim().toLowerCase()
+      if (type === "checkbox" || type === "tick" || type === "打卡" || type === "勾选") {
+        value["type"] = "check"
+      } else if (type === "counter" || type === "计数") {
+        value["type"] = "count"
+      }
+    }
+    if (value["type"] === undefined) value["type"] = "check"
+
+    if (value["frequencyType"] === undefined) {
+      const frequencyAlias = value["frequency"] ?? value["freq"] ?? value["schedule"]
+      if (typeof frequencyAlias === "string") value["frequencyType"] = frequencyAlias
+    }
+    if (typeof value["frequencyType"] === "string") {
+      const frequency = value["frequencyType"].trim().toLowerCase()
+      if (["daily", "day", "everyday", "每天", "每日"].includes(frequency)) {
+        value["frequencyType"] = "daily"
+      } else if (["weekly", "week", "每周"].includes(frequency)) {
+        value["frequencyType"] = "weekly"
+      }
+    }
+    if (value["frequencyType"] === undefined) value["frequencyType"] = "daily"
+
+    if (value["targetCount"] === undefined) {
+      const targetAlias = value["target"] ?? value["count"] ?? value["times"] ?? value["goal"]
+      if (typeof targetAlias === "number" || typeof targetAlias === "string") {
+        value["targetCount"] = targetAlias
+      }
+    }
+    if (typeof value["targetCount"] === "string" && value["targetCount"].trim() !== "") {
+      const parsed = Number(value["targetCount"])
+      if (Number.isFinite(parsed)) value["targetCount"] = parsed
+    }
+    if (value["targetCount"] === undefined) value["targetCount"] = 1
+
+    if (value["weeklyTarget"] === undefined) {
+      const weeklyAlias = value["weekly_target"] ?? value["weekTarget"]
+      if (weeklyAlias === null || typeof weeklyAlias === "number" || typeof weeklyAlias === "string") {
+        value["weeklyTarget"] = weeklyAlias
+      }
+    }
+    if (typeof value["weeklyTarget"] === "string" && value["weeklyTarget"].trim() !== "") {
+      const parsed = Number(value["weeklyTarget"])
+      if (Number.isFinite(parsed)) value["weeklyTarget"] = parsed
     }
     if (value["weeklyTarget"] === undefined) value["weeklyTarget"] = null
     if (value["restDays"] === undefined) value["restDays"] = []

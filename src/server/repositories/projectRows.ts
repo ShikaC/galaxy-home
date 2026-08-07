@@ -48,6 +48,58 @@ function readTask(database: DatabaseSync, projectId: string, position: "current"
   return row === undefined ? null : projectTaskSchema.parse(row)
 }
 
+function normalizeProgressText(value: string | null): string {
+  return (value ?? "").replace(/\s+/g, "").toLowerCase()
+}
+
+function progressDisplayText(progress: z.infer<typeof progressRowSchema>): string {
+  return (
+    normalizeProgressText(progress.taskTitle) ||
+    normalizeProgressText(progress.outcome) ||
+    normalizeProgressText(progress.obstacle)
+  )
+}
+
+function bigramOverlapRatio(left: string, right: string): number {
+  if (left.length < 2 || right.length < 2) return left === right ? 1 : 0
+  const leftGrams = new Set<string>()
+  for (let index = 0; index < left.length - 1; index += 1) {
+    leftGrams.add(left.slice(index, index + 2))
+  }
+  let shared = 0
+  let total = 0
+  for (let index = 0; index < right.length - 1; index += 1) {
+    total += 1
+    if (leftGrams.has(right.slice(index, index + 2))) shared += 1
+  }
+  return total === 0 ? 0 : shared / total
+}
+
+function isSimilarProgress(
+  left: z.infer<typeof progressRowSchema>,
+  right: z.infer<typeof progressRowSchema>,
+): boolean {
+  if (left.createdAt.slice(0, 10) !== right.createdAt.slice(0, 10)) return false
+  if (
+    left.taskTitle === right.taskTitle &&
+    left.outcome === right.outcome &&
+    left.obstacle === right.obstacle
+  ) {
+    return true
+  }
+  const a = progressDisplayText(left)
+  const b = progressDisplayText(right)
+  if (a === "" || b === "") return false
+  if (a === b) return true
+  const shorter = a.length <= b.length ? a : b
+  const longer = a.length <= b.length ? b : a
+  if (shorter.length >= 12 && longer.includes(shorter)) return true
+  return (
+    Math.min(a.length, b.length) >= 16 &&
+    Math.max(bigramOverlapRatio(a, b), bigramOverlapRatio(b, a)) >= 0.72
+  )
+}
+
 function readRecentProgress(database: DatabaseSync, projectId: string) {
   const rows = database
     .prepare(
@@ -57,22 +109,13 @@ function readRecentProgress(database: DatabaseSync, projectId: string) {
        FROM project_feedback
        LEFT JOIN project_tasks ON project_tasks.id = project_feedback.task_id
        WHERE project_feedback.project_id = ?
-       ORDER BY project_feedback.created_at DESC LIMIT 16`,
+       ORDER BY project_feedback.created_at DESC LIMIT 24`,
     )
     .all(projectId)
     .map((progress) => progressRowSchema.parse(progress))
   const deduped: typeof rows = []
   for (const row of rows) {
-    const previous = deduped.at(-1)
-    if (
-      previous !== undefined &&
-      previous.taskTitle === row.taskTitle &&
-      previous.outcome === row.outcome &&
-      previous.obstacle === row.obstacle &&
-      previous.createdAt.slice(0, 10) === row.createdAt.slice(0, 10)
-    ) {
-      continue
-    }
+    if (deduped.some((previous) => isSimilarProgress(previous, row))) continue
     deduped.push(row)
     if (deduped.length >= 8) break
   }

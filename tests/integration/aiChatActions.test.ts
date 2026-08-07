@@ -124,12 +124,60 @@ describe("AI chat habit actions", () => {
     expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "喝水")).toBe(true)
   })
 
+  it("fills create_habit defaults when the model omits common fields", async () => {
+    const { app, database } = await setup(
+      `好的。
+
+\`\`\`json
+{"action":"create_habit","name":"复测喝水","habitType":"勾选","frequency":"每天","targetCount":"1"}
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我创建一个每天喝水的习惯，名字就叫复测喝水",
+        currentPath: "/habits",
+        currentLabel: "习惯",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("已实际创建习惯「复测喝水」")
+    expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "复测喝水")).toBe(true)
+  })
+
+  it("creates a habit from a minimal create_habit action block", async () => {
+    const { app, database } = await setup(
+      `已准备好。
+
+\`\`\`json
+{"action":"create_habit","name":"早起喝水"}
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我加一个早起喝水习惯",
+        currentPath: "/habits",
+        currentLabel: "习惯",
+      },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("已实际创建习惯「早起喝水」")
+    expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "早起喝水")).toBe(true)
+  })
+
   it("strips invalid action blocks and reports failure without leaking raw JSON", async () => {
     const { app, database } = await setup(
       `好的，我来创建习惯。
 
 \`\`\`json
-{"action":"create_habit","name":"坏习惯","bogus":true}
+{"action":"create_habit","name":"坏习惯","type":"banana","frequencyType":"hourly"}
 \`\`\``,
       "open",
     )
@@ -147,7 +195,7 @@ describe("AI chat habit actions", () => {
     const content = response.json().message.content as string
     expect(content).toContain("未能执行")
     expect(content).not.toContain("```")
-    expect(content).not.toContain('"bogus"')
+    expect(content).not.toContain('"banana"')
     expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "坏习惯")).toBe(false)
   })
 
