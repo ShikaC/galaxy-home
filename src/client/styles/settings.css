@@ -259,8 +259,13 @@ kbd {
 }
 .onboarding {
   display: grid;
-  min-block-size: 100dvb;
+  box-sizing: border-box;
+  block-size: 100dvb;
+  max-block-size: 100dvb;
+  overflow-x: hidden;
+  overflow-y: auto;
   place-items: center;
+  align-content: safe center;
   padding: var(--space-8);
   background: var(--color-canvas);
 }
@@ -268,6 +273,7 @@ kbd {
   display: grid;
   inline-size: min(100%, 640px);
   gap: var(--space-6);
+  margin-block: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   padding: var(--space-8);
