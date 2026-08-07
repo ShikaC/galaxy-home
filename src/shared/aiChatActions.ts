@@ -7,13 +7,15 @@ export const actionAliasSchema = z
 
 export const entityRefSchema = z
   .string()
+  .trim()
   .min(1)
-  .max(64)
+  .max(200)
   .refine(
     (value) =>
       z.string().uuid().safeParse(value).success ||
-      /^\$[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(value),
-    { message: "须为 UUID 或 $别名" },
+      /^\$[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(value) ||
+      !value.startsWith("$"),
+    { message: "须为 UUID、$别名，或可解析的标题/名称" },
   )
 
 export const chatActionSchema = z.discriminatedUnion("action", [

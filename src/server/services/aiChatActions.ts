@@ -38,6 +38,70 @@ function resolveEntityRef(value: string, refs: ReadonlyMap<string, string>): str
   return resolved
 }
 
+function resolveProjectRef(
+  database: DatabaseSync,
+  value: string,
+  refs: ReadonlyMap<string, string>,
+): z.infer<typeof projectIdSchema> {
+  const resolved = resolveEntityRef(value, refs)
+  if (z.string().uuid().safeParse(resolved).success) return projectIdSchema.parse(resolved)
+  const row = z
+    .object({ id: z.string().uuid() })
+    .optional()
+    .parse(
+      database
+        .prepare(
+          "SELECT id FROM projects WHERE deleted_at IS NULL AND name = ? ORDER BY updated_at DESC LIMIT 1",
+        )
+        .get(resolved),
+    )
+  if (row === undefined) throw new Error(`找不到项目「${value}」`)
+  return projectIdSchema.parse(row.id)
+}
+
+function resolveItemRef(
+  database: DatabaseSync,
+  value: string,
+  refs: ReadonlyMap<string, string>,
+): z.infer<typeof itemIdSchema> {
+  const resolved = resolveEntityRef(value, refs)
+  if (z.string().uuid().safeParse(resolved).success) return itemIdSchema.parse(resolved)
+  const row = z
+    .object({ id: z.string().uuid() })
+    .optional()
+    .parse(
+      database
+        .prepare(
+          `SELECT id FROM items WHERE deleted_at IS NULL AND title = ?
+           ORDER BY updated_at DESC LIMIT 1`,
+        )
+        .get(resolved),
+    )
+  if (row === undefined) throw new Error(`找不到待办「${value}」`)
+  return itemIdSchema.parse(row.id)
+}
+
+function resolveCategoryRef(
+  database: DatabaseSync,
+  value: string,
+  refs: ReadonlyMap<string, string>,
+): z.infer<typeof categoryIdSchema> {
+  const resolved = resolveEntityRef(value, refs)
+  if (z.string().uuid().safeParse(resolved).success) return categoryIdSchema.parse(resolved)
+  const row = z
+    .object({ id: z.string().uuid() })
+    .optional()
+    .parse(
+      database
+        .prepare(
+          "SELECT id FROM categories WHERE deleted_at IS NULL AND name = ? ORDER BY updated_at DESC LIMIT 1",
+        )
+        .get(resolved),
+    )
+  if (row === undefined) throw new Error(`找不到分类「${value}」`)
+  return categoryIdSchema.parse(row.id)
+}
+
 function rememberAlias(
   refs: Map<string, string>,
   alias: string | undefined,
@@ -77,9 +141,40 @@ export function extractChatActions(answer: string): {
   return { text: stripped, actions, parseFailed: false }
 }
 
+function coerceEntityRef(value: unknown): unknown {
+  if (typeof value === "string") return value
+  if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>
+    const alias = record["id"] ?? record["name"] ?? record["title"] ?? record["uuid"]
+    if (typeof alias === "string") return alias
+  }
+  return value
+}
+
+function coerceEntityRefList(value: unknown): unknown {
+  if (typeof value === "string") return [value]
+  if (!Array.isArray(value)) return value
+  return value.map((entry) => coerceEntityRef(entry))
+}
+
 function normalizeActionCandidate(raw: unknown): unknown {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return raw
   const value = { ...(raw as Record<string, unknown>) }
+  if (typeof value["action"] === "string") {
+    const action = value["action"].trim().toLowerCase()
+    if (
+      [
+        "set_categories",
+        "set_category",
+        "set_item_category",
+        "update_item_categories",
+        "assign_categories",
+        "update_categories",
+      ].includes(action)
+    ) {
+      value["action"] = "set_item_categories"
+    }
+  }
   if (value["action"] === "create_habit") {
     if (value["type"] === undefined) {
       const typeAlias = value["habitType"] ?? value["kind"] ?? value["checkType"]
@@ -133,6 +228,58 @@ function normalizeActionCandidate(raw: unknown): unknown {
     }
     if (value["weeklyTarget"] === undefined) value["weeklyTarget"] = null
     if (value["restDays"] === undefined) value["restDays"] = []
+  }
+  if (value["action"] === "create_item") {
+    if (value["projectIds"] === undefined && typeof value["projectId"] === "string") {
+      value["projectIds"] = [value["projectId"]]
+    }
+    if (value["categoryIds"] === undefined && typeof value["categoryId"] === "string") {
+      value["categoryIds"] = [value["categoryId"]]
+    }
+    value["projectIds"] = coerceEntityRefList(value["projectIds"])
+    value["categoryIds"] = coerceEntityRefList(value["categoryIds"])
+  }
+  if (
+    value["action"] === "update_item" ||
+    value["action"] === "set_today" ||
+    value["action"] === "trash_item" ||
+    value["action"] === "complete_item" ||
+    value["action"] === "archive_item" ||
+    value["action"] === "set_item_categories"
+  ) {
+    if (value["itemId"] === undefined) {
+      const itemAlias = value["id"] ?? value["item"] ?? value["title"]
+      if (typeof itemAlias === "string" || (itemAlias !== null && typeof itemAlias === "object")) {
+        value["itemId"] = itemAlias
+      }
+    }
+    value["itemId"] = coerceEntityRef(value["itemId"])
+  }
+  if (value["action"] === "set_item_categories") {
+    if (value["categoryIds"] === undefined) {
+      const categoryAlias = value["categories"] ?? value["categoryId"] ?? value["category"]
+      if (categoryAlias !== undefined) value["categoryIds"] = categoryAlias
+    }
+    value["categoryIds"] = coerceEntityRefList(value["categoryIds"])
+  }
+  if (value["action"] === "update_project_progress") {
+    if (value["projectId"] === undefined) {
+      const projectAlias = value["id"] ?? value["project"] ?? value["name"]
+      if (typeof projectAlias === "string" || (projectAlias !== null && typeof projectAlias === "object")) {
+        value["projectId"] = projectAlias
+      }
+    }
+    value["projectId"] = coerceEntityRef(value["projectId"])
+    if (value["progress"] === undefined) {
+      const progressAlias = value["percent"] ?? value["value"]
+      if (typeof progressAlias === "number" || typeof progressAlias === "string") {
+        value["progress"] = progressAlias
+      }
+    }
+    if (typeof value["progress"] === "string" && value["progress"].trim() !== "") {
+      const parsed = Number(value["progress"].replace(/%/g, ""))
+      if (Number.isFinite(parsed)) value["progress"] = parsed
+    }
   }
   return value
 }
@@ -335,12 +482,8 @@ export function executeChatAction(
         database,
         {
           title: action.title,
-          categoryIds: action.categoryIds.map((id) =>
-            categoryIdSchema.parse(resolveEntityRef(id, refs)),
-          ),
-          projectIds: action.projectIds.map((id) =>
-            projectIdSchema.parse(resolveEntityRef(id, refs)),
-          ),
+          categoryIds: action.categoryIds.map((id) => resolveCategoryRef(database, id, refs)),
+          projectIds: action.projectIds.map((id) => resolveProjectRef(database, id, refs)),
           ...(action.notes === undefined ? {} : { notes: action.notes }),
         },
         localDate,
@@ -365,7 +508,7 @@ export function executeChatAction(
       return `已实际创建待办「${item.title}」${todayNote}，可在操作记录中撤销。`
     }
     case "update_item": {
-      const itemId = resolveEntityRef(action.itemId, refs)
+      const itemId = resolveItemRef(database, action.itemId, refs)
       const before = getItem(database, itemId, localDate)
       const item = updateItem(
         database,
@@ -385,7 +528,7 @@ export function executeChatAction(
       return `已更新待办「${item.title}」，可在操作记录中撤销。`
     }
     case "set_today": {
-      const itemId = resolveEntityRef(action.itemId, refs)
+      const itemId = resolveItemRef(database, action.itemId, refs)
       const item = getItem(database, itemId, localDate)
       const previous = {
         inToday: item.inToday,
@@ -405,7 +548,7 @@ export function executeChatAction(
       return `已${summarizeAction(action)}，可在操作记录中撤销。`
     }
     case "trash_item": {
-      const itemId = resolveEntityRef(action.itemId, refs)
+      const itemId = resolveItemRef(database, action.itemId, refs)
       const item = getItem(database, itemId, localDate)
       moveToTrash(database, "item", itemId, item.title)
       const trashId = z
@@ -426,12 +569,12 @@ export function executeChatAction(
       return `已将「${item.title}」移入回收站，可在操作记录中撤销。`
     }
     case "set_item_categories": {
-      const itemId = resolveEntityRef(action.itemId, refs)
+      const itemId = resolveItemRef(database, action.itemId, refs)
       const before = getItem(database, itemId, localDate)
       replaceItemCategories(
         database,
         itemIdSchema.parse(itemId),
-        action.categoryIds.map((id) => categoryIdSchema.parse(resolveEntityRef(id, refs))),
+        action.categoryIds.map((id) => resolveCategoryRef(database, id, refs)),
       )
       recordAction(database, "set_item_categories", summarizeAction(action), "item", itemId, {
         kind: "set_item_categories",
@@ -442,7 +585,7 @@ export function executeChatAction(
     }
     case "complete_item":
     case "archive_item": {
-      const itemId = resolveEntityRef(action.itemId, refs)
+      const itemId = resolveItemRef(database, action.itemId, refs)
       const before = getItem(database, itemId, localDate)
       const status = action.action === "complete_item" ? "completed" : "archived"
       const item = updateItem(database, itemId, { status }, localDate)
@@ -455,7 +598,7 @@ export function executeChatAction(
       return `已${summarizeAction(action)}，可在操作记录中撤销。`
     }
     case "update_project_progress": {
-      const projectId = resolveEntityRef(action.projectId, refs)
+      const projectId = resolveProjectRef(database, action.projectId, refs)
       const before = z
         .object({ progress: z.number().int() })
         .parse(
@@ -505,6 +648,33 @@ export function executeChatAction(
   }
 }
 
+const CONSERVATIVE_BLOCKED_ACTIONS = ["trash_item", "archive_item"] as const
+const OPEN_CONFIRM_ACTIONS = ["trash_item"] as const
+
+function isConservativeBlockedAction(action: ChatAction): boolean {
+  return (CONSERVATIVE_BLOCKED_ACTIONS as readonly string[]).includes(action.action)
+}
+
+function isOpenConfirmAction(action: ChatAction): boolean {
+  return (OPEN_CONFIRM_ACTIONS as readonly string[]).includes(action.action)
+}
+
+function partitionBy(
+  actions: readonly ChatAction[],
+  predicate: (action: ChatAction) => boolean,
+): {
+  readonly matched: readonly ChatAction[]
+  readonly rest: readonly ChatAction[]
+} {
+  const matched: ChatAction[] = []
+  const rest: ChatAction[] = []
+  for (const action of actions) {
+    if (predicate(action)) matched.push(action)
+    else rest.push(action)
+  }
+  return { matched, rest }
+}
+
 export function executeChatActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
@@ -512,6 +682,12 @@ export function executeChatActions(
 ): string {
   const executable = actions.filter((action) => action.action !== "propose_memory")
   if (executable.length === 0) throw new Error("没有可执行的操作")
+  if (settings.aiPermission !== "open") {
+    const blocked = executable.filter(isConservativeBlockedAction)
+    if (blocked.length > 0) {
+      throw new Error("保守模式不支持删除或归档，请切换到开放模式后再试")
+    }
+  }
   assertBatchTodayCapacity(database, settings, executable)
   const refs = new Map<string, string>()
   const confirmations: string[] = []
@@ -546,7 +722,7 @@ export function applyAiChatActions(
     if (!claimsCompletedMutation(text))
       return { text, pendingAction: null, proposedMemory: null }
     return {
-      text: `${text}\n\n（说明：本次没有改动你的工作空间数据。开放模式下若要真正执行，请再发一次并附上操作块。）`,
+      text: `${text}\n\n（说明：本次没有改动你的工作空间数据。若要真正执行，请再发一次并附上操作块；保守模式下还需确认。）`,
       pendingAction: null,
       proposedMemory: null,
     }
@@ -568,33 +744,70 @@ export function applyAiChatActions(
       proposedMemory,
     }
   }
-  const summary = summarizeActions(executable)
   if (settings.aiPermission !== "open") {
+    const { matched: blocked, rest: allowed } = partitionBy(
+      executable,
+      isConservativeBlockedAction,
+    )
+    const blockedNote =
+      blocked.length === 0
+        ? ""
+        : `（保守模式不支持删除或归档：已跳过 ${summarizeActions(blocked)}。如需删除请切换到开放模式并确认后执行。）`
+    if (allowed.length === 0) {
+      const base = extracted.text === "" ? "" : `${extracted.text}\n\n`
+      return {
+        text: `${base}${blockedNote || "（保守模式不支持删除或归档，请切换到开放模式后再试。）"}`,
+        pendingAction: null,
+        proposedMemory,
+      }
+    }
+    const summary = summarizeActions(allowed)
     const base =
       extracted.text === ""
-        ? `我准备执行 ${executable.length} 项改动，需要你确认。`
+        ? `我准备执行 ${allowed.length} 项改动，需要你确认。`
         : extracted.text
     return {
-      text: `${base}\n\n（待确认：${summary}）`,
-      pendingAction: { status: "pending", actions: executable, summary },
+      text: `${base}\n\n（待确认：${summary}）${blockedNote === "" ? "" : `\n\n${blockedNote}`}`,
+      pendingAction: { status: "pending", actions: [...allowed], summary },
       proposedMemory,
     }
   }
-  try {
-    const confirmation = executeChatActions(database, settings, executable)
+  const { matched: needsConfirm, rest: immediate } = partitionBy(executable, isOpenConfirmAction)
+  let executedText = ""
+  if (immediate.length > 0) {
+    try {
+      executedText = executeChatActions(database, settings, immediate)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "操作失败"
+      return {
+        text: `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}。本次未写入；可调整后重试。）`,
+        pendingAction: null,
+        proposedMemory: null,
+      }
+    }
+  }
+  if (needsConfirm.length === 0) {
     return {
       text:
-        extracted.text === "" ? confirmation : `${extracted.text}\n\n${confirmation}`,
+        extracted.text === ""
+          ? executedText
+          : executedText === ""
+            ? extracted.text
+            : `${extracted.text}\n\n${executedText}`,
       pendingAction: null,
       proposedMemory,
     }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "操作失败"
-    return {
-      text: `${extracted.text === "" ? "" : `${extracted.text}\n\n`}（未能执行：${message}。本次未写入；可调整后重试。）`,
-      pendingAction: null,
-      proposedMemory: null,
-    }
+  }
+  const summary = summarizeActions(needsConfirm)
+  const parts = [
+    extracted.text,
+    executedText,
+    `（待确认：${summary}）`,
+  ].filter((part) => part !== "")
+  return {
+    text: parts.join("\n\n"),
+    pendingAction: { status: "pending", actions: [...needsConfirm], summary },
+    proposedMemory,
   }
 }
 
@@ -615,8 +828,7 @@ export function buildAiChatSystemPrompt(
       ? ""
       : `用户正聚焦待办 ${options.focusItemId}。若要求「缩小」，优先输出 update_item，把标题改成今天可完成的一小步；可用 notes 保留原意图摘要。`
   const protocol = `可在回复末尾附加一个 JSON 代码块：单个操作对象，或最多 ${MAX_ACTIONS_PER_TURN} 个操作的数组（按顺序执行）。用户一次要求多项改动时，必须在同一数组里写全，不要只做第一步。
-支持 action：create_habit, create_item, create_project, update_item, set_today(mode: today|focus|secondary|clear), trash_item, set_item_categories, complete_item, archive_item, update_project_progress, propose_memory。
-同一批内可用 "as":"别名" 命名新建对象，后续用 "$别名" 引用（如 projectIds、itemId）。create_item 可带 todayMode: today|focus|secondary；今日主要待办最多 3 个，超出用 secondary。
+同一批内可用 "as":"别名" 命名新建对象，后续用 "$别名" 引用（如 projectIds、itemId）。也可直接使用上下文里的 UUID，或用准确的待办标题 / 项目名 / 分类名引用。create_item 可带 todayMode: today|focus|secondary；今日主要待办最多 3 个，超出用 secondary。
 示例：
 \`\`\`json
 [
@@ -625,10 +837,14 @@ export function buildAiChatSystemPrompt(
   {"action":"create_item","title":"学 JSX","projectIds":["$react"],"todayMode":"today"}
 ]
 \`\`\`
-create_project 只创建项目骨架；若用户同时要待办，用 create_item 另建并用 projectIds 关联。trash_item 只软删进回收站；禁止永久删除、导出、擅自改项目阶段结构。信息不足时先追问，不要附加代码块。`
+按名称设置分类示例：
+\`\`\`json
+{"action":"set_item_categories","itemId":"学 JSX","categoryIds":["学习"]}
+\`\`\`
+create_project 只创建项目骨架；若用户同时要待办，用 create_item 另建并用 projectIds 关联。禁止永久删除、导出、擅自改项目阶段结构。信息不足时先追问，不要附加代码块。`
   const capability =
     settings.aiPermission === "open"
-      ? `当前为开放模式。用户明确要求且信息足够时，附加操作块，服务器会真正执行。${protocol}`
-      : `当前为保守模式。用户明确要求且信息足够时可附加操作块，但服务器只会挂起待用户确认后执行。${protocol}`
+      ? `当前为开放模式。支持 action：create_habit, create_item, create_project, update_item, set_today(mode: today|focus|secondary|clear), trash_item, set_item_categories, complete_item, archive_item, update_project_progress, propose_memory。除 trash_item 外，附加操作块后服务器会立即执行；archive_item 会立即归档。trash_item（软删进回收站）仍须附加操作块，服务器会挂起并由界面确认后执行——不要只口头问「确认吗」而不附代码块。${protocol}`
+      : `当前为保守模式。用户明确要求且信息足够时可附加操作块，但服务器只会挂起待用户确认后执行。支持非删除操作：create_habit, create_item, create_project, update_item, set_today, set_item_categories, complete_item, update_project_progress, propose_memory。不要输出 trash_item 或 archive_item；若用户要求删除/归档，说明需切换到开放模式（删除仍需确认）。${protocol}`
   return `${identity}${honesty}${focusHint}${capability}以下是本次允许参考的本地上下文：${contextPrompt}`
 }

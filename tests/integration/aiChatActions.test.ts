@@ -251,6 +251,141 @@ describe("AI chat habit actions", () => {
     expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "晨间拉伸")).toBe(true)
   })
 
+  it("rejects trash and archive in conservative mode without pending confirmation", async () => {
+    const { database } = await setup("unused", "conservative")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const { createItem } = await import("../../src/server/repositories/items.js")
+    const settings = getSettings(database)
+    createItem(database, { title: "保守删除目标", categoryIds: [], projectIds: [] })
+
+    const trashed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"trash_item","itemId":"保守删除目标"}
+\`\`\``,
+    )
+    expect(trashed.pendingAction).toBeNull()
+    expect(trashed.text).toMatch(/开放模式|不支持.*删除|不支持.*归档|回收站/)
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("保守删除目标") as { value: number }
+      ).value,
+    ).toBe(1)
+
+    const archived = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"archive_item","itemId":"保守删除目标"}
+\`\`\``,
+    )
+    expect(archived.pendingAction).toBeNull()
+    expect(archived.text).toMatch(/开放模式|不支持.*归档|不支持.*删除/)
+  })
+
+  it("queues non-destructive actions and skips trash in conservative mixed batches", async () => {
+    const { database } = await setup("unused", "conservative")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const { createItem } = await import("../../src/server/repositories/items.js")
+    const settings = getSettings(database)
+    createItem(database, { title: "混合批次删除目标", categoryIds: [], projectIds: [] })
+
+    const mixed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+[
+  {"action":"create_project","name":"保守可建项目","desiredOutcome":"验证确认流"},
+  {"action":"trash_item","itemId":"混合批次删除目标"}
+]
+\`\`\``,
+    )
+    expect(mixed.pendingAction?.status).toBe("pending")
+    expect(mixed.pendingAction?.actions).toHaveLength(1)
+    expect(mixed.pendingAction?.actions[0]?.action).toBe("create_project")
+    expect(mixed.text).toMatch(/开放模式|跳过|未.*删除|不支持/)
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+          .get("保守可建项目") as { value: number }
+      ).value,
+    ).toBe(0)
+  })
+
+  it("queues trash for confirmation in open mode while executing other actions", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const { createItem } = await import("../../src/server/repositories/items.js")
+    const settings = getSettings(database)
+    createItem(database, { title: "开放删除确认目标", categoryIds: [], projectIds: [] })
+
+    const trashed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"trash_item","itemId":"开放删除确认目标"}
+\`\`\``,
+    )
+    expect(trashed.pendingAction?.status).toBe("pending")
+    expect(trashed.pendingAction?.actions).toEqual([
+      expect.objectContaining({ action: "trash_item", itemId: "开放删除确认目标" }),
+    ])
+    expect(trashed.text).toContain("待确认")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("开放删除确认目标") as { value: number }
+      ).value,
+    ).toBe(1)
+
+    const mixed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+[
+  {"action":"create_item","title":"开放立即创建"},
+  {"action":"trash_item","itemId":"开放删除确认目标"}
+]
+\`\`\``,
+    )
+    expect(mixed.text).toContain("已实际创建待办「开放立即创建」")
+    expect(mixed.pendingAction?.status).toBe("pending")
+    expect(mixed.pendingAction?.actions).toHaveLength(1)
+    expect(mixed.pendingAction?.actions[0]?.action).toBe("trash_item")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("开放立即创建") as { value: number }
+      ).value,
+    ).toBe(1)
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("开放删除确认目标") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
   it("creates an item from an open-mode action block", async () => {
     const { app, database } = await setup(
       `好的。
@@ -481,5 +616,120 @@ describe("AI chat habit actions", () => {
           .get("坏引用") as { value: number }
       ).value,
     ).toBe(0)
+  })
+
+  it("resolves project/item by name for progress update and trash", async () => {
+    const { app, database } = await setup(
+      `先建好骨架。
+
+\`\`\`json
+[
+  {"action":"create_project","name":"名引用项目","desiredOutcome":"验证名称引用"},
+  {"action":"create_item","title":"名引用待办","projectIds":["名引用项目"]}
+]
+\`\`\``,
+      "open",
+    )
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "创建项目和待办",
+        currentPath: "/projects",
+        currentLabel: "项目",
+      },
+    })
+    expect(created.statusCode).toBe(200)
+    expect(created.json().message.content).toContain("已实际创建项目「名引用项目」")
+    expect(created.json().message.content).toContain("已实际创建待办「名引用待办」")
+
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    const progressed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"update_project_progress","projectId":"名引用项目","progress":"15"}
+\`\`\``,
+    )
+    expect(progressed.text).toContain("已将项目进度更新为 15%")
+    expect(
+      (
+        database
+          .prepare("SELECT progress AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+          .get("名引用项目") as { value: number }
+      ).value,
+    ).toBe(15)
+
+    const trashed = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"trash_item","itemId":"名引用待办"}
+\`\`\``,
+    )
+    expect(trashed.text).toContain("待确认")
+    expect(trashed.pendingAction?.status).toBe("pending")
+    expect(trashed.pendingAction?.actions[0]?.action).toBe("trash_item")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("名引用待办") as { value: number }
+      ).value,
+    ).toBe(1)
+
+    const { executeChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const confirmed = executeChatActions(database, settings, trashed.pendingAction!.actions)
+    expect(confirmed).toContain("已将「名引用待办」移入回收站")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("名引用待办") as { value: number }
+      ).value,
+    ).toBe(0)
+  })
+
+  it("resolves item/category by name for set_item_categories aliases", async () => {
+    const { database } = await setup("unused", "open")
+    const { createCategory } = await import("../../src/server/repositories/items.js")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    const category = createCategory(database, { name: "学习", color: "#3b82f6", icon: "book" })
+    applyAiChatActions(
+      database,
+      settings,
+      `创建。
+
+\`\`\`json
+{"action":"create_item","title":"分类名引用待办"}
+\`\`\``,
+    )
+
+    const updated = applyAiChatActions(
+      database,
+      settings,
+      `好的。
+
+\`\`\`json
+{"action":"set_item_categories","title":"分类名引用待办","category":"${category.name}"}
+\`\`\``,
+    )
+    expect(updated.text).toContain("已更新待办分类")
+    const row = database
+      .prepare(
+        `SELECT category_id AS categoryId FROM item_categories
+         WHERE item_id = (SELECT id FROM items WHERE title = ? AND deleted_at IS NULL LIMIT 1)`,
+      )
+      .get("分类名引用待办") as { categoryId: string } | undefined
+    expect(row?.categoryId).toBe(category.id)
   })
 })
