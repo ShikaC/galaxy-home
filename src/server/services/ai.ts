@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { AiInvalidEndpointError, assertSafeAiEndpoint } from "./aiEndpoint.js"
 import { readSecretConfig } from "./secrets.js"
 
 const completionSchema = z.object({
@@ -26,10 +27,16 @@ export class AiServiceError extends Error {
 }
 
 async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
+  await assertSafeAiEndpoint(url)
   let response: Response
   try {
-    response = await fetch(url, { ...init, signal: AbortSignal.timeout(25_000) })
+    response = await fetch(url, {
+      ...init,
+      redirect: "error",
+      signal: AbortSignal.timeout(25_000),
+    })
   } catch (error) {
+    if (error instanceof AiInvalidEndpointError) throw error
     throw new AiServiceError(
       "AI_UNAVAILABLE",
       error instanceof Error ? error.message : "AI 服务暂时不可用",

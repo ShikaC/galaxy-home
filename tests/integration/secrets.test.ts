@@ -10,20 +10,20 @@ afterEach(() => {
 })
 
 describe("AI secret storage", () => {
-  it("repairs permissions on an existing secret file", () => {
+  it("repairs permissions on an existing secret file", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-secrets-"))
     directories.push(directory)
     const path = join(directory, "secrets.json")
-    writeSecretConfig(path, {
-      chatBaseUrl: "https://example.com/v1",
+    await writeSecretConfig(path, {
+      chatBaseUrl: "http://127.0.0.1:11434/v1",
       chatModel: "model",
       apiKey: "secret",
       transcriptionBaseUrl: "",
       transcriptionModel: "",
     })
     chmodSync(path, 0o644)
-    writeSecretConfig(path, {
-      chatBaseUrl: "https://example.com/v2",
+    await writeSecretConfig(path, {
+      chatBaseUrl: "http://127.0.0.1:11434/v2",
       chatModel: "model-2",
       apiKey: "",
       transcriptionBaseUrl: "",

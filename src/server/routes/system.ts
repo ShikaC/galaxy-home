@@ -69,8 +69,10 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     return reply.code(204).send()
   })
   app.get("/api/ai/config", () => getAiConfigStatus(context.secretPath))
-  app.put("/api/ai/config", (request) =>
-    writeSecretConfig(context.secretPath, aiConfigInputSchema.parse(request.body)),
+  app.put(
+    "/api/ai/config",
+    async (request) =>
+      await writeSecretConfig(context.secretPath, aiConfigInputSchema.parse(request.body)),
   )
   app.patch("/api/ai/memories/:id", (request, reply) => {
     const { id } = idSchema.parse(request.params)

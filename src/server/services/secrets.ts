@@ -10,6 +10,7 @@ import {
 import { dirname } from "node:path"
 import { ZodError, z } from "zod"
 import type { AiConfigInput } from "../../shared/app.js"
+import { assertSafeAiEndpoint } from "./aiEndpoint.js"
 
 const storedConfigSchema = z.object({
   chatBaseUrl: z.string(),
@@ -62,7 +63,12 @@ export function getAiConfigStatus(path: string): AiConfigStatus {
   }
 }
 
-export function writeSecretConfig(path: string, input: AiConfigInput): AiConfigStatus {
+export async function writeSecretConfig(
+  path: string,
+  input: AiConfigInput,
+): Promise<AiConfigStatus> {
+  await assertSafeAiEndpoint(input.chatBaseUrl)
+  await assertSafeAiEndpoint(input.transcriptionBaseUrl)
   mkdirSync(dirname(path), { recursive: true })
   const current = readSecretConfig(path)
   const temporaryPath = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`

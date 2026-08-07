@@ -15,6 +15,7 @@ import { registerDomainRoutes } from "./routes/domain.js"
 import { registerItemRoutes } from "./routes/items.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { AiServiceError } from "./services/ai.js"
+import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
 import { AiConfirmationRequiredError } from "./services/aiReview.js"
 import { ImportArchiveInvalidError, ImportArchiveTooLargeError } from "./services/backup.js"
 
@@ -60,6 +61,8 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(413).send({ code: "IMPORT_ARCHIVE_TOO_LARGE", message: error.message })
     if (error instanceof ImportArchiveInvalidError)
       return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: "导入文件字段无效" })
+    if (error instanceof AiInvalidEndpointError)
+      return reply.code(400).send({ code: error.code, message: error.message })
     if (error instanceof AiServiceError)
       return reply.code(503).send({ code: error.code, message: error.message })
     app.log.error(error)

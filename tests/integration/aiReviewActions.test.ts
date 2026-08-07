@@ -58,7 +58,7 @@ describe("AI weekly review actions", () => {
     database = openDatabase(join(directory, "app.sqlite"))
     migrateDatabase(database)
     const secretPath = join(directory, "secrets.json")
-    writeSecretConfig(secretPath, {
+    await writeSecretConfig(secretPath, {
       chatBaseUrl: `http://127.0.0.1:${address.port}/v1`,
       chatModel: "test-model",
       apiKey: "test-key",
