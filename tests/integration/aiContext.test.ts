@@ -4,8 +4,8 @@ import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { afterEach, describe, expect, it } from "vitest"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
-import { buildAiContext } from "../../src/server/services/aiContext.js"
 import { getSettings } from "../../src/server/repositories/settings.js"
+import { buildAiContext } from "../../src/server/services/aiContext.js"
 
 let database: DatabaseSync | undefined
 let directory = ""

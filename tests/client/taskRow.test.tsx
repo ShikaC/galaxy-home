@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
-import { itemSchema } from "../../src/shared/items.js"
 import { AppTimeContext } from "../../src/client/components/AppContext.js"
 import { TaskRow } from "../../src/client/components/TaskRow.js"
+import { itemSchema } from "../../src/shared/items.js"
 
 const item = itemSchema.parse({
   id: "11111111-1111-4111-8111-111111111111",

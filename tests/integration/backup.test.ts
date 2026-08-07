@@ -125,12 +125,12 @@ describe("manual backup", () => {
     database
       .prepare("UPDATE workspace_settings SET workspace_name = ? WHERE id = 1")
       .run("导入前空间")
-    const source = JSON.parse(
-      strFromU8(unzipSync(createManualExport(database))["galaxy-home.json"]!),
-    ) as {
+    const archiveFile = unzipSync(createManualExport(database))["galaxy-home.json"]
+    if (archiveFile === undefined) throw new Error("测试导出缺少 JSON")
+    const source = JSON.parse(strFromU8(archiveFile)) as {
       tables: Record<string, unknown[]>
     }
-    source.tables["items"] = [{ id: crypto.randomUUID(), unexpected: "字段" }]
+    source.tables.items = [{ id: crypto.randomUUID(), unexpected: "字段" }]
     const bytes = zipSync({ "galaxy-home.json": strToU8(JSON.stringify(source)) })
 
     await expect(restoreManualExport(database, bytes, backupDirectory)).rejects.toBeInstanceOf(
