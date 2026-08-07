@@ -128,7 +128,7 @@ describe("manual backup", () => {
     const archiveFile = unzipSync(createManualExport(database))["galaxy-home.json"]
     if (archiveFile === undefined) throw new Error("测试导出缺少 JSON")
     const source = JSON.parse(strFromU8(archiveFile)) as {
-      tables: Record<string, unknown[]>
+      tables: Record<string, unknown[]> & { items: unknown[] }
     }
     source.tables.items = [{ id: crypto.randomUUID(), unexpected: "字段" }]
     const bytes = zipSync({ "galaxy-home.json": strToU8(JSON.stringify(source)) })

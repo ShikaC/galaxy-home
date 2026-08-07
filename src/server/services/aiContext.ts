@@ -1,8 +1,9 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import type { AiReference } from "../../shared/ai.js"
+import type { Project } from "../../shared/projects.js"
 import type { WorkspaceSettings } from "../../shared/settings.js"
-import { getProject } from "../repositories/projects.js"
+import { getProject, ProjectNotFoundError } from "../repositories/projects.js"
 import { listWorkspaceContext, searchWorkspace } from "../repositories/search.js"
 
 type ContextEntry = {
@@ -18,7 +19,14 @@ function currentPageEntry(database: DatabaseSync, path: string, label: string): 
   const projectMatch = /^\/projects\/([^/]+)$/.exec(path)
   const projectId = z.string().uuid().safeParse(projectMatch?.[1])
   if (projectId.success) {
-    const project = getProject(database, projectId.data)
+    let project: Project
+    try {
+      project = getProject(database, projectId.data)
+    } catch (error) {
+      if (error instanceof ProjectNotFoundError)
+        return { reference: { type: "page", id: null, label }, detail: { page: label } }
+      throw error
+    }
     return {
       reference: { type: "project", id: project.id, label: project.name },
       detail: {

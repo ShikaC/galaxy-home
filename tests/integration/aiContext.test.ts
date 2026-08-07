@@ -52,4 +52,19 @@ describe("AI workspace context", () => {
     )
     expect(JSON.parse(context.prompt).localContext.length).toBeLessThanOrEqual(24)
   })
+
+  it("falls back to page context when a project route no longer exists", () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-ai-missing-project-"))
+    database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+
+    const context = buildAiContext(
+      database,
+      getSettings(database),
+      `/projects/${crypto.randomUUID()}`,
+      "项目",
+      "我想继续推进",
+    )
+    expect(context.references).toEqual([{ type: "page", id: null, label: "项目" }])
+  })
 })
