@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test"
 
 test("manual work remains complete without an AI key", async ({ page }, testInfo) => {
   const suffix = Date.now().toString().slice(-7)
-  const itemTitle = `端到端阅读清单 ${suffix}`
+  let itemTitle = `端到端阅读清单 ${suffix}`
   const projectName = `端到端阅读节奏 ${suffix}`
 
   await page.goto("/")
@@ -23,6 +23,16 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
 
   await page.getByRole("link", { name: "待办", exact: true }).click()
   let item = page.getByRole("article").filter({ hasText: itemTitle })
+  await expect(item).toBeVisible()
+  await item.getByRole("button", { name: "更多操作" }).click()
+  await item.getByRole("menuitem", { name: "编辑待办" }).click()
+  const editDialog = page.getByRole("dialog", { name: "把内容改成现在准确的样子" })
+  await expect(editDialog).toBeVisible()
+  itemTitle = `${itemTitle}（已修改）`
+  await editDialog.getByLabel("标题").fill(itemTitle)
+  await editDialog.getByRole("button", { name: "保存修改" }).click()
+  await expect(editDialog).not.toBeVisible()
+  item = page.getByRole("article").filter({ hasText: itemTitle })
   await expect(item).toBeVisible()
   await item.getByRole("button", { name: "更多操作" }).click()
   await item.getByRole("menuitem", { name: "加入今日待办" }).click()

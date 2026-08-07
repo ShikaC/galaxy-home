@@ -146,7 +146,7 @@ test("primary views remain readable with long content and rendered analytics", a
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("settings-data.png") })
 })
 
-test("drawers and dialogs trap focus, disable the background, and restore focus", async ({
+test("dialogs trap focus while the AI drawer keeps navigation available", async ({
   page,
 }, testInfo) => {
   await ensureOnboarding(page)
@@ -171,9 +171,11 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
 
   const drawerTrigger = page.getByRole("button", { name: "打开 星伴" })
   await drawerTrigger.click()
-  const drawer = page.getByRole("dialog", { name: "星伴 AI 助手" })
+  const drawer = page.getByRole("complementary", { name: "星伴 AI 助手" })
   await expect(drawer).toBeVisible()
-  await expect(page.locator("main.main-scroll")).toHaveAttribute("inert", "")
+  await expect(page.locator("main.main-scroll")).not.toHaveAttribute("inert")
+  await page.getByRole("link", { name: "待办", exact: true }).click()
+  await expect(page.getByRole("heading", { level: 1, name: "待办" })).toBeVisible()
   expect((await drawer.boundingBox())?.width).toBeLessThan(361)
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
   await expect(page.getByText("配置服务", { exact: false })).toBeVisible()
@@ -181,8 +183,9 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
   await expectAnimationsSettled(drawer)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer.png") })
   await page.keyboard.press("Escape")
-  await expect(drawerTrigger).toBeFocused()
+  await expect(drawer).not.toBeVisible()
 
+  await page.goto("/")
   await page.setViewportSize({ width: 768, height: 720 })
   await drawerTrigger.click()
   await expect(drawer).toBeVisible()
@@ -190,7 +193,7 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
   await expectAnimationsSettled(drawer)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer-768.png") })
   await page.keyboard.press("Escape")
-  await expect(drawerTrigger).toBeFocused()
+  await expect(drawer).not.toBeVisible()
 
   await page.goto("/design-system")
   await expect(page.getByText("保存失败，请重试")).toBeVisible()
@@ -209,9 +212,9 @@ test("drawers and dialogs trap focus, disable the background, and restore focus"
 
   const showcaseDrawerTrigger = page.getByRole("button", { name: "打开抽屉" })
   await showcaseDrawerTrigger.click()
-  const showcaseDrawer = page.getByRole("dialog", { name: "示例 AI 抽屉" })
+  const showcaseDrawer = page.getByRole("complementary", { name: "示例 AI 抽屉" })
   await expect(showcaseDrawer).toBeVisible()
   expect((await showcaseDrawer.boundingBox())?.width).toBeLessThan(361)
   await page.keyboard.press("Escape")
-  await expect(showcaseDrawerTrigger).toBeFocused()
+  await expect(showcaseDrawer).not.toBeVisible()
 })
