@@ -1,12 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Bell, Clock3, X } from "lucide-react"
+import { useEffect, useRef } from "react"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { notificationsSchema } from "../lib/schemas.js"
+import { mirrorDueReminderToSystem } from "../lib/desktopNotify.js"
 import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
 export function ReminderBanner() {
   const client = useQueryClient()
+  const mirrored = useRef(new Set<string>())
   const reminders = useQuery({
     queryKey: ["notifications"],
     queryFn: () => apiRequest("/api/notifications", notificationsSchema),
@@ -23,10 +26,16 @@ export function ReminderBanner() {
     onSuccess: () => client.invalidateQueries({ queryKey: ["notifications"] }),
   })
   const reminder = reminders.data?.[0]
+  useEffect(() => {
+    if (reminder === undefined) return
+    if (mirrored.current.has(reminder.id)) return
+    mirrored.current.add(reminder.id)
+    void mirrorDueReminderToSystem(reminder)
+  }, [reminder])
   if (reminder === undefined) return null
   return (
     <aside className="reminder-banner" role="status">
-      <Bell size={17} />
+      <Bell aria-hidden="true" size={17} />
       <div>
         <strong>{reminder.title}</strong>
         <span>{reminder.detail}</span>

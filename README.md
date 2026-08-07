@@ -17,13 +17,15 @@
   - **开放模式**：多数操作立即执行；**移入回收站仍须确认**；归档立即生效。
   - 未配置或服务不可用时，其余功能照常使用。
 - **搜索、回收站、操作记录**：全局搜索；软删除进回收站可恢复；AI 自动操作可查看与撤销。
-- **提醒**：应用运行期间通知；关闭后错过的提醒会在下次启动补显。
+- **提醒**：应用运行期间通知；桌面壳可将 due 提醒镜像为系统通知；关闭后错过的提醒会在下次启动补显。
+- **桌面壳（可选）**：Tauri 包装本机 Web + API；数据目录默认在用户 Application Support。
 - **设置与数据**：工作区命名、时区、AI 权限与密钥（存本机 `secrets.json`）；手动导出 / 恢复业务数据（**密钥不进入导出包**）；本地自动备份。
 
 ## 要求
 
 - Node.js **≥ 24**
 - 本机浏览器访问（默认不暴露到局域网）
+- 桌面壳另需：**Rust stable**（`rustup`）与本机 Node（暂不内嵌）
 
 ## 启动
 
@@ -34,7 +36,7 @@ npm run dev
 
 开发地址：<http://127.0.0.1:5173>（API 默认 `:3001`）。
 
-生产：
+生产（浏览器）：
 
 ```bash
 npm run build
@@ -43,9 +45,18 @@ npm start
 
 生产地址：<http://127.0.0.1:4173>。
 
+桌面壳（Tauri）：
+
+```bash
+npm run desktop          # 开发：窗口 + 现有 Vite/API；数据目录默认用户 Application Support
+npm run desktop:build    # 打包：构建前端/服务资源后产出安装包
+```
+
+桌面生产窗口加载 `http://127.0.0.1:4177`，由壳进程拉起 Node 服务。
+
 ## 数据目录
 
-默认 `./data/`（可用环境变量 `GALAXY_DATA_DIR` 覆盖）：
+浏览器开发默认 `./data/`；**桌面壳**默认用户数据目录（macOS：`~/Library/Application Support/app.galaxyhome.desktop`）。均可用环境变量 `GALAXY_DATA_DIR` 覆盖：
 
 | 路径 | 内容 |
 |------|------|
@@ -60,5 +71,7 @@ npm start
 | `npm test` | 单元与集成测试 |
 | `npm run test:e2e` | Playwright 端到端 |
 | `npm run typecheck` | TypeScript 检查 |
+| `npm run desktop` | Tauri 桌面开发 |
+| `npm run desktop:build` | Tauri 桌面打包 |
 
-完整需求见 [docs/项目说明书.md](docs/项目说明书.md)。验收勾选见 [docs/acceptance-21.md](docs/acceptance-21.md)。自用摩擦记录见 [docs/dogfood-friction.md](docs/dogfood-friction.md)。
+完整需求见 [docs/项目说明书.md](docs/项目说明书.md)。验收勾选见 [docs/acceptance-21.md](docs/acceptance-21.md)。自用摩擦记录见 [docs/dogfood-friction.md](docs/dogfood-friction.md)。侧栏 AI 口语剧本见 [docs/ai-oral-script.md](docs/ai-oral-script.md)。桌面形态：Tauri 轻壳第一刀已落地（[docs/decisions/desktop-packaging.md](docs/decisions/desktop-packaging.md)）。本地模型暂不接入（[docs/decisions/local-model.md](docs/decisions/local-model.md)）。
