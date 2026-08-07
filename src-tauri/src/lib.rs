@@ -1,13 +1,13 @@
-use std::net::TcpStream;
+use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, Url};
 
-const DESKTOP_PORT: u16 = 4177;
+const PORT_RANGE: std::ops::RangeInclusive<u16> = 4177..=4199;
 
 struct ServerProcess(Mutex<Option<Child>>);
 
@@ -29,6 +29,16 @@ fn runtime_root(app: &tauri::AppHandle) -> PathBuf {
     .join("app")
 }
 
+fn find_free_port() -> Result<u16, String> {
+  for port in PORT_RANGE {
+    if let Ok(listener) = TcpListener::bind(("127.0.0.1", port)) {
+      drop(listener);
+      return Ok(port);
+    }
+  }
+  Err("本机 4177–4199 端口均不可用，请关闭占用进程后重试".into())
+}
+
 fn wait_for_port(port: u16) -> bool {
   for _ in 0..75 {
     if TcpStream::connect(("127.0.0.1", port)).is_ok() {
@@ -39,7 +49,7 @@ fn wait_for_port(port: u16) -> bool {
   false
 }
 
-fn spawn_galaxy_server(app: &tauri::AppHandle) -> Result<Child, String> {
+fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
   let data_dir = app
     .path()
     .app_data_dir()
@@ -50,7 +60,7 @@ fn spawn_galaxy_server(app: &tauri::AppHandle) -> Result<Child, String> {
   let entry = root.join("dist/server/index.js");
   if !entry.is_file() {
     return Err(format!(
-      "找不到服务入口：{}（请先 npm run build）",
+      "找不到服务入口：{}（请先 npm run build / desktop:prepare）",
       entry.display()
     ));
   }
@@ -58,7 +68,7 @@ fn spawn_galaxy_server(app: &tauri::AppHandle) -> Result<Child, String> {
   Command::new("node")
     .current_dir(&root)
     .env("NODE_ENV", "production")
-    .env("PORT", DESKTOP_PORT.to_string())
+    .env("PORT", port.to_string())
     .env("GALAXY_DATA_DIR", &data_dir)
     .arg(&entry)
     .stdin(Stdio::null())
@@ -73,6 +83,18 @@ fn stop_server(child: &mut Child) {
   let _ = child.wait();
 }
 
+fn show_main_window(app: &tauri::AppHandle, port: u16) -> Result<(), String> {
+  let window = app
+    .get_webview_window("main")
+    .ok_or_else(|| "找不到主窗口".to_string())?;
+  let url = Url::parse(&format!("http://127.0.0.1:{port}/"))
+    .map_err(|error| error.to_string())?;
+  window.navigate(url).map_err(|error| error.to_string())?;
+  window.show().map_err(|error| error.to_string())?;
+  let _ = window.set_focus();
+  Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
@@ -85,20 +107,25 @@ pub fn run() {
             .level(log::LevelFilter::Info)
             .build(),
         )?;
+        if let Some(window) = app.get_webview_window("main") {
+          let _ = window.show();
+        }
         return Ok(());
       }
 
-      let child = spawn_galaxy_server(app.handle())?;
-      if !wait_for_port(DESKTOP_PORT) {
+      let port = find_free_port()?;
+      let child = spawn_galaxy_server(app.handle(), port)?;
+      if !wait_for_port(port) {
         let mut child = child;
         stop_server(&mut child);
-        return Err("银河居所服务未能在 127.0.0.1:4177 就绪".into());
+        return Err(format!("银河居所服务未能在 127.0.0.1:{port} 就绪").into());
       }
       *app
         .state::<ServerProcess>()
         .0
         .lock()
         .expect("server lock") = Some(child);
+      show_main_window(app.handle(), port)?;
       Ok(())
     })
     .build(tauri::generate_context!())
