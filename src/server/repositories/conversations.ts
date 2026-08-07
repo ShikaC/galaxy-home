@@ -16,6 +16,9 @@ const messageSchema = z.object({
   created_at: z.string(),
 })
 
+export const MAX_CONVERSATIONS = 200
+export const MAX_MESSAGES_PER_CONVERSATION = 80
+
 function parseMessage(raw: unknown) {
   const row = messageSchema.parse(raw)
   return aiMessageSchema.parse({
@@ -31,9 +34,9 @@ function parseMessage(raw: unknown) {
 export function listConversations(database: DatabaseSync) {
   return database
     .prepare(
-      "SELECT id, title, updated_at FROM ai_conversations WHERE deleted_at IS NULL ORDER BY updated_at DESC",
+      "SELECT id, title, updated_at FROM ai_conversations WHERE deleted_at IS NULL ORDER BY updated_at DESC LIMIT ?",
     )
-    .all()
+    .all(MAX_CONVERSATIONS)
     .map((row) => conversationSchema.parse(row))
 }
 
@@ -82,7 +85,8 @@ export function addMessage(
 
 export function listMessages(database: DatabaseSync, conversationId: string) {
   return database
-    .prepare("SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at")
-    .all(conversationId)
+    .prepare("SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?")
+    .all(conversationId, MAX_MESSAGES_PER_CONVERSATION)
+    .reverse()
     .map(parseMessage)
 }

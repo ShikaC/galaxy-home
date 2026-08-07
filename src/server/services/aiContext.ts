@@ -3,7 +3,7 @@ import { z } from "zod"
 import type { AiReference } from "../../shared/ai.js"
 import type { WorkspaceSettings } from "../../shared/settings.js"
 import { getProject } from "../repositories/projects.js"
-import { searchWorkspace } from "../repositories/search.js"
+import { listWorkspaceContext, searchWorkspace } from "../repositories/search.js"
 
 type ContextEntry = {
   readonly reference: AiReference
@@ -11,6 +11,8 @@ type ContextEntry = {
 }
 
 const memoryRowSchema = z.object({ id: z.string().uuid(), content: z.string() })
+const MAX_OPEN_REFERENCES = 24
+const MAX_CONTEXT_CHARS = 40_000
 
 function currentPageEntry(database: DatabaseSync, path: string, label: string): ContextEntry {
   const projectMatch = /^\/projects\/([^/]+)$/.exec(path)
@@ -50,6 +52,10 @@ function searchTerms(content: string): readonly string[] {
   return [...new Set(terms)].slice(0, 12)
 }
 
+function requestsWorkspaceOverview(content: string): boolean {
+  return /(全部|所有|整个|全局|工作空间|空间里|概览|盘点|清单)/u.test(content)
+}
+
 function openWorkspaceEntries(database: DatabaseSync, content: string): readonly ContextEntry[] {
   const unique = new Map<string, ContextEntry>()
   for (const term of searchTerms(content)) {
@@ -61,10 +67,34 @@ function openWorkspaceEntries(database: DatabaseSync, content: string): readonly
           detail: { type: result.type, title: result.title, detail: result.detail },
         })
       }
-      if (unique.size >= 6) return [...unique.values()]
+      if (unique.size >= MAX_OPEN_REFERENCES) return [...unique.values()]
     }
   }
-  return [...unique.values()]
+  if (requestsWorkspaceOverview(content) || unique.size === 0) {
+    for (const result of listWorkspaceContext(database)) {
+      const key = `${result.type}:${result.id}`
+      if (!unique.has(key)) {
+        unique.set(key, {
+          reference: { type: result.type, id: result.id, label: result.title },
+          detail: { type: result.type, title: result.title, detail: result.detail },
+        })
+      }
+      if (unique.size >= MAX_OPEN_REFERENCES) break
+    }
+  }
+  return [...unique.values()].slice(0, MAX_OPEN_REFERENCES)
+}
+
+function limitContext(entries: readonly ContextEntry[]): readonly ContextEntry[] {
+  const selected: ContextEntry[] = []
+  let total = 0
+  for (const entry of entries) {
+    const size = JSON.stringify(entry.detail).length
+    if (selected.length > 0 && total + size > MAX_CONTEXT_CHARS) break
+    selected.push(entry)
+    total += size
+  }
+  return selected
 }
 
 function relevantMemoryEntries(database: DatabaseSync, content: string): readonly ContextEntry[] {
@@ -101,7 +131,7 @@ export function buildAiContext(
   const unique = new Map(
     entries.map((entry) => [`${entry.reference.type}:${entry.reference.id}`, entry]),
   )
-  const context = [...unique.values()]
+  const context = limitContext([...unique.values()])
   return {
     references: context.map((entry) => entry.reference),
     prompt: JSON.stringify({

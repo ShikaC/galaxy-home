@@ -15,6 +15,21 @@ export class ImportArchiveTooLargeError extends Error {
   }
 }
 
+export class ImportArchiveInvalidError extends Error {
+  readonly name = "ImportArchiveInvalidError"
+
+  constructor(
+    readonly table: string,
+    readonly column?: string,
+  ) {
+    super(
+      column === undefined
+        ? `导入表 ${table} 的行字段为空`
+        : `导入表 ${table} 含未知字段 ${column}`,
+    )
+  }
+}
+
 const DATA_TABLES = [
   "workspace_settings",
   "quotes",
@@ -46,6 +61,8 @@ const DATA_TABLES = [
   "trash_entries",
   "tutorial_state",
 ] as const
+
+const DATA_TABLE_SET = new Set<string>(DATA_TABLES)
 
 const exportSchema = z.object({
   schemaVersion: z.literal(1),
@@ -120,6 +137,21 @@ export async function restoreManualExport(
   const data = exportSchema.parse(JSON.parse(strFromU8(file)))
   for (const table of DATA_TABLES)
     if (data.tables[table] === undefined) throw new Error(`导入文件缺少 ${table}`)
+  for (const table of Object.keys(data.tables)) {
+    if (!DATA_TABLE_SET.has(table)) throw new ImportArchiveInvalidError(table)
+    const columns = new Set(
+      database
+        .prepare(`PRAGMA table_info(${table})`)
+        .all()
+        .map((row) => z.object({ name: z.string() }).parse(row).name),
+    )
+    for (const row of data.tables[table] ?? []) {
+      const rowColumns = Object.keys(row)
+      if (rowColumns.length === 0) throw new ImportArchiveInvalidError(table)
+      const unknownColumn = rowColumns.find((column) => !columns.has(column))
+      if (unknownColumn !== undefined) throw new ImportArchiveInvalidError(table, unknownColumn)
+    }
+  }
   mkdirSync(backupDirectory, { recursive: true })
   await backup(database, join(backupDirectory, `restore-${Date.now()}.sqlite`))
   database.exec("BEGIN IMMEDIATE")
@@ -129,9 +161,10 @@ export async function restoreManualExport(
       const rows = data.tables[table] ?? []
       for (const row of rows) {
         const columns = Object.keys(row)
+        const identifiers = columns.map((column) => `"${column}"`).join(",")
         database
           .prepare(
-            `INSERT INTO ${table} (${columns.join(",")}) VALUES (${columns.map(() => "?").join(",")})`,
+            `INSERT INTO ${table} (${identifiers}) VALUES (${columns.map(() => "?").join(",")})`,
           )
           .run(...columns.map((column) => row[column] ?? null))
       }

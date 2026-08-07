@@ -8,6 +8,8 @@ const streamChunkSchema = z.object({
   choices: z.array(z.object({ delta: z.object({ content: z.string().optional() }) })),
 })
 const transcriptionSchema = z.object({ text: z.string().trim().min(1) })
+const MAX_AI_RESPONSE_BYTES = 2 * 1024 * 1024
+const MAX_AI_CONTENT_CHARS = 200_000
 export type ChatMessage = {
   readonly role: "system" | "user" | "assistant"
   readonly content: string
@@ -57,8 +59,14 @@ async function requestCompletion(
       ...(structured ? { response_format: { type: "json_object" } } : {}),
     }),
   })
+  const contentLength = Number(response.headers.get("content-length"))
+  if (Number.isFinite(contentLength) && contentLength > MAX_AI_RESPONSE_BYTES)
+    throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回内容过大，未写入任何数据")
   try {
-    const completion = completionSchema.parse(await response.json())
+    const body = await response.text()
+    if (body.length > MAX_AI_RESPONSE_BYTES)
+      throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回内容过大，未写入任何数据")
+    const completion = completionSchema.parse(JSON.parse(body))
     const choice = completion.choices[0]
     if (choice === undefined) throw new Error("Missing completion choice")
     return choice.message.content
@@ -116,6 +124,8 @@ export async function streamChat(
       throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的流式内容")
     const delta = chunk.data.choices[0]?.delta.content
     if (delta === undefined || delta === "") return
+    if (content.length + delta.length > MAX_AI_CONTENT_CHARS)
+      throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回内容过大，未写入任何数据")
     content += delta
     onDelta(delta)
   }

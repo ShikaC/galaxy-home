@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs"
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
@@ -8,6 +16,7 @@ import {
   createManualExport,
   ensureDailyBackup,
   getBackupStatus,
+  ImportArchiveInvalidError,
   MAX_IMPORT_UNCOMPRESSED_BYTES,
   restoreManualExport,
 } from "../../src/server/services/backup.js"
@@ -104,6 +113,35 @@ describe("manual backup", () => {
     expect(readdirSync(backupDirectory).some((file) => /^restore-\d+\.sqlite$/.test(file))).toBe(
       true,
     )
+    database.close()
+  })
+
+  it("rejects unknown import columns before touching the database", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-invalid-column-"))
+    directories.push(directory)
+    const backupDirectory = join(directory, "backups")
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare("UPDATE workspace_settings SET workspace_name = ? WHERE id = 1")
+      .run("导入前空间")
+    const source = JSON.parse(
+      strFromU8(unzipSync(createManualExport(database))["galaxy-home.json"]!),
+    ) as {
+      tables: Record<string, unknown[]>
+    }
+    source.tables["items"] = [{ id: crypto.randomUUID(), unexpected: "字段" }]
+    const bytes = zipSync({ "galaxy-home.json": strToU8(JSON.stringify(source)) })
+
+    await expect(restoreManualExport(database, bytes, backupDirectory)).rejects.toBeInstanceOf(
+      ImportArchiveInvalidError,
+    )
+    expect(
+      database.prepare("SELECT workspace_name FROM workspace_settings WHERE id = 1").get(),
+    ).toEqual({
+      workspace_name: "导入前空间",
+    })
+    expect(existsSync(backupDirectory)).toBe(false)
     database.close()
   })
 

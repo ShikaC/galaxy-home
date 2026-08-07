@@ -12,15 +12,26 @@ export type PreparedAiChat = {
   readonly conversationId: string | null
 }
 
+const MAX_HISTORY_CHARS = 60_000
+
+function recentHistory(database: DatabaseSync, conversationId: string): readonly ChatMessage[] {
+  const messages = listMessages(database, conversationId).map((message) => ({
+    role: message.role === "user" ? ("user" as const) : ("assistant" as const),
+    content: message.content,
+  }))
+  const selected: ChatMessage[] = []
+  let total = 0
+  for (const message of [...messages].reverse()) {
+    if (selected.length > 0 && total + message.content.length > MAX_HISTORY_CHARS) break
+    selected.unshift(message)
+    total += message.content.length
+  }
+  return selected
+}
+
 export function prepareAiChat(database: DatabaseSync, input: AiChatInput): PreparedAiChat {
   const settings = getSettings(database)
-  const prior =
-    input.conversationId === null
-      ? []
-      : listMessages(database, input.conversationId).map((message) => ({
-          role: message.role === "user" ? ("user" as const) : ("assistant" as const),
-          content: message.content,
-        }))
+  const prior = input.conversationId === null ? [] : recentHistory(database, input.conversationId)
   const localContext = buildAiContext(
     database,
     settings,

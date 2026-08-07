@@ -16,7 +16,7 @@ import { registerItemRoutes } from "./routes/items.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { AiServiceError } from "./services/ai.js"
 import { AiConfirmationRequiredError } from "./services/aiReview.js"
-import { ImportArchiveTooLargeError } from "./services/backup.js"
+import { ImportArchiveInvalidError, ImportArchiveTooLargeError } from "./services/backup.js"
 
 export async function buildApp(context: AppContext, production = false) {
   const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 })
@@ -58,12 +58,12 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(409).send({ code: "AI_ACTION_UNAVAILABLE", message: error.message })
     if (error instanceof ImportArchiveTooLargeError)
       return reply.code(413).send({ code: "IMPORT_ARCHIVE_TOO_LARGE", message: error.message })
+    if (error instanceof ImportArchiveInvalidError)
+      return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: "导入文件字段无效" })
     if (error instanceof AiServiceError)
       return reply.code(503).send({ code: error.code, message: error.message })
     app.log.error(error)
-    const message =
-      error instanceof Error && error.message !== "" ? error.message : "服务暂时不可用"
-    return reply.code(500).send({ code: "INTERNAL_ERROR", message })
+    return reply.code(500).send({ code: "INTERNAL_ERROR", message: "服务暂时不可用" })
   })
 
   if (production) {

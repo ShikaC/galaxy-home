@@ -1,6 +1,14 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname } from "node:path"
-import { z } from "zod"
+import { ZodError, z } from "zod"
 import type { AiConfigInput } from "../../shared/app.js"
 
 const storedConfigSchema = z.object({
@@ -34,7 +42,12 @@ function emptyConfig(): z.infer<typeof storedConfigSchema> {
 
 export function readSecretConfig(path: string): z.infer<typeof storedConfigSchema> {
   if (!existsSync(path)) return emptyConfig()
-  return storedConfigSchema.parse(JSON.parse(readFileSync(path, "utf8")))
+  try {
+    return storedConfigSchema.parse(JSON.parse(readFileSync(path, "utf8")))
+  } catch (error) {
+    if (error instanceof SyntaxError || error instanceof ZodError) return emptyConfig()
+    throw error
+  }
 }
 
 export function getAiConfigStatus(path: string): AiConfigStatus {
@@ -52,18 +65,25 @@ export function getAiConfigStatus(path: string): AiConfigStatus {
 export function writeSecretConfig(path: string, input: AiConfigInput): AiConfigStatus {
   mkdirSync(dirname(path), { recursive: true })
   const current = readSecretConfig(path)
-  writeFileSync(
-    path,
-    JSON.stringify(
-      {
-        ...input,
-        apiKey: input.apiKey === "" ? current.apiKey : input.apiKey,
-        updatedAt: new Date().toISOString(),
-      },
-      null,
-      2,
-    ),
-    { mode: 0o600 },
-  )
+  const temporaryPath = `${path}.${process.pid}.${crypto.randomUUID()}.tmp`
+  try {
+    writeFileSync(
+      temporaryPath,
+      JSON.stringify(
+        {
+          ...input,
+          apiKey: input.apiKey === "" ? current.apiKey : input.apiKey,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        2,
+      ),
+      { flag: "wx", mode: 0o600 },
+    )
+    chmodSync(temporaryPath, 0o600)
+    renameSync(temporaryPath, path)
+  } finally {
+    if (existsSync(temporaryPath)) rmSync(temporaryPath, { force: true })
+  }
   return getAiConfigStatus(path)
 }
