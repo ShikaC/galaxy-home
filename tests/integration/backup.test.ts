@@ -54,13 +54,37 @@ describe("manual backup", () => {
     database.close()
   })
 
+  it("rejects archives that expand past the limit despite undersized metadata", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-zip-bomb-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const payload = "a".repeat(MAX_IMPORT_UNCOMPRESSED_BYTES + 1)
+    const bytes = zipSync({ "galaxy-home.json": strToU8(payload) }, { level: 9 })
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+    for (let offset = 0; offset <= bytes.byteLength - 4; offset += 1) {
+      const signature = view.getUint32(offset, true)
+      if (signature === 0x04034b50) view.setUint32(offset + 22, 1, true)
+      if (signature === 0x02014b50) view.setUint32(offset + 24, 1, true)
+    }
+
+    await expect(
+      restoreManualExport(database, bytes, join(directory, "backups")),
+    ).rejects.toMatchObject({ name: "ImportArchiveTooLargeError" })
+    expect(database.prepare("SELECT COUNT(*) AS count FROM workspace_settings").get()).toEqual({
+      count: 1,
+    })
+    expect(existsSync(join(directory, "backups"))).toBe(false)
+    database.close()
+  })
+
   it("exports versioned data without the locally stored API key", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-backup-"))
     directories.push(directory)
     const database = openDatabase(join(directory, "app.sqlite"))
     migrateDatabase(database)
-    writeSecretConfig(join(directory, "secrets.json"), {
-      chatBaseUrl: "https://example.com/v1",
+    await writeSecretConfig(join(directory, "secrets.json"), {
+      chatBaseUrl: "http://127.0.0.1:11434/v1",
       chatModel: "model",
       apiKey: "must-not-export",
       transcriptionBaseUrl: "",
