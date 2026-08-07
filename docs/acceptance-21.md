@@ -38,7 +38,7 @@
 | 项 | 状态 |
 |----|------|
 | typecheck / build | 通过（2026-08-07） |
-| `npm test` | 通过 87 tests |
+| `npm test` | 通过 104 tests |
 | `npm run test:e2e` | 通过 23 passed / 1 skipped |
 | 视觉截图无重叠 | visual-acceptance 通过 |
 | 人工两条黄金路径 | e2e acceptance-flow + project-ai 覆盖；真实 dogfood 持续确认 |
