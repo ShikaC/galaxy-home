@@ -19,6 +19,7 @@
   min-block-size: 0;
   min-inline-size: 0;
   flex-direction: column;
+  overflow-x: clip;
   border-inline-end: 1px solid var(--color-border);
   padding: var(--space-5) var(--space-3);
   background:
@@ -124,13 +125,14 @@
   align-items: center;
   padding-inline: var(--space-2);
 }
-:where(.sidebar--collapsed) :where(.brand strong, .nav-item > span) {
+.sidebar--collapsed .brand strong,
+.sidebar--collapsed .nav-item > span {
   max-inline-size: 0;
   margin: 0;
   opacity: 0;
   pointer-events: none;
 }
-:where(.sidebar--collapsed) .workspace-name {
+.sidebar--collapsed .workspace-name {
   max-block-size: 0;
   margin-block: 0;
   padding-inline: 0;
@@ -140,7 +142,7 @@
 .sidebar--collapsed nav {
   inline-size: 100%;
 }
-:where(.sidebar--collapsed) .nav-item {
+.sidebar--collapsed .nav-item {
   justify-content: center;
   gap: 0;
   padding-inline: var(--space-2);
