@@ -5,10 +5,21 @@ import { migrateDatabase, openDatabase } from "./database.js"
 import { getSettings } from "./repositories/settings.js"
 import { purgeExpiredTrash } from "./repositories/trash.js"
 import { ensureDailyBackup } from "./services/backup.js"
+import type { Clock } from "./services/clock.js"
 import { systemClock } from "./services/clock.js"
 import { runScheduler } from "./services/scheduler.js"
 
-const clock = systemClock
+function resolveClock(): Clock {
+  const fixed = process.env["GALAXY_CLOCK_NOW"]
+  if (fixed === undefined || fixed.trim() === "") return systemClock
+  const instant = new Date(fixed)
+  if (Number.isNaN(instant.getTime())) {
+    throw new Error(`GALAXY_CLOCK_NOW 不是合法时间：${fixed}`)
+  }
+  return { now: () => new Date(instant.getTime()) }
+}
+
+const clock = resolveClock()
 const dataDirectory = resolve(process.env["GALAXY_DATA_DIR"] ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
