@@ -1,4 +1,4 @@
-import { Bot, History, Plus, X } from "lucide-react"
+import { Bot, History, PanelRightClose, Plus } from "lucide-react"
 import { AiPermissionControl } from "./AiPermissionControl.js"
 import { IconButton } from "./ui/IconButton.js"
 import { Badge } from "./ui/Status.js"
@@ -30,8 +30,8 @@ export function AiDrawerHeader({
             {configured ? "已连接" : "未配置"}
           </Badge>
         </div>
-        <IconButton label="关闭 AI 助手" onClick={onClose}>
-          <X size={18} />
+        <IconButton label={`收起 ${nickname}`} onClick={onClose}>
+          <PanelRightClose size={19} />
         </IconButton>
       </header>
       <div className="drawer__toolbar">

@@ -49,7 +49,7 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await page.getByRole("button", { name: /打开 星伴/ }).click()
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
   await expect(page.getByText("待办、习惯、项目手动推进和回顾仍可正常使用。")).toBeVisible()
-  await page.getByRole("button", { name: "关闭 AI 助手" }).click()
+  await page.getByRole("button", { name: /收起 星伴/ }).click()
 
   await page.getByRole("link", { name: "项目", exact: true }).click()
   await page.getByRole("button", { name: "新项目" }).click()
