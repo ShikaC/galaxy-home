@@ -127,7 +127,7 @@ export function SearchDialog({
               key={`${result.type}-${result.id}`}
               onClick={() => {
                 onClose()
-                if (result.type === "conversation") actions.openAi(result.id)
+                if (result.type === "conversation") actions.openAi({ conversationId: result.id })
                 else navigate(resultPath(result.type, result.id))
               }}
               type="button"

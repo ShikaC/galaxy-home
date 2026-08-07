@@ -38,6 +38,7 @@ export function prepareAiChat(database: DatabaseSync, input: AiChatInput): Prepa
     input.currentPath,
     input.currentLabel,
     input.content,
+    input.focusItemId,
   )
   return {
     messages: [

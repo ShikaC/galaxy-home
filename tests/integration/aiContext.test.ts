@@ -67,4 +67,46 @@ describe("AI workspace context", () => {
     )
     expect(context.references).toEqual([{ type: "page", id: null, label: "项目" }])
   })
+
+  it("includes an explicit focus item even under conservative permission", () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-ai-focus-item-"))
+    database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database.prepare("UPDATE workspace_settings SET ai_permission = 'conservative'").run()
+    const itemId = crypto.randomUUID()
+    const timestamp = new Date().toISOString()
+    database
+      .prepare(
+        `INSERT INTO items (id, title, notes, status, created_at, updated_at)
+         VALUES (?, ?, ?, 'active', ?, ?)`,
+      )
+      .run(itemId, "写完对抗审查计划表", "只保留今天能完成的一步", timestamp, timestamp)
+
+    const context = buildAiContext(
+      database,
+      getSettings(database),
+      "/",
+      "首页",
+      "请帮我缩小这件事",
+      itemId,
+    )
+    expect(context.references).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: "item",
+          id: itemId,
+          label: "写完对抗审查计划表",
+        }),
+      ]),
+    )
+    expect(JSON.parse(context.prompt).localContext).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          focused: true,
+          title: "写完对抗审查计划表",
+          notes: "只保留今天能完成的一步",
+        }),
+      ]),
+    )
+  })
 })

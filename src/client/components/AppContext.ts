@@ -1,9 +1,15 @@
 import { createContext, useContext } from "react"
 
+export type OpenAiOptions = {
+  readonly conversationId?: string
+  readonly draft?: string
+  readonly focusItemId?: string
+}
+
 type AppActions = {
   readonly openCapture: () => void
   readonly openSearch: () => void
-  readonly openAi: (conversationId?: string) => void
+  readonly openAi: (options?: OpenAiOptions) => void
 }
 
 type AppTime = {

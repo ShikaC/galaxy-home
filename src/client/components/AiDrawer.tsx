@@ -26,11 +26,15 @@ const PAGE_LABELS: Readonly<Record<string, string>> = {
 }
 
 export function AiDrawer({
+  draft = null,
+  focusItemId = null,
   onClose,
   onConversationChange,
   open,
   requestedConversationId,
 }: {
+  readonly draft?: string | null
+  readonly focusItemId?: string | null
   readonly onClose: () => void
   readonly onConversationChange: (conversationId: string | null) => void
   readonly open: boolean
@@ -41,6 +45,7 @@ export function AiDrawer({
   const client = useQueryClient()
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [content, setContent] = useState("")
+  const [activeFocusItemId, setActiveFocusItemId] = useState<string | null>(null)
   const [messages, setMessages] = useState<readonly AiDrawerMessage[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historySearch, setHistorySearch] = useState("")
@@ -55,6 +60,7 @@ export function AiDrawer({
           currentLabel: location.pathname.startsWith("/projects/")
             ? "项目"
             : (PAGE_LABELS[location.pathname] ?? "当前页"),
+          ...(activeFocusItemId === null ? {} : { focusItemId: activeFocusItemId }),
         },
         (delta) =>
           setMessages((current) =>
@@ -85,6 +91,7 @@ export function AiDrawer({
         ),
       )
       setContent("")
+      setActiveFocusItemId(null)
       void client.invalidateQueries({ queryKey: queryKeys.meta })
     },
   })
@@ -106,6 +113,11 @@ export function AiDrawer({
   useEffect(() => {
     if (open && requestedConversationId !== null) loadConversation.mutate(requestedConversationId)
   }, [loadConversation.mutate, open, requestedConversationId])
+  useEffect(() => {
+    if (!open) return
+    if (draft !== null) setContent(draft)
+    setActiveFocusItemId(focusItemId)
+  }, [draft, focusItemId, open])
   const rename = useMutation({
     mutationFn: ({ id, title }: { readonly id: string; readonly title: string }) =>
       apiVoid(`/api/ai/conversations/${id}`, {

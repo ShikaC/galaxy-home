@@ -3,8 +3,10 @@ import { z } from "zod"
 import type { AiReference } from "../../shared/ai.js"
 import type { Project } from "../../shared/projects.js"
 import type { WorkspaceSettings } from "../../shared/settings.js"
+import { getItem, ItemNotFoundError } from "../repositories/items.js"
 import { getProject, ProjectNotFoundError } from "../repositories/projects.js"
 import { listWorkspaceContext, searchWorkspace } from "../repositories/search.js"
+import { localClock } from "./time.js"
 
 type ContextEntry = {
   readonly reference: AiReference
@@ -124,14 +126,43 @@ function relevantMemoryEntries(database: DatabaseSync, content: string): readonl
   return [...unique.values()].slice(0, 4)
 }
 
+function focusItemEntry(
+  database: DatabaseSync,
+  settings: WorkspaceSettings,
+  focusItemId: string | undefined,
+): ContextEntry | null {
+  if (focusItemId === undefined) return null
+  try {
+    const item = getItem(database, focusItemId, localClock(new Date(), settings.timezone).date)
+    return {
+      reference: { type: "item", id: item.id, label: item.title },
+      detail: {
+        type: "item",
+        focused: true,
+        title: item.title,
+        notes: item.notes,
+        status: item.status,
+        inToday: item.inToday,
+        isFocus: item.isFocus,
+      },
+    }
+  } catch (error) {
+    if (error instanceof ItemNotFoundError) return null
+    throw error
+  }
+}
+
 export function buildAiContext(
   database: DatabaseSync,
   settings: WorkspaceSettings,
   path: string,
   label: string,
   content: string,
+  focusItemId?: string,
 ) {
+  const focused = focusItemEntry(database, settings, focusItemId)
   const entries = [
+    ...(focused === null ? [] : [focused]),
     currentPageEntry(database, path, label),
     ...relevantMemoryEntries(database, content),
     ...(settings.aiPermission === "open" ? openWorkspaceEntries(database, content) : []),

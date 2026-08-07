@@ -37,6 +37,8 @@ export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
   const [aiConversationId, setAiConversationId] = useState<string | null>(null)
+  const [aiDraft, setAiDraft] = useState<string | null>(null)
+  const [aiFocusItemId, setAiFocusItemId] = useState<string | null>(null)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
   )
@@ -50,8 +52,14 @@ export function AppShell() {
     () => ({
       openCapture: () => setCaptureOpen(true),
       openSearch: () => setSearchOpen(true),
-      openAi: (conversationId?: string) => {
-        setAiConversationId(conversationId ?? null)
+      openAi: (options?: {
+        readonly conversationId?: string
+        readonly draft?: string
+        readonly focusItemId?: string
+      }) => {
+        setAiConversationId(options?.conversationId ?? null)
+        setAiDraft(options?.draft ?? null)
+        setAiFocusItemId(options?.focusItemId ?? null)
         setAiOpen(true)
       },
     }),
@@ -163,7 +171,13 @@ export function AppShell() {
           <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
           <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
           <AiDrawer
-            onClose={() => setAiOpen(false)}
+            draft={aiDraft}
+            focusItemId={aiFocusItemId}
+            onClose={() => {
+              setAiOpen(false)
+              setAiDraft(null)
+              setAiFocusItemId(null)
+            }}
             onConversationChange={setAiConversationId}
             open={aiOpen}
             requestedConversationId={aiConversationId}

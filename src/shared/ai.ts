@@ -63,6 +63,7 @@ export const aiChatInputSchema = z
     content: z.string().trim().min(1).max(20_000),
     currentPath: z.string().trim().min(1).max(300).default("/"),
     currentLabel: z.string().trim().min(1).max(40).default("当前页"),
+    focusItemId: z.string().uuid().optional(),
   })
   .readonly()
 
