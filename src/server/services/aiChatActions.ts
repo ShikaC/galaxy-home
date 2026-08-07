@@ -116,29 +116,52 @@ export function extractChatActions(answer: string): {
   readonly text: string
   readonly actions: readonly ChatAction[]
   readonly parseFailed: boolean
+  readonly parseFailureKind: "incomplete_project" | "generic" | null
 } {
   const match = ACTION_BLOCK_PATTERN.exec(answer)
-  if (match === null) return { text: answer.trimEnd(), actions: [], parseFailed: false }
+  if (match === null) {
+    return { text: answer.trimEnd(), actions: [], parseFailed: false, parseFailureKind: null }
+  }
   const raw = match[1]
   const stripped = answer.slice(0, match.index).trimEnd()
-  if (raw === undefined) return { text: stripped, actions: [], parseFailed: true }
+  if (raw === undefined) {
+    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
+  }
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return { text: stripped, actions: [], parseFailed: true }
+    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
   }
   const candidates = Array.isArray(parsed) ? parsed : [parsed]
   if (candidates.length === 0 || candidates.length > MAX_ACTIONS_PER_TURN) {
-    return { text: stripped, actions: [], parseFailed: true }
+    return { text: stripped, actions: [], parseFailed: true, parseFailureKind: "generic" }
   }
   const actions: ChatAction[] = []
   for (const candidate of candidates) {
     const action = chatActionSchema.safeParse(normalizeActionCandidate(candidate))
-    if (!action.success) return { text: stripped, actions: [], parseFailed: true }
+    if (!action.success) {
+      return {
+        text: stripped,
+        actions: [],
+        parseFailed: true,
+        parseFailureKind: isIncompleteProjectCandidate(candidate) ? "incomplete_project" : "generic",
+      }
+    }
     actions.push(action.data)
   }
-  return { text: stripped, actions, parseFailed: false }
+  return { text: stripped, actions, parseFailed: false, parseFailureKind: null }
+}
+
+function isIncompleteProjectCandidate(candidate: unknown): boolean {
+  if (candidate === null || typeof candidate !== "object" || Array.isArray(candidate)) return false
+  const value = candidate as Record<string, unknown>
+  const action = typeof value["action"] === "string" ? value["action"].trim().toLowerCase() : ""
+  return action === "create_project" || action === "createproject" || action === "create_plan"
+}
+
+function looksLikeClarifyingQuestions(text: string): boolean {
+  return /[？?]/.test(text) || /先(确认|问一下|了解)|还缺|需要知道|告诉我/.test(text)
 }
 
 function coerceEntityRef(value: unknown): unknown {
@@ -712,6 +735,16 @@ export function applyAiChatActions(
   if (extracted.actions.length === 0) {
     if (extracted.parseFailed) {
       const base = extracted.text
+      if (extracted.parseFailureKind === "incomplete_project") {
+        if (base !== "" && looksLikeClarifyingQuestions(base)) {
+          return { text: base, pendingAction: null, proposedMemory: null }
+        }
+        return {
+          text: `${base === "" ? "" : `${base}\n\n`}这个计划还缺一点关键信息，我先不创建。你可以直接告诉我：想达成什么结果？大概希望多久看到进展？我再帮你建。`,
+          pendingAction: null,
+          proposedMemory: null,
+        }
+      }
       return {
         text: `${base === "" ? "" : `${base}\n\n`}（未能执行：操作块格式不正确或字段不完整，工作空间未改动。请按协议字段重试，例如 create_habit 需要 frequencyType、targetCount、weeklyTarget、restDays。）`,
         pendingAction: null,
@@ -841,7 +874,7 @@ export function buildAiChatSystemPrompt(
 \`\`\`json
 {"action":"set_item_categories","itemId":"学 JSX","categoryIds":["学习"]}
 \`\`\`
-create_project 只创建项目骨架；若用户同时要待办，用 create_item 另建并用 projectIds 关联。禁止永久删除、导出、擅自改项目阶段结构。信息不足时先追问，不要附加代码块。`
+create_project 只创建项目骨架，必填 name 与 desiredOutcome（可观察的成功标准）。用户想要计划/项目但目标、频率或成功标准不清楚时，先用 1～3 个简短问题追问，不要附加不完整的 create_project，也不要用操作失败的口吻说话；信息够了再创建。若用户同时要待办，用 create_item 另建并用 projectIds 关联。禁止永久删除、导出、擅自改项目阶段结构。其他操作信息不足时也先追问，不要附加代码块。`
   const capability =
     settings.aiPermission === "open"
       ? `当前为开放模式。支持 action：create_habit, create_item, create_project, update_item, set_today(mode: today|focus|secondary|clear), trash_item, set_item_categories, complete_item, archive_item, update_project_progress, propose_memory。除 trash_item 外，附加操作块后服务器会立即执行；archive_item 会立即归档。trash_item（软删进回收站）仍须附加操作块，服务器会挂起并由界面确认后执行——不要只口头问「确认吗」而不附代码块。${protocol}`

@@ -199,6 +199,48 @@ describe("AI chat habit actions", () => {
     expect(listHabits(database, "2026-08-05").some((habit) => habit.name === "坏习惯")).toBe(false)
   })
 
+  it("turns incomplete create_project blocks into a follow-up instead of a hard error", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+
+    const withQuestions = applyAiChatActions(
+      database,
+      settings,
+      `想开始跑步的话，先确认两件事：目标距离？每周几次？
+
+\`\`\`json
+{"action":"create_project","name":"跑步计划"}
+\`\`\``,
+    )
+    expect(withQuestions.pendingAction).toBeNull()
+    expect(withQuestions.text).toContain("目标距离")
+    expect(withQuestions.text).not.toContain("未能执行")
+    expect(withQuestions.text).not.toContain("```")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM projects WHERE name = ? AND deleted_at IS NULL")
+          .get("跑步计划") as { value: number }
+      ).value,
+    ).toBe(0)
+
+    const withoutQuestions = applyAiChatActions(
+      database,
+      settings,
+      `好的，我先帮你建跑步计划。
+
+\`\`\`json
+{"action":"create_project","name":"跑步计划"}
+\`\`\``,
+    )
+    expect(withoutQuestions.pendingAction).toBeNull()
+    expect(withoutQuestions.text).toMatch(/目标|结果|进展|告诉我/)
+    expect(withoutQuestions.text).not.toContain("未能执行")
+    expect(withoutQuestions.text).not.toContain("操作块格式不正确")
+  })
+
   it("does not create a habit when the model only claims success", async () => {
     const { app, database } = await setup(
       "已创建习惯「晨间拉伸」，你今天就可以开始打卡了。",
