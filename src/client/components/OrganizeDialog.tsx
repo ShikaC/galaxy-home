@@ -200,8 +200,7 @@ export function OrganizeDialog({
                 type="button"
                 variant="secondary"
               >
-                <Sparkles size={14} />
-                请 AI 建议分类
+                <Sparkles size={14} />请 AI 建议分类
               </Button>
             </div>
           ) : null}
@@ -216,9 +215,7 @@ export function OrganizeDialog({
                       onSuccess: () => {
                         setAddedToday(true)
                         setSuggestToday(false)
-                        setSuggestNote(
-                          "已加入今日。保存整理后仍会离开收集箱（若已选分类或项目）。",
-                        )
+                        setSuggestNote("已加入今日。保存整理后仍会离开收集箱（若已选分类或项目）。")
                       },
                     },
                   )

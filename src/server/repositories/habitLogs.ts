@@ -23,7 +23,9 @@ export class HabitRestDayError extends Error {
 
 function restDaysFor(database: DatabaseSync, habitId: string): readonly number[] {
   const habit = habitKindRowSchema.parse(
-    database.prepare("SELECT type, rest_days_json FROM habits WHERE id = ? AND deleted_at IS NULL").get(habitId),
+    database
+      .prepare("SELECT type, rest_days_json FROM habits WHERE id = ? AND deleted_at IS NULL")
+      .get(habitId),
   )
   return z.array(z.number().int().min(0).max(6)).parse(JSON.parse(habit.rest_days_json))
 }
@@ -57,12 +59,14 @@ export function recordHabit(database: DatabaseSync, rawHabitId: string, localDat
   const habitId = habitIdSchema.parse(rawHabitId)
   assertNotRestDay(database, habitId, localDate)
   const habit = habitKindRowSchema.parse(
-    database.prepare("SELECT type, rest_days_json FROM habits WHERE id = ? AND deleted_at IS NULL").get(habitId),
+    database
+      .prepare("SELECT type, rest_days_json FROM habits WHERE id = ? AND deleted_at IS NULL")
+      .get(habitId),
   )
   const current = database
     .prepare("SELECT count FROM habit_logs WHERE habit_id = ? AND local_date = ?")
-    .get(habitId, localDate)
-  const currentCount = Number(current?.["count"] ?? 0)
+    .get(habitId, localDate) as { count?: number } | undefined
+  const currentCount = Number(current?.count ?? 0)
   writeLog(database, habitId, localDate, habit.type === "check" ? 1 : currentCount + 1, false)
 }
 
@@ -71,8 +75,8 @@ export function undoHabit(database: DatabaseSync, rawHabitId: string, localDate:
   assertNotRestDay(database, habitId, localDate)
   const current = database
     .prepare("SELECT count FROM habit_logs WHERE habit_id = ? AND local_date = ?")
-    .get(habitId, localDate)
-  const currentCount = Number(current?.["count"] ?? 0)
+    .get(habitId, localDate) as { count?: number } | undefined
+  const currentCount = Number(current?.count ?? 0)
   writeLog(database, habitId, localDate, Math.max(0, currentCount - 1), false)
 }
 

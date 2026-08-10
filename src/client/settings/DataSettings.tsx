@@ -5,6 +5,7 @@ import { z } from "zod"
 import { workspaceSettingsSchema } from "../../shared/settings.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
+import { Toast } from "../components/ui/Feedback.js"
 import { TextField } from "../components/ui/Field.js"
 import { IconButton } from "../components/ui/IconButton.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
@@ -23,11 +24,17 @@ const trashSchema = z
   )
   .readonly()
 
+type TrashNotice = Readonly<{
+  readonly message: string
+  readonly tone: "confirmation" | "error"
+}>
+
 export function DataSettings() {
   const meta = useMeta()
   const client = useQueryClient()
   const [backupRetentionDays, setBackupRetentionDays] = useState("30")
   const [trashRetentionDays, setTrashRetentionDays] = useState("30")
+  const [trashNotice, setTrashNotice] = useState<TrashNotice | null>(null)
   useEffect(() => {
     if (meta.data !== undefined) {
       setBackupRetentionDays(String(meta.data.settings.backupRetentionDays))
@@ -45,11 +52,21 @@ export function DataSettings() {
   }
   const restoreTrash = useMutation({
     mutationFn: (id: string) => apiVoid(`/api/trash/${id}/restore`, { method: "POST" }),
-    onSuccess: refresh,
+    onError: (error) => setTrashNotice({ message: error.message, tone: "error" }),
+    onMutate: () => setTrashNotice(null),
+    onSuccess: () => {
+      refresh()
+      setTrashNotice({ message: "已恢复到原位置。", tone: "confirmation" })
+    },
   })
   const purge = useMutation({
     mutationFn: (id: string) => apiVoid(`/api/trash/${id}`, { method: "DELETE" }),
-    onSuccess: refresh,
+    onError: (error) => setTrashNotice({ message: error.message, tone: "error" }),
+    onMutate: () => setTrashNotice(null),
+    onSuccess: () => {
+      refresh()
+      setTrashNotice({ message: "已永久删除。", tone: "confirmation" })
+    },
   })
   const restoreFile = useMutation({
     mutationFn: (file: File) =>
@@ -155,32 +172,45 @@ export function DataSettings() {
       ) : null}
       <div className="subsection">
         <h3>回收站</h3>
+        {trashNotice === null ? null : <Toast tone={trashNotice.tone}>{trashNotice.message}</Toast>}
         {trash.data?.length === 0 ? (
           <EmptyState description="删除的内容会先在这里保留。" icon={Trash2} title="回收站是空的" />
         ) : (
           <div className="trash-list">
-            {trash.data?.map((entry) => (
-              <article key={entry.id}>
-                <div>
-                  <strong>{entry.display_name}</strong>
-                  <span>
-                    {entry.entity_type} · {new Date(entry.deleted_at).toLocaleDateString("zh-CN")}
-                  </span>
-                </div>
-                <IconButton label="恢复" onClick={() => restoreTrash.mutate(entry.id)}>
-                  <RotateCcw size={16} />
-                </IconButton>
-                <IconButton
-                  label="永久删除"
-                  onClick={() => {
-                    if (window.confirm(`永久删除“${entry.display_name}”？此操作无法撤销。`))
-                      purge.mutate(entry.id)
-                  }}
-                >
-                  <Trash2 size={16} />
-                </IconButton>
-              </article>
-            ))}
+            {trash.data?.map((entry) => {
+              const isPurging = purge.isPending && purge.variables === entry.id
+              const isRestoring = restoreTrash.isPending && restoreTrash.variables === entry.id
+              const actionsDisabled = restoreTrash.isPending || purge.isPending
+              return (
+                <article key={entry.id}>
+                  <div>
+                    <strong>{entry.display_name}</strong>
+                    <span>
+                      {entry.entity_type} · {new Date(entry.deleted_at).toLocaleDateString("zh-CN")}
+                    </span>
+                  </div>
+                  <IconButton
+                    disabled={actionsDisabled}
+                    label={isRestoring ? "正在恢复" : "恢复"}
+                    loading={isRestoring}
+                    onClick={() => restoreTrash.mutate(entry.id)}
+                  >
+                    <RotateCcw size={16} />
+                  </IconButton>
+                  <IconButton
+                    disabled={actionsDisabled}
+                    label={isPurging ? "正在永久删除" : "永久删除"}
+                    loading={isPurging}
+                    onClick={() => {
+                      if (window.confirm(`永久删除“${entry.display_name}”？此操作无法撤销。`))
+                        purge.mutate(entry.id)
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </IconButton>
+                </article>
+              )
+            })}
           </div>
         )}
       </div>

@@ -13,5 +13,6 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/resources/app/dist/
 src-tauri/resources/app/node_modules/
+src-tauri/resources/app/db/
 src-tauri/resources/app/package.json
 src-tauri/resources/app/package-lock.json

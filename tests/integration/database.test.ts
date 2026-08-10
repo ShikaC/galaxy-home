@@ -26,7 +26,7 @@ describe("database migrations", () => {
     const rows = database
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
-    const names = rows.map((row) => row["name"])
+    const names = rows.map((row) => (row as { name: string }).name)
     expect(names).toEqual(
       expect.arrayContaining([
         "workspace_settings",

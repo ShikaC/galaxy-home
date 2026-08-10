@@ -45,6 +45,10 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await expect(item.getByText("今日重点")).toBeVisible()
   await item.getByRole("button", { name: `完成 ${itemTitle}` }).click()
   await expect(page.getByText(/今日已完成 \d+ 项/)).toBeVisible()
+  await expect(page.getByRole("status").filter({ hasText: itemTitle })).toBeVisible()
+  await page.getByRole("link", { name: "查看已完成" }).click()
+  await expect(page.getByRole("heading", { level: 2, name: "已完成" })).toBeVisible()
+  await expect(page.getByRole("button", { name: `重新打开 ${itemTitle}` })).toBeVisible()
 
   await page.getByRole("button", { name: /打开 星伴/ }).click()
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()

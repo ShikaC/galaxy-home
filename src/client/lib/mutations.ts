@@ -1,20 +1,25 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import type { Item } from "../../shared/items.js"
 import { useAppTime } from "../components/AppContext.js"
 import { apiRequest, apiVoid, jsonBody } from "./api.js"
 import { itemSchema } from "./schemas.js"
 
-export function useItemStatusMutation() {
+type ItemStatusChange = Readonly<{
+  readonly id: string
+  readonly status: "active" | "completed" | "archived"
+}>
+
+export function useItemStatusMutation(
+  onStatusChanged?: (item: Item, change: ItemStatusChange) => void,
+) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({
-      id,
-      status,
-    }: {
-      readonly id: string
-      readonly status: "active" | "completed" | "archived"
-    }) =>
+    mutationFn: ({ id, status }: ItemStatusChange) =>
       apiRequest(`/api/items/${id}`, itemSchema, { method: "PATCH", body: jsonBody({ status }) }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
+    onSuccess: (item, change) => {
+      onStatusChanged?.(item, change)
+      return client.invalidateQueries({ queryKey: ["items"] })
+    },
   })
 }
 

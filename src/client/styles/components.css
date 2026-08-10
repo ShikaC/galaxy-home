@@ -100,6 +100,10 @@
   background: var(--color-surface-selected);
 }
 
+.icon-button__loader {
+  animation: spin 700ms linear infinite;
+}
+
 .field {
   display: grid;
   gap: var(--space-2);

@@ -6,12 +6,21 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightOpen,
+  RefreshCw,
   Search,
   Settings,
   Sparkles,
   Target,
 } from "lucide-react"
-import { Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type PointerEvent } from "react"
+import {
+  type CSSProperties,
+  type PointerEvent,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { NavLink, Outlet } from "react-router"
 import { localDateFor } from "../lib/date.js"
 import { useMeta } from "../lib/queries.js"
@@ -21,6 +30,7 @@ import { AppActionsContext, AppTimeContext } from "./AppContext.js"
 import { CaptureDialog } from "./CaptureDialog.js"
 import { ReminderBanner } from "./ReminderBanner.js"
 import { SearchDialog } from "./SearchDialog.js"
+import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
 const NAV_ITEMS = [
@@ -125,10 +135,21 @@ export function AppShell() {
     window.addEventListener("pointerup", onUp)
   }
 
-  if (meta.isLoading) return <div className="page-loading">正在打开你的空间...</div>
+  if (meta.isLoading)
+    return (
+      <div aria-live="polite" className="page-loading" role="status">
+        正在连接本地服务...
+      </div>
+    )
   if (meta.isError || meta.data === undefined)
     return (
-      <div className="page-loading page-loading--error">无法连接本地服务，请确认服务仍在运行。</div>
+      <div aria-live="assertive" className="page-loading page-loading--error" role="alert">
+        <p>无法连接本地服务，请确认服务仍在运行。</p>
+        <Button loading={meta.isFetching} onClick={() => void meta.refetch()} variant="secondary">
+          <RefreshCw size={16} />
+          重试连接
+        </Button>
+      </div>
     )
   if (!meta.data.settings.onboardingCompleted) return <OnboardingPage />
 

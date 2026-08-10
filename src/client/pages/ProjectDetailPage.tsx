@@ -31,10 +31,7 @@ export function ProjectDetailPage() {
     queryKey: ["items", "project", id, today],
     enabled: id !== undefined,
     queryFn: () =>
-      apiRequest(
-        `/api/items?projectId=${id ?? ""}&view=active&localDate=${today}`,
-        itemsSchema,
-      ),
+      apiRequest(`/api/items?projectId=${id ?? ""}&view=active&localDate=${today}`, itemsSchema),
   })
   const advance = useMutation({
     mutationFn: () =>

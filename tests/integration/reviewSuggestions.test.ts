@@ -65,7 +65,15 @@ describe("weekly review suggestion conversion", () => {
       ).json(),
     )
     expect(secondConversion).toEqual(firstConversion)
-    expect(Number(database.prepare("SELECT COUNT(*) AS value FROM items").get()?.["value"])).toBe(1)
+    expect(
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM items").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
+    ).toBe(1)
   })
 
   it("converts each suggestion once and preserves conversion state across restart", async () => {
@@ -102,12 +110,32 @@ describe("weekly review suggestion conversion", () => {
       expect(first.statusCode).toBe(200)
       expect(second.json()).toEqual(first.json())
     }
-    expect(Number(database.prepare("SELECT COUNT(*) AS value FROM items").get()?.["value"])).toBe(1)
-    expect(Number(database.prepare("SELECT COUNT(*) AS value FROM habits").get()?.["value"])).toBe(
-      1,
-    )
     expect(
-      Number(database.prepare("SELECT COUNT(*) AS value FROM projects").get()?.["value"]),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM items").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
+    ).toBe(1)
+    expect(
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM habits").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
+    ).toBe(1)
+    expect(
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM projects").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
     ).toBe(1)
     const reviews = await app.inject({ method: "GET", url: "/api/reviews" })
     expect(

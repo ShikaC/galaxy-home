@@ -88,7 +88,12 @@ describe("project repository", () => {
       "先学习 React 组件、Props 与 State 的基本概念，并完成一个可接收 Props、通过 State 控制按钮计数的简单组件。",
       "2026-08-07T11:00:00.000Z",
     )
-    insert.run(crypto.randomUUID(), project.id, "搭建 React 学习环境并了解 JSX", "2026-08-07T12:00:00.000Z")
+    insert.run(
+      crypto.randomUUID(),
+      project.id,
+      "搭建 React 学习环境并了解 JSX",
+      "2026-08-07T12:00:00.000Z",
+    )
     const recent = getProject(database, project.id).recentProgress
     expect(recent).toHaveLength(2)
     expect(recent.map((entry) => entry.outcome)).toEqual([

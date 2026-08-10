@@ -78,10 +78,22 @@ describe("local API", () => {
     })
     expect(unavailable.statusCode).toBe(503)
     expect(
-      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get()?.["value"]),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
     ).toBe(0)
     expect(
-      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get()?.["value"]),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
     ).toBe(0)
     await app.close()
     database.close()

@@ -75,7 +75,10 @@ export function saveItemAiSuggestion(
   return parse(database.prepare("SELECT * FROM item_ai_suggestions WHERE item_id = ?").get(itemId))
 }
 
-export function getItemAiSuggestion(database: DatabaseSync, itemId: string): ItemAiSuggestion | null {
+export function getItemAiSuggestion(
+  database: DatabaseSync,
+  itemId: string,
+): ItemAiSuggestion | null {
   const row = database.prepare("SELECT * FROM item_ai_suggestions WHERE item_id = ?").get(itemId)
   return row === undefined ? null : parse(row)
 }

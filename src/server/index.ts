@@ -11,8 +11,13 @@ import { maybeGenerateScheduledAiWeeklyReview } from "./services/scheduledAiRevi
 import { runScheduler } from "./services/scheduler.js"
 import { getAiConfigStatus } from "./services/secrets.js"
 
+const environment = process.env as Pick<
+  NodeJS.ProcessEnv,
+  "GALAXY_CLOCK_NOW" | "GALAXY_DATA_DIR" | "NODE_ENV"
+>
+
 function resolveClock(): Clock {
-  const fixed = process.env["GALAXY_CLOCK_NOW"]
+  const fixed = environment.GALAXY_CLOCK_NOW
   if (fixed === undefined || fixed.trim() === "") return systemClock
   const instant = new Date(fixed)
   if (Number.isNaN(instant.getTime())) {
@@ -22,7 +27,7 @@ function resolveClock(): Clock {
 }
 
 const clock = resolveClock()
-const dataDirectory = resolve(process.env["GALAXY_DATA_DIR"] ?? resolve(process.cwd(), "data"))
+const dataDirectory = resolve(environment.GALAXY_DATA_DIR ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
 const database = openDatabase(resolve(dataDirectory, "galaxy-home.sqlite"))
@@ -45,7 +50,7 @@ if (deferAiReview) {
   }
 }
 
-const production = process.env["NODE_ENV"] === "production"
+const production = environment.NODE_ENV === "production"
 const port = Number(process.env[production ? "PORT" : "API_PORT"] ?? (production ? 4173 : 3001))
 const app = await buildApp(
   {

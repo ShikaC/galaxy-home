@@ -117,7 +117,9 @@ export function AiSettings() {
         }}
       >
         <h3>称呼</h3>
-        <p className="setting-note">可随时修改，会立刻用于新的对话提示词；也可在「个人空间」中调整。</p>
+        <p className="setting-note">
+          可随时修改，会立刻用于新的对话提示词；也可在「个人空间」中调整。
+        </p>
         <div className="form-grid">
           <TextField
             label="AI 助手昵称"

@@ -98,6 +98,70 @@ describe("AI chat habit actions", () => {
     )
   })
 
+  it("executes an action block when the model adds trailing explanation", async () => {
+    const { app, database } = await setup(
+      `好的，我来帮你记下这件事。
+
+\`\`\`json
+{"action":"create_item","title":"尾随说明待办"}
+\`\`\`
+
+这条待办已经创建，之后可以继续安排。`,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我记下尾随说明待办",
+        currentPath: "/",
+        currentLabel: "首页",
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("已实际创建待办「尾随说明待办」")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("尾随说明待办") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
+  it("accepts case-insensitive JSON action fences with spacing", async () => {
+    const { app, database } = await setup(
+      `好的，我来帮你记下这件事。
+
+\`\`\` JSON
+{"action":"create_item","title":"大小写围栏待办"}
+\`\`\``,
+      "open",
+    )
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/ai/chat",
+      payload: {
+        conversationId: null,
+        content: "帮我记下大小写围栏待办",
+        currentPath: "/",
+        currentLabel: "首页",
+      },
+    })
+
+    expect(response.statusCode).toBe(200)
+    expect(response.json().message.content).toContain("已实际创建待办「大小写围栏待办」")
+    expect(
+      (
+        database
+          .prepare("SELECT COUNT(*) AS value FROM items WHERE title = ? AND deleted_at IS NULL")
+          .get("大小写围栏待办") as { value: number }
+      ).value,
+    ).toBe(1)
+  })
+
   it("accepts create_habit aliases for frequency and target", async () => {
     const { app, database } = await setup(
       `好的，我来创建习惯。
@@ -516,19 +580,17 @@ describe("AI chat habit actions", () => {
           .prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL")
           .get("学习React"),
       )
-    const items = z
-      .array(z.object({ title: z.string(), secondary: z.number().int() }))
-      .parse(
-        database
-          .prepare(
-            `SELECT items.title, today_items.is_secondary AS secondary
+    const items = z.array(z.object({ title: z.string(), secondary: z.number().int() })).parse(
+      database
+        .prepare(
+          `SELECT items.title, today_items.is_secondary AS secondary
              FROM items
              JOIN item_projects ON item_projects.item_id = items.id
              JOIN today_items ON today_items.item_id = items.id
              WHERE item_projects.project_id = ? AND items.deleted_at IS NULL`,
-          )
-          .all(project.id),
-      )
+        )
+        .all(project.id),
+    )
     expect(items.map((item) => item.title).toSorted()).toEqual(
       ["完成计数器组件", "安装开发环境", "学习 JSX"].toSorted(),
     )
@@ -920,7 +982,10 @@ describe("AI chat habit actions", () => {
     ).toBe(1)
 
     const { executeChatActions } = await import("../../src/server/services/aiChatActions.js")
-    const confirmed = executeChatActions(database, settings, trashed.pendingAction!.actions)
+    if (trashed.pendingAction === null || trashed.pendingAction === undefined) {
+      throw new Error("待确认操作未生成")
+    }
+    const confirmed = executeChatActions(database, settings, trashed.pendingAction.actions)
     expect(confirmed).toContain("已将「名引用待办」移入回收站")
     expect(
       (
@@ -965,5 +1030,111 @@ describe("AI chat habit actions", () => {
       )
       .get("分类名引用待办") as { categoryId: string } | undefined
     expect(row?.categoryId).toBe(category.id)
+  })
+
+  it("completes a habit by name and can undo the exact previous log", async () => {
+    const { app, database } = await setup("unused", "open")
+    const { createHabit } = await import("../../src/server/repositories/habits.js")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const habit = createHabit(
+      database,
+      {
+        name: "每天喝水",
+        type: "count",
+        targetCount: 8,
+        frequencyType: "daily",
+        weeklyTarget: null,
+        restDays: [],
+      },
+      "2026-08-05",
+    )
+    const settings = getSettings(database)
+
+    const completed = applyAiChatActions(
+      database,
+      settings,
+      `已处理。\n\n\`\`\`json
+{"action":"complete_habit","habitId":"每天喝水","localDate":"2026-08-05"}
+\`\`\``,
+    )
+
+    expect(completed.text).toContain("已记录习惯「每天喝水」1 次")
+    expect(
+      listHabits(database, "2026-08-05").find((entry) => entry.id === habit.id)?.currentCount,
+    ).toBe(1)
+
+    const action = database
+      .prepare(
+        "SELECT id FROM ai_action_log WHERE action_type = 'complete_habit' AND entity_id = ?",
+      )
+      .get(habit.id) as { id: string } | undefined
+    expect(action).toBeDefined()
+    expect(
+      (await app.inject({ method: "POST", url: `/api/ai/actions/${action?.id}/undo` })).statusCode,
+    ).toBe(204)
+    expect(
+      listHabits(database, "2026-08-05").find((entry) => entry.id === habit.id)?.currentCount,
+    ).toBe(0)
+  })
+
+  it("creates a category and links a new item in one action batch", async () => {
+    const { database } = await setup("unused", "open")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    const settings = getSettings(database)
+    const result = applyAiChatActions(
+      database,
+      settings,
+      `好的。\n\n\`\`\`json
+[
+  {"action":"create_category","as":"life","name":"剧本-生活","color":"#2f7d5a","icon":"tag"},
+  {"action":"create_item","title":"分类生活待办"},
+  {"action":"set_item_categories","itemId":"分类生活待办","categoryIds":["$life"]}
+]
+\`\`\``,
+    )
+
+    expect(result.text).toContain("已实际创建分类「剧本-生活」")
+    expect(result.text).toContain("已更新待办分类")
+    const link = database
+      .prepare(
+        `SELECT categories.name AS name
+         FROM item_categories JOIN categories ON categories.id = item_categories.category_id
+         JOIN items ON items.id = item_categories.item_id
+         WHERE items.title = ? AND items.deleted_at IS NULL AND categories.deleted_at IS NULL`,
+      )
+      .get("分类生活待办") as { name: string } | undefined
+    expect(link?.name).toBe("剧本-生活")
+  })
+
+  it("rejects a completion claim when the model omitted an action block", async () => {
+    const { database } = await setup("unused", "open")
+    const { createHabit } = await import("../../src/server/repositories/habits.js")
+    const { applyAiChatActions } = await import("../../src/server/services/aiChatActions.js")
+    const { getSettings } = await import("../../src/server/repositories/settings.js")
+    createHabit(
+      database,
+      {
+        name: "喝水习惯",
+        type: "check",
+        targetCount: 1,
+        frequencyType: "daily",
+        weeklyTarget: null,
+        restDays: [],
+      },
+      "2026-08-05",
+    )
+
+    const result = applyAiChatActions(
+      database,
+      getSettings(database),
+      "验证者，今天喝水习惯已完成记录。",
+    )
+
+    expect(result.text).toContain("没有改动")
+    expect(
+      listHabits(database, "2026-08-05").find((entry) => entry.name === "喝水习惯")?.completedToday,
+    ).toBe(false)
   })
 })

@@ -19,6 +19,7 @@ rmSync(dest, { force: true, recursive: true })
 mkdirSync(dest, { recursive: true })
 writeFileSync(join(dest, "README.md"), readme)
 cpSync(dist, join(dest, "dist"), { recursive: true })
+cpSync(join(root, "db"), join(dest, "db"), { recursive: true })
 cpSync(join(root, "package.json"), join(dest, "package.json"))
 cpSync(join(root, "package-lock.json"), join(dest, "package-lock.json"))
 

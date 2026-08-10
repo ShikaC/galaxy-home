@@ -23,9 +23,13 @@ export function AiChatMessage({
   readonly nickname: string
   readonly onRemember: (content: string) => void
   readonly onMessageUpdate?: (message: AiMessage, confirmation?: string) => void
-  readonly onAcceptProposedMemory?: (content: string, kind: "preference" | "goal" | "background") => void
+  readonly onAcceptProposedMemory?: (
+    content: string,
+    kind: "preference" | "goal" | "background",
+  ) => void
 }) {
   const user = message.role === "user"
+  const proposedMemory = message.proposedMemory
   return (
     <div className={`chat-message chat-message--${user ? "user" : "assistant"}`}>
       <span className="chat-message__author">{user ? "你" : nickname}</span>
@@ -50,18 +54,23 @@ export function AiChatMessage({
               pendingAction={message.pendingAction}
             />
           ) : null}
-          {message.proposedMemory !== null &&
-          message.proposedMemory !== undefined &&
+          {proposedMemory !== null &&
+          proposedMemory !== undefined &&
           onAcceptProposedMemory !== undefined ? (
             <div className="ai-pending-action">
-              <p>建议记住（{message.proposedMemory.kind}）：{message.proposedMemory.content}</p>
+              <p>
+                建议记住（{proposedMemory.kind}）：{proposedMemory.content}
+              </p>
               <Button
-                onClick={() =>
-                  onAcceptProposedMemory(
-                    message.proposedMemory!.content,
-                    message.proposedMemory!.kind as "preference" | "goal" | "background",
+                onClick={() => {
+                  if (
+                    proposedMemory.kind !== "preference" &&
+                    proposedMemory.kind !== "goal" &&
+                    proposedMemory.kind !== "background"
                   )
-                }
+                    return
+                  onAcceptProposedMemory(proposedMemory.content, proposedMemory.kind)
+                }}
                 size="compact"
               >
                 确认保存记忆

@@ -16,11 +16,15 @@ import { TaskRow } from "./TaskRow.js"
 function SortableTask({
   item,
   onEdit,
+  onCompleted,
 }: {
   readonly item: Item
   readonly onEdit?: (item: Item) => void
+  readonly onCompleted?: (item: Item) => void
 }) {
-  const status = useItemStatusMutation()
+  const status = useItemStatusMutation((changedItem, change) => {
+    if (change.status === "completed") onCompleted?.(changedItem)
+  })
   const today = useTodayMutation()
   const sortable = useSortable({ id: item.id })
   return (
@@ -43,12 +47,12 @@ function SortableTask({
       </button>
       <TaskRow
         item={item}
-        onComplete={() =>
+        onComplete={() => {
           status.mutate({
             id: item.id,
             status: item.status === "completed" ? "active" : "completed",
           })
-        }
+        }}
         onFocus={item.isSecondary ? undefined : () => today.mutate({ id: item.id, focus: true })}
         onEdit={onEdit === undefined ? undefined : () => onEdit(item)}
       />
@@ -59,10 +63,12 @@ function SortableTask({
 export function TodayTaskList({
   items,
   onEdit,
+  onCompleted,
   onReordered,
 }: {
   readonly items: readonly Item[]
   readonly onEdit?: (item: Item) => void
+  readonly onCompleted?: (item: Item) => void
   readonly onReordered: () => void
 }) {
   const { today } = useAppTime()
@@ -83,7 +89,12 @@ export function TodayTaskList({
       <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
         <div className="list-stack">
           {items.map((item) => (
-            <SortableTask item={item} key={item.id} {...(onEdit === undefined ? {} : { onEdit })} />
+            <SortableTask
+              item={item}
+              key={item.id}
+              {...(onCompleted === undefined ? {} : { onCompleted })}
+              {...(onEdit === undefined ? {} : { onEdit })}
+            />
           ))}
         </div>
       </SortableContext>

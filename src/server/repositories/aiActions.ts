@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { aiActionSchema } from "../../shared/ai.js"
+import { habitIdSchema } from "../../shared/habits.js"
 import { categoryIdSchema, itemIdSchema, itemStatusSchema } from "../../shared/items.js"
 import { replaceItemCategories } from "./categories.js"
 import {
@@ -43,6 +44,23 @@ const reviewUndoPayloadSchema = z.object({
 const createHabitUndoPayloadSchema = z.object({
   kind: z.literal("create_habit"),
   habitId: z.string().uuid(),
+  name: z.string(),
+})
+const completeHabitUndoPayloadSchema = z.object({
+  kind: z.literal("complete_habit"),
+  habitId: habitIdSchema,
+  localDate: z.string(),
+  previous: z
+    .object({
+      count: z.number().int().nonnegative(),
+      status: z.enum(["active", "leave"]),
+      corrected: z.number().int().min(0).max(1),
+    })
+    .nullable(),
+})
+const createCategoryUndoPayloadSchema = z.object({
+  kind: z.literal("create_category"),
+  categoryId: categoryIdSchema,
   name: z.string(),
 })
 const createItemUndoPayloadSchema = z.object({
@@ -105,6 +123,8 @@ const undoPayloadSchema = z.discriminatedUnion("kind", [
   reviewUndoPayloadSchema,
   projectUndoPayloadSchema,
   createHabitUndoPayloadSchema,
+  completeHabitUndoPayloadSchema,
+  createCategoryUndoPayloadSchema,
   createItemUndoPayloadSchema,
   updateItemUndoPayloadSchema,
   setTodayUndoPayloadSchema,
@@ -297,14 +317,57 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
       database
         .prepare("UPDATE habits SET deleted_at = ?, updated_at = ? WHERE id = ?")
         .run(now, now, payload.habitId)
+    } else if (payload.kind === "complete_habit") {
+      if (row.action_type !== "complete_habit")
+        throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      if (payload.previous === null) {
+        database
+          .prepare("DELETE FROM habit_logs WHERE habit_id = ? AND local_date = ?")
+          .run(payload.habitId, payload.localDate)
+      } else {
+        database
+          .prepare(
+            `INSERT INTO habit_logs
+             (id, habit_id, local_date, count, status, corrected, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(habit_id, local_date) DO UPDATE SET
+             count = excluded.count, status = excluded.status, corrected = excluded.corrected,
+             updated_at = excluded.updated_at`,
+          )
+          .run(
+            crypto.randomUUID(),
+            payload.habitId,
+            payload.localDate,
+            payload.previous.count,
+            payload.previous.status,
+            payload.previous.corrected,
+            now,
+            now,
+          )
+      }
+    } else if (payload.kind === "create_category") {
+      if (row.action_type !== "create_category")
+        throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
+      const category = z
+        .object({ name: z.string(), deleted_at: z.string().nullable() })
+        .optional()
+        .parse(
+          database
+            .prepare("SELECT name, deleted_at FROM categories WHERE id = ?")
+            .get(payload.categoryId),
+        )
+      if (category === undefined || category.deleted_at !== null || category.name !== payload.name)
+        throw new AiActionUnavailableError("分类已不存在或已被修改，无法安全撤销该 AI 操作")
+      database.prepare("DELETE FROM item_categories WHERE category_id = ?").run(payload.categoryId)
+      database
+        .prepare("UPDATE categories SET deleted_at = ?, updated_at = ? WHERE id = ?")
+        .run(now, now, payload.categoryId)
     } else if (payload.kind === "create_item") {
       const item = z
         .object({ title: z.string(), deleted_at: z.string().nullable() })
         .optional()
         .parse(
-          database
-            .prepare("SELECT title, deleted_at FROM items WHERE id = ?")
-            .get(payload.itemId),
+          database.prepare("SELECT title, deleted_at FROM items WHERE id = ?").get(payload.itemId),
         )
       if (item === undefined || item.deleted_at !== null || item.title !== payload.title)
         throw new AiActionUnavailableError("待办已不存在或已被修改，无法撤销该 AI 操作")
@@ -313,7 +376,9 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         .run(now, now, payload.itemId)
     } else if (payload.kind === "update_item") {
       database
-        .prepare("UPDATE items SET title = ?, notes = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+        .prepare(
+          "UPDATE items SET title = ?, notes = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+        )
         .run(payload.previousTitle, payload.previousNotes, now, payload.itemId)
     } else if (payload.kind === "set_today") {
       clearTodayItem(database, payload.itemId, payload.localDate)
@@ -349,7 +414,9 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         .run(payload.previousStatus, payload.previousCompletedAt, now, payload.itemId)
     } else if (payload.kind === "update_project_progress") {
       database
-        .prepare("UPDATE projects SET progress = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL")
+        .prepare(
+          "UPDATE projects SET progress = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+        )
         .run(payload.previousProgress, now, payload.projectId)
     } else if (payload.kind === "create_project") {
       const project = z
@@ -390,9 +457,7 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         throw new AiActionUnavailableError("项目已被后续修改，无法安全撤销该 AI 操作")
       restoreProjectSnapshot(database, payload.snapshot)
     }
-    database
-      .prepare("UPDATE ai_action_log SET undone_at = ? WHERE id = ?")
-      .run(now, row.id)
+    database.prepare("UPDATE ai_action_log SET undone_at = ? WHERE id = ?").run(now, row.id)
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")

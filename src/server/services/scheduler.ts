@@ -115,9 +115,7 @@ function readOnboardingCompletedAt(database: DatabaseSync): string | null {
   const row = z
     .object({ onboarding_completed_at: z.string().nullable() })
     .parse(
-      database
-        .prepare("SELECT onboarding_completed_at FROM workspace_settings WHERE id = 1")
-        .get(),
+      database.prepare("SELECT onboarding_completed_at FROM workspace_settings WHERE id = 1").get(),
     )
   return row.onboarding_completed_at
 }
@@ -266,18 +264,16 @@ function notificationCopy(
       detail: `专注推进「${focus.title}」即可，不必再另找一件。`,
     }
   }
-  const primaryCount = z
-    .object({ count: z.number().int() })
-    .parse(
-      database
-        .prepare(
-          `SELECT COUNT(*) AS count FROM today_items
+  const primaryCount = z.object({ count: z.number().int() }).parse(
+    database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM today_items
            JOIN items ON items.id = today_items.item_id
            WHERE today_items.local_date = ? AND today_items.is_secondary = 0
              AND items.status = 'active' AND items.deleted_at IS NULL`,
-        )
-        .get(localDate),
-    ).count
+      )
+      .get(localDate),
+  ).count
   if (primaryCount > 0) {
     return {
       title: "今天的主要待办已安排",

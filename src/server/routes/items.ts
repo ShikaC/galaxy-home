@@ -13,6 +13,7 @@ import {
   replaceItemCategories,
   updateCategory,
 } from "../repositories/categories.js"
+import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
 import { copyItem, createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
 import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { convertItemToProject } from "../repositories/projects.js"
@@ -21,7 +22,6 @@ import { reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { queueCaptureAnalysis } from "../services/aiCaptureAnalysis.js"
 import { localClock } from "../services/time.js"
-import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
 
 const querySchema = z.object({
   view: itemViewSchema.default("active"),

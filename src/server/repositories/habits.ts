@@ -34,8 +34,8 @@ export function createHabit(
   const now = new Date().toISOString()
   const nextOrder = database
     .prepare("SELECT COALESCE(MAX(sort_order), -1) + 1 AS value FROM habits")
-    .get()
-  const order = Number(nextOrder?.["value"] ?? 0)
+    .get() as { value?: number } | undefined
+  const order = Number(nextOrder?.value ?? 0)
 
   database
     .prepare(

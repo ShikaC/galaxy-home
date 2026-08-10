@@ -16,8 +16,8 @@ export function countHabitCheckIns(
       `SELECT COUNT(*) AS value FROM habit_logs
        WHERE habit_id = ? AND status = 'active' AND count >= ?`,
     )
-    .get(habitId, targetCount)
-  return Number(row?.["value"] ?? 0)
+    .get(habitId, targetCount) as { value?: number } | undefined
+  return Number(row?.value ?? 0)
 }
 
 export function countHabitCheckInsInRange(
@@ -33,8 +33,8 @@ export function countHabitCheckInsInRange(
        WHERE habit_id = ? AND status = 'active' AND count >= ?
          AND local_date BETWEEN ? AND ?`,
     )
-    .get(habitId, targetCount, startDate, endDate)
-  return Number(row?.["value"] ?? 0)
+    .get(habitId, targetCount, startDate, endDate) as { value?: number } | undefined
+  return Number(row?.value ?? 0)
 }
 
 export function calculateHabitStreak(

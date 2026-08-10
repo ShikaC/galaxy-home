@@ -80,7 +80,9 @@ export function ProfileSettings() {
             <option value="Europe/London">Europe/London</option>
             <option value="America/New_York">America/New_York</option>
           </select>
-          <span className="field__hint">切换时区后，「今日」与习惯日界会按新区计算；历史日期键不会自动迁移。</span>
+          <span className="field__hint">
+            切换时区后，「今日」与习惯日界会按新区计算；历史日期键不会自动迁移。
+          </span>
         </label>
         <div>
           <Button disabled={!workspaceName.trim()} loading={save.isPending} type="submit">

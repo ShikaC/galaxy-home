@@ -13,7 +13,11 @@ import "./styles/product.css"
 import "./styles/overlays.css"
 import "./styles/settings.css"
 
-const enableDevTools = import.meta.env.DEV && import.meta.env["VITE_DISABLE_REACT_DEVTOOLS"] !== "1"
+const environment = import.meta.env as {
+  readonly DEV: boolean
+  readonly VITE_DISABLE_REACT_DEVTOOLS?: string
+}
+const enableDevTools = environment.DEV && environment.VITE_DISABLE_REACT_DEVTOOLS !== "1"
 if (enableDevTools) {
   void import("react-grab")
   void import("react-scan")

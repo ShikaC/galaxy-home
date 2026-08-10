@@ -14,10 +14,10 @@ import {
 import { getSettings } from "../repositories/settings.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { AiServiceError, chat, streamChat, transcribe } from "../services/ai.js"
+import { suggestItemCategories } from "../services/aiCategorySuggest.js"
 import { completeAiChat, persistAiChat, prepareAiChat } from "../services/aiChat.js"
 import { executeChatActions } from "../services/aiChatActions.js"
 import { getAiConfigStatus } from "../services/secrets.js"
-import { suggestItemCategories } from "../services/aiCategorySuggest.js"
 
 const idSchema = z.object({ id: z.string().uuid() })
 const titleSchema = z.object({ title: z.string().trim().min(1).max(80) })
@@ -87,7 +87,11 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
   app.post("/api/ai/messages/:messageId/confirm-action", (request) => {
     const { messageId } = messageIdSchema.parse(request.params)
     const message = getMessage(context.database, messageId)
-    if (message === null || message.pendingAction === null || message.pendingAction.status !== "pending")
+    if (
+      message === null ||
+      message.pendingAction === null ||
+      message.pendingAction.status !== "pending"
+    )
       throw new Error("没有待确认的操作")
     const settings = getSettings(context.database)
     const confirmation = executeChatActions(
@@ -109,7 +113,11 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
   app.post("/api/ai/messages/:messageId/reject-action", (request) => {
     const { messageId } = messageIdSchema.parse(request.params)
     const message = getMessage(context.database, messageId)
-    if (message === null || message.pendingAction === null || message.pendingAction.status !== "pending")
+    if (
+      message === null ||
+      message.pendingAction === null ||
+      message.pendingAction.status !== "pending"
+    )
       throw new Error("没有待确认的操作")
     updateMessagePendingAction(
       context.database,

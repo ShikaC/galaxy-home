@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest"
-import {
-  DEFAULT_AI_PERSONALITY_PROMPT,
-  type WorkspaceSettings,
-} from "../../src/shared/settings.js"
 import { buildAiChatSystemPrompt } from "../../src/server/services/aiChatActions.js"
+import { DEFAULT_AI_PERSONALITY_PROMPT, type WorkspaceSettings } from "../../src/shared/settings.js"
 
 const baseSettings: WorkspaceSettings = {
   workspaceName: "测试空间",

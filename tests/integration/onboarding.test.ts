@@ -39,11 +39,15 @@ describe("completeOnboarding", () => {
     const tutorialHabitCount = database
       .prepare("SELECT COUNT(*) AS count FROM habits WHERE is_tutorial = 1")
       .get()
-    expect(settings?.["workspace_name"]).toBe("岛屿实验室")
-    expect(settings?.["onboarding_completed"]).toBe(1)
-    expect(settings?.["onboarding_completed_at"]).toEqual(expect.any(String))
-    expect(tutorialItemCount?.["count"]).toBe(1)
-    expect(tutorialHabitCount?.["count"]).toBe(1)
+    expect((settings as { workspace_name?: string } | undefined)?.workspace_name).toBe("岛屿实验室")
+    expect((settings as { onboarding_completed?: number } | undefined)?.onboarding_completed).toBe(
+      1,
+    )
+    expect(
+      (settings as { onboarding_completed_at?: string } | undefined)?.onboarding_completed_at,
+    ).toEqual(expect.any(String))
+    expect((tutorialItemCount as { count?: number } | undefined)?.count).toBe(1)
+    expect((tutorialHabitCount as { count?: number } | undefined)?.count).toBe(1)
     database.close()
   })
 })

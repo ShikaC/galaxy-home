@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Inbox, Plus } from "lucide-react"
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import type { Item } from "../../shared/items.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { CategoryDialog } from "../components/CategoryDialog.js"
@@ -19,6 +19,10 @@ import { useMeta } from "../lib/queries.js"
 import { itemSchema, itemsSchema, projectSchema } from "../lib/schemas.js"
 
 type View = "active" | "inbox" | "completed" | "archived"
+type StatusNotice = Readonly<{
+  readonly message: string
+  readonly showCompletedLink: boolean
+}>
 const VIEWS: readonly { readonly id: View; readonly label: string }[] = [
   { id: "inbox", label: "收集箱" },
   { id: "active", label: "全部活跃" },
@@ -39,10 +43,14 @@ export function TodosPage() {
   const [editing, setEditing] = useState<Item | null>(null)
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   const [organizeNote, setOrganizeNote] = useState<string | null>(null)
+  const [statusNotice, setStatusNotice] = useState<StatusNotice | null>(null)
   useEffect(() => {
     const requested = searchParameters.get("category")
     if (requested === null) {
       setCategoryId(null)
+      const requestedView = searchParameters.get("view")
+      const requestedViewOption = VIEWS.find((option) => option.id === requestedView)
+      setView(requestedViewOption?.id ?? "inbox")
       return
     }
     if (meta.data?.categories.some((category) => category.id === requested)) {
@@ -55,7 +63,21 @@ export function TodosPage() {
     const timer = window.setTimeout(() => setOrganizeNote(null), 4_000)
     return () => window.clearTimeout(timer)
   }, [organizeNote])
-  const status = useItemStatusMutation()
+  useEffect(() => {
+    if (statusNotice === null) return
+    const timer = window.setTimeout(() => setStatusNotice(null), 4_000)
+    return () => window.clearTimeout(timer)
+  }, [statusNotice])
+  const status = useItemStatusMutation((item, change) => {
+    if (change.status === "archived") return
+    const completed = change.status === "completed"
+    setStatusNotice({
+      message: completed
+        ? `“${item.title}”已完成，可在“已完成”中找回。`
+        : `“${item.title}”已重新打开。`,
+      showCompletedLink: completed,
+    })
+  })
   const today = useTodayMutation()
   const items = useQuery({
     queryKey: ["items", view, categoryId, localToday],
@@ -94,9 +116,12 @@ export function TodosPage() {
           ? () => status.mutate({ id: item.id, status: "archived" })
           : undefined
       }
-      onComplete={() =>
-        status.mutate({ id: item.id, status: item.status === "completed" ? "active" : "completed" })
-      }
+      onComplete={() => {
+        status.mutate({
+          id: item.id,
+          status: item.status === "completed" ? "active" : "completed",
+        })
+      }}
       onConvertProject={item.status === "active" ? () => convert.mutate(item) : undefined}
       onCopy={() => copy.mutate(item)}
       onDelete={() => remove.mutate(item)}
@@ -127,7 +152,9 @@ export function TodosPage() {
   const selectView = (next: View) => {
     setView(next)
     setCategoryId(null)
-    if (searchParameters.get("category") !== null) void navigate("/todos")
+    if (searchParameters.get("category") !== null) {
+      void navigate(next === "inbox" ? "/todos" : `/todos?view=${next}`)
+    }
   }
   return (
     <div className="page">
@@ -142,6 +169,16 @@ export function TodosPage() {
         title="待办"
       />
       {organizeNote === null ? null : <Toast>{organizeNote}</Toast>}
+      {statusNotice === null ? null : (
+        <Toast>
+          <span>{statusNotice.message}</span>
+          {statusNotice.showCompletedLink ? (
+            <Link className="text-action" to="/todos?view=completed">
+              查看已完成
+            </Link>
+          ) : null}
+        </Toast>
+      )}
       <div className="todo-layout">
         <aside className="filter-nav">
           <strong>视图</strong>
@@ -209,9 +246,7 @@ export function TodosPage() {
                   : "这里目前没有条目。"
               }
               icon={Inbox}
-              title={
-                view === "inbox" && categoryId === null ? "收集箱是空的" : "一切都已安放"
-              }
+              title={view === "inbox" && categoryId === null ? "收集箱是空的" : "一切都已安放"}
             />
           ) : categoryId === null ? (
             <div className="list-stack">

@@ -37,26 +37,29 @@
 
 | 项 | 状态 |
 |----|------|
-| typecheck / build | 通过（2026-08-07） |
-| `npm test` | 通过 105 tests |
-| `npm run test:e2e` | 通过 24 passed / 0 skipped |
+| typecheck / build | 通过（2026-08-10，当前工作树） |
+| `npm test` | 通过 39 个文件 / 114 tests（2026-08-10） |
+| `npm run test:e2e` | 通过 28 passed / 0 skipped（2026-08-10） |
 | 视觉截图无重叠 | visual-acceptance 通过 |
-| 人工两条黄金路径 | e2e acceptance-flow + project-ai 覆盖；见下方持续项 |
+| 人工两条黄金路径 | e2e acceptance-flow + project-ai 覆盖；2026-08-10 网页端与 Tauri 打包桌面端手工检查首页、侧栏、AI 抽屉、搜索、待办菜单、项目/习惯/回顾/数据设置，无阻塞性摩擦 |
 
 ## 21.4 持续 dogfood 勾选（不扩范围）
 
 封板后仍靠真实使用确认的边角；完成一项勾一项，摩擦记入 [dogfood-friction.md](./dogfood-friction.md)。
 
-- [ ] 时区切换后习惯休息日与「今日」统计仍正确（已：保存后刷新查询 + 提示；请人工换区抽查）
+- [x] 时区切换后习惯休息日与「今日」统计仍正确（网页端切换 America/New_York 后保存、刷新查询与状态不丢失；`tests/e2e/timezone-boundaries.spec.ts` 用浏览器时钟覆盖纽约时区 23:59 → 00:01，compact/wide 均通过）
 - [x] 休息日习惯展示与打卡边界符合预期（服务端拒绝非修正打卡）
 - [x] 主路径控件具备可见焦点环；装饰性图标有可理解名称或 `aria-hidden`
 - [x] 提醒横幅：宽屏与窄屏 e2e 均覆盖（固定时钟）
-- [ ] 黄金路径人工抽查：记一条 → 排今日 → 习惯打卡 → 项目推进 → 导出包不含 Key
-- [ ] 侧栏 AI 口语剧本（见 [ai-oral-script.md](./ai-oral-script.md)）按当前模型复跑并更新通过率
+- [x] 黄金路径人工抽查：记一条 → 排今日 → 习惯打卡 → 项目推进 → 导出包不含 Key（网页端；ZIP 仅含 galaxy-home.json）
+- [x] AI 本地模拟验收：首次配置、搜索会话、开放模式多动作（3 项通过；不等同于真实模型剧本）
+- [x] 侧栏 AI 口语剧本：真实模型保守/开放各 12/12；见 [ai-oral-script.md](./ai-oral-script.md) 与 `.omo/evidence/ai-real-20260809/`
+
+电脑直测记录（2026-08-10）：Safari 直接加载桌面开发端网页并完成左侧栏折叠、AI 窄轨、全局搜索、待办菜单与时区选项检查；Chrome 当前用户配置的新标签进入“已崩溃”空白页，换 Safari 后排除为应用页面问题。随后修复 Tauri 打包运行时根路径与 `db/migrations` 资源复制，重新生成 `.app` 后原生应用可注册并启动 Node 服务（`127.0.0.1:4177`），完成首页、侧栏、AI 面板、搜索、待办菜单、项目反馈、习惯编辑、回顾、数据与回收站、时区菜单及 Escape 关闭检查。针对首次打开约 4 秒的空白窗口，release 主窗口改为等待 `PageLoadEvent::Finished` 后再显示；2026-08-10 重建 `.app` 后首屏截图直接为“今日空间”，再验侧栏和 AI 收起/展开无阻塞摩擦。
 
 形态与本地模型决策包：
 
 - [docs/decisions/desktop-packaging.md](./decisions/desktop-packaging.md)（**已决策并完成第一刀：Tauri 轻壳**）
 - [docs/decisions/local-model.md](./decisions/local-model.md)（**已决策：暂不接入本地模型**）
 
-更新日期：2026-08-07
+更新日期：2026-08-10

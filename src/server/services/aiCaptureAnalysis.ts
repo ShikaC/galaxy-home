@@ -3,8 +3,8 @@ import {
   markItemAiSuggestionWaiting,
   saveItemAiSuggestion,
 } from "../repositories/itemAiSuggestions.js"
-import { getAiConfigStatus } from "./secrets.js"
 import { suggestItemCategories } from "./aiCategorySuggest.js"
+import { getAiConfigStatus } from "./secrets.js"
 
 export function queueCaptureAnalysis(
   database: DatabaseSync,

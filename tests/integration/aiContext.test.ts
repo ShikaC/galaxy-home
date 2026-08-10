@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { afterEach, describe, expect, it } from "vitest"
+import { z } from "zod"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
 import { getSettings } from "../../src/server/repositories/settings.js"
 import { buildAiContext } from "../../src/server/services/aiContext.js"
@@ -66,6 +67,49 @@ describe("AI workspace context", () => {
       "我想继续推进",
     )
     expect(context.references).toEqual([{ type: "page", id: null, label: "项目" }])
+  })
+
+  it("labels active and historical same-title items for AI disambiguation", () => {
+    directory = mkdtempSync(join(tmpdir(), "galaxy-ai-context-same-title-"))
+    database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database.prepare("UPDATE workspace_settings SET ai_permission = 'open'").run()
+    const timestamp = new Date().toISOString()
+    for (const status of ["active", "completed"] as const) {
+      database
+        .prepare(
+          `INSERT INTO items (id, title, notes, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(
+          crypto.randomUUID(),
+          "同名待办",
+          status === "active" ? "当前要做" : "历史记录",
+          status,
+          timestamp,
+          timestamp,
+        )
+    }
+
+    const context = buildAiContext(database, getSettings(database), "/", "首页", "请处理同名待办")
+    const prompt = z
+      .object({
+        localContext: z.array(
+          z.object({
+            type: z.string().optional(),
+            title: z.string().optional(),
+            status: z.string().optional(),
+          }),
+        ),
+      })
+      .parse(JSON.parse(context.prompt))
+
+    expect(prompt.localContext).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "item", title: "同名待办", status: "active" }),
+        expect.objectContaining({ type: "item", title: "同名待办", status: "completed" }),
+      ]),
+    )
   })
 
   it("includes an explicit focus item even under conservative permission", () => {

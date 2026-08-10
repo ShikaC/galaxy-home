@@ -14,6 +14,7 @@ type ContextEntry = {
 }
 
 const memoryRowSchema = z.object({ id: z.string().uuid(), content: z.string() })
+const itemStatusSchema = z.object({ status: z.enum(["active", "completed", "archived"]) })
 const MAX_OPEN_REFERENCES = 24
 const MAX_CONTEXT_CHARS = 40_000
 
@@ -66,16 +67,30 @@ function requestsWorkspaceOverview(content: string): boolean {
   return /(全部|所有|整个|全局|工作空间|空间里|概览|盘点|清单)/u.test(content)
 }
 
+function workspaceContextEntry(
+  database: DatabaseSync,
+  result: ReturnType<typeof searchWorkspace>[number],
+): ContextEntry {
+  const detail = { type: result.type, title: result.title, detail: result.detail }
+  if (result.type !== "item") {
+    return { reference: { type: result.type, id: result.id, label: result.title }, detail }
+  }
+  const status = itemStatusSchema.parse(
+    database.prepare("SELECT status FROM items WHERE id = ? AND deleted_at IS NULL").get(result.id),
+  ).status
+  return {
+    reference: { type: result.type, id: result.id, label: result.title },
+    detail: { ...detail, status },
+  }
+}
+
 function openWorkspaceEntries(database: DatabaseSync, content: string): readonly ContextEntry[] {
   const unique = new Map<string, ContextEntry>()
   for (const term of searchTerms(content)) {
     for (const result of searchWorkspace(database, { search: term })) {
       const key = `${result.type}:${result.id}`
       if (!unique.has(key)) {
-        unique.set(key, {
-          reference: { type: result.type, id: result.id, label: result.title },
-          detail: { type: result.type, title: result.title, detail: result.detail },
-        })
+        unique.set(key, workspaceContextEntry(database, result))
       }
       if (unique.size >= MAX_OPEN_REFERENCES) return [...unique.values()]
     }
@@ -84,10 +99,7 @@ function openWorkspaceEntries(database: DatabaseSync, content: string): readonly
     for (const result of listWorkspaceContext(database)) {
       const key = `${result.type}:${result.id}`
       if (!unique.has(key)) {
-        unique.set(key, {
-          reference: { type: result.type, id: result.id, label: result.title },
-          detail: { type: result.type, title: result.title, detail: result.detail },
-        })
+        unique.set(key, workspaceContextEntry(database, result))
       }
       if (unique.size >= MAX_OPEN_REFERENCES) break
     }

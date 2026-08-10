@@ -9,9 +9,31 @@
     />
     <meta name="theme-color" content="#f4f5f2" />
     <title>银河居所</title>
+    <style>
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        background: #f4f5f2;
+      }
+
+      #root {
+        min-height: 100vh;
+      }
+
+      .boot-screen {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        color: #65736a;
+        font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div aria-live="polite" class="boot-screen" role="status">正在连接本地服务...</div>
+    </div>
     <script type="module" src="/src/client/main.tsx"></script>
   </body>
 </html>

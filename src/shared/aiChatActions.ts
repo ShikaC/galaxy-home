@@ -33,6 +33,22 @@ export const chatActionSchema = z.discriminatedUnion("action", [
     .readonly(),
   z
     .object({
+      action: z.literal("complete_habit"),
+      habitId: entityRefSchema,
+      localDate: z.iso.date().optional(),
+    })
+    .readonly(),
+  z
+    .object({
+      action: z.literal("create_category"),
+      name: z.string().trim().min(1).max(40),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      icon: z.string().trim().min(1).max(40),
+      as: actionAliasSchema,
+    })
+    .readonly(),
+  z
+    .object({
       action: z.literal("create_item"),
       title: z.string().trim().min(1).max(240),
       notes: z.string().trim().max(10_000).optional(),
@@ -96,7 +112,11 @@ export const chatActionSchema = z.discriminatedUnion("action", [
       desiredOutcome: z.string().trim().min(1).max(1_000),
       reason: z.string().trim().max(2_000).nullable().optional(),
       notes: z.string().trim().max(10_000).nullable().optional(),
-      deadlineDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      deadlineDate: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .nullable()
+        .optional(),
       stageTitle: z.string().trim().min(1).max(160).optional(),
       currentTask: z.string().trim().min(1).max(240).nullable().optional(),
       nextTask: z.string().trim().min(1).max(240).nullable().optional(),
@@ -123,12 +143,7 @@ const pendingChatActionObjectSchema = z
   .readonly()
 
 export const pendingChatActionSchema = z.preprocess((value) => {
-  if (
-    value !== null &&
-    typeof value === "object" &&
-    "action" in value &&
-    !("actions" in value)
-  ) {
+  if (value !== null && typeof value === "object" && "action" in value && !("actions" in value)) {
     const legacy = value as {
       readonly status: unknown
       readonly action: unknown

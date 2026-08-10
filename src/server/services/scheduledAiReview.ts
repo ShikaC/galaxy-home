@@ -2,8 +2,8 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { getSettings } from "../repositories/settings.js"
 import { generateAiWeeklyReview } from "./aiReview.js"
-import { getAiConfigStatus } from "./secrets.js"
 import { dueWeeklyReviewWindow } from "./scheduler.js"
+import { getAiConfigStatus } from "./secrets.js"
 
 export async function maybeGenerateScheduledAiWeeklyReview(
   database: DatabaseSync,
@@ -25,11 +25,5 @@ export async function maybeGenerateScheduledAiWeeklyReview(
         .get(window.weekStart),
     ).value
   if (existing > 0) return
-  await generateAiWeeklyReview(
-    database,
-    secretPath,
-    window.weekStart,
-    window.weekEnd,
-    true,
-  )
+  await generateAiWeeklyReview(database, secretPath, window.weekStart, window.weekEnd, true)
 }

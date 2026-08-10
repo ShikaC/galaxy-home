@@ -158,10 +158,18 @@ describe("AI assistant context and memory", () => {
     expect(JSON.stringify(storedReferences[1])).toContain("预约搬家车辆")
 
     const conversationCountBefore = Number(
-      database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get()?.["value"],
+      (
+        database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get() as
+          | { value?: number }
+          | undefined
+      )?.value,
     )
     const messageCountBefore = Number(
-      database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get()?.["value"],
+      (
+        database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get() as
+          | { value?: number }
+          | undefined
+      )?.value,
     )
     const blank = await app.inject({
       method: "POST",
@@ -176,10 +184,22 @@ describe("AI assistant context and memory", () => {
     expect(blank.statusCode).toBe(503)
     expect(blank.json()).toEqual(expect.objectContaining({ code: "AI_INVALID_RESPONSE" }))
     expect(
-      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get()?.["value"]),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM ai_conversations").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
     ).toBe(conversationCountBefore)
     expect(
-      Number(database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get()?.["value"]),
+      Number(
+        (
+          database.prepare("SELECT COUNT(*) AS value FROM ai_messages").get() as
+            | { value?: number }
+            | undefined
+        )?.value,
+      ),
     ).toBe(messageCountBefore)
   })
 })

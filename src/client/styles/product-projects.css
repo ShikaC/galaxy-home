@@ -174,9 +174,6 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
 }
-.project-ai-history > li p {
-  margin: 0;
-}
 .project-ai-history strong {
   color: var(--color-text);
 }
@@ -214,6 +211,9 @@
 .project-ai-panel > p,
 .project-ai-panel small {
   color: var(--color-text-muted);
+}
+.project-ai-history > li p {
+  margin: 0;
 }
 .project-ai-panel__question {
   font-weight: var(--font-weight-semibold);

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { ArrowRight, CheckSquare2, FolderKanban, Plus, RefreshCw, Sparkles } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router"
 import { gainSchema, quoteSchema } from "../../shared/app.js"
 import type { Item } from "../../shared/items.js"
@@ -13,6 +13,7 @@ import { TaskRow } from "../components/TaskRow.js"
 import { TodayTaskList } from "../components/TodayTaskList.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
+import { Toast } from "../components/ui/Feedback.js"
 import { ProgressBar } from "../components/ui/Status.js"
 import { YesterdayReview } from "../components/YesterdayReview.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
@@ -39,9 +40,14 @@ export function HomePage() {
   const quote = useQuote()
   const record = useHabitMutation("record")
   const undo = useHabitMutation("undo")
-  const itemStatus = useItemStatusMutation()
   const [gain, setGain] = useState("")
   const [editing, setEditing] = useState<Item | null>(null)
+  const [statusNotice, setStatusNotice] = useState<string | null>(null)
+  useEffect(() => {
+    if (statusNotice === null) return
+    const timer = window.setTimeout(() => setStatusNotice(null), 4_000)
+    return () => window.clearTimeout(timer)
+  }, [statusNotice])
   const addGain = useMutation({
     mutationFn: () =>
       apiRequest("/api/gains", gainSchema, {
@@ -67,6 +73,11 @@ export function HomePage() {
   const completedToday = today.data?.filter((item) => item.status === "completed") ?? []
   const todayHabits = habits.data?.filter((habit) => habit.scheduledToday) ?? []
   const completedHabits = todayHabits.filter((habit) => habit.completedToday).length
+  const announceCompletion = (item: Item) =>
+    setStatusNotice(`“${item.title}”已完成，可在“已完成”中找回。`)
+  const itemStatus = useItemStatusMutation((item, change) => {
+    if (change.status === "completed") announceCompletion(item)
+  })
   const dateText = new Intl.DateTimeFormat("zh-CN", {
     timeZone: timezone,
     month: "long",
@@ -86,6 +97,14 @@ export function HomePage() {
         subtitle="把注意力留给此刻真正重要的事。"
         title="今日空间"
       />
+      {statusNotice === null ? null : (
+        <Toast>
+          <span>{statusNotice}</span>
+          <Link className="text-action" to="/todos?view=completed">
+            查看已完成
+          </Link>
+        </Toast>
+      )}
       {meta.data?.tutorial.guideDismissed === false ? <QuickStartGuide /> : null}
       <section className="quote-band">
         <Sparkles aria-hidden="true" size={18} />
@@ -125,6 +144,7 @@ export function HomePage() {
             ) : (
               <TodayTaskList
                 items={primaryToday}
+                onCompleted={announceCompletion}
                 onEdit={setEditing}
                 onReordered={() => void client.invalidateQueries({ queryKey: ["items"] })}
               />

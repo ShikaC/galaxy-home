@@ -47,6 +47,7 @@ export function AiDrawerBody({
   ) => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message state changes must retrigger the sentinel scroll
   useEffect(() => {
     const end = endRef.current
     if (end === null) return
@@ -86,9 +87,7 @@ export function AiDrawerBody({
               message={message}
               nickname={nickname}
               onRemember={(content) => onRemember(content)}
-              {...(onAcceptProposedMemory === undefined
-                ? {}
-                : { onAcceptProposedMemory })}
+              {...(onAcceptProposedMemory === undefined ? {} : { onAcceptProposedMemory })}
               {...(onMessageUpdate === undefined ? {} : { onMessageUpdate })}
             />
           ))

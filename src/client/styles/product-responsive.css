@@ -12,6 +12,17 @@
   }
 }
 @media (max-width: 900px) {
+  .quick-start-guide {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-2);
+  }
+  .quick-start-guide > div {
+    grid-column: 1;
+  }
+  .quick-start-guide > .icon-button {
+    grid-column: 2;
+    grid-row: 1;
+  }
   .habit-grid,
   .project-grid {
     grid-template-columns: 1fr;
@@ -29,19 +40,11 @@
   .project-ai-preview dl {
     grid-template-columns: 1fr;
   }
+  .review-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 @media (max-width: 640px) {
-  .quick-start-guide {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-2);
-  }
-  .quick-start-guide > div {
-    grid-column: 1;
-  }
-  .quick-start-guide > .icon-button {
-    grid-column: 2;
-    grid-row: 1;
-  }
   .task-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;

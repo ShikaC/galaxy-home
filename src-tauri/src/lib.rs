@@ -1,3 +1,4 @@
+use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
@@ -5,7 +6,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 
-use tauri::{Manager, RunEvent, Url};
+use tauri::{webview::PageLoadEvent, Manager, RunEvent, Url};
 
 const PORT_RANGE: std::ops::RangeInclusive<u16> = 4177..=4199;
 
@@ -18,15 +19,19 @@ fn project_root() -> PathBuf {
     .to_path_buf()
 }
 
+fn packaged_runtime_root(resource_dir: PathBuf) -> PathBuf {
+  resource_dir.join("resources").join("app")
+}
+
+fn should_reveal_main_window(label: &str, event: PageLoadEvent) -> bool {
+  label == "main" && event == PageLoadEvent::Finished
+}
+
 fn runtime_root(app: &tauri::AppHandle) -> PathBuf {
   if cfg!(debug_assertions) {
     return project_root();
   }
-  app
-    .path()
-    .resource_dir()
-    .expect("resource dir")
-    .join("app")
+  packaged_runtime_root(app.path().resource_dir().expect("resource dir"))
 }
 
 fn find_free_port() -> Result<u16, String> {
@@ -47,6 +52,53 @@ fn wait_for_port(port: u16) -> bool {
     thread::sleep(Duration::from_millis(200));
   }
   false
+}
+
+fn wait_for_http(port: u16, path: &str) -> bool {
+  for _ in 0..75 {
+    if let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) {
+      let _ = stream.set_read_timeout(Some(Duration::from_millis(200)));
+      let request = format!(
+        "GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nConnection: close\r\n\r\n"
+      );
+      let mut response = [0; 256];
+      if stream.write_all(request.as_bytes()).is_ok()
+        && stream.read(&mut response).is_ok_and(|size| {
+          response[..size].starts_with(b"HTTP/1.1 200")
+            || response[..size].starts_with(b"HTTP/1.0 200")
+        })
+      {
+        return true;
+      }
+    }
+    thread::sleep(Duration::from_millis(200));
+  }
+  false
+}
+
+fn configured_port(name: &str, fallback: u16) -> Result<u16, String> {
+  match std::env::var(name) {
+    Ok(value) => value
+      .parse()
+      .map_err(|_| format!("桌面环境变量 {name} 不是有效端口：{value}")),
+    Err(_) => Ok(fallback),
+  }
+}
+
+fn wait_for_dev_services() -> Result<(), std::io::Error> {
+  let web_port = configured_port("VITE_PORT", 5180).map_err(std::io::Error::other)?;
+  let api_port = configured_port("API_PORT", 3010).map_err(std::io::Error::other)?;
+  if !wait_for_http(web_port, "/") {
+    return Err(std::io::Error::other(format!(
+      "桌面 Web 服务未能在 127.0.0.1:{web_port} 返回就绪响应"
+    )));
+  }
+  if !wait_for_http(api_port, "/api/health") {
+    return Err(std::io::Error::other(format!(
+      "桌面 API 服务未能在 127.0.0.1:{api_port}/api/health 返回就绪响应"
+    )));
+  }
+  Ok(())
 }
 
 fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
@@ -90,8 +142,6 @@ fn show_main_window(app: &tauri::AppHandle, port: u16) -> Result<(), String> {
   let url = Url::parse(&format!("http://127.0.0.1:{port}/"))
     .map_err(|error| error.to_string())?;
   window.navigate(url).map_err(|error| error.to_string())?;
-  window.show().map_err(|error| error.to_string())?;
-  let _ = window.set_focus();
   Ok(())
 }
 
@@ -100,6 +150,15 @@ pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
     .manage(ServerProcess(Mutex::new(None)))
+    .on_page_load(|webview, payload| {
+      if !cfg!(debug_assertions)
+        && should_reveal_main_window(webview.label(), payload.event())
+      {
+        let window = webview.window();
+        let _ = window.show();
+        let _ = window.set_focus();
+      }
+    })
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -107,6 +166,7 @@ pub fn run() {
             .level(log::LevelFilter::Info)
             .build(),
         )?;
+        wait_for_dev_services()?;
         if let Some(window) = app.get_webview_window("main") {
           let _ = window.show();
         }
@@ -141,4 +201,28 @@ pub fn run() {
         }
       }
     });
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{packaged_runtime_root, should_reveal_main_window};
+  use tauri::webview::PageLoadEvent;
+  use std::path::PathBuf;
+
+  #[test]
+  fn packaged_runtime_root_matches_tauri_resource_layout() {
+    let resource_dir = PathBuf::from("/Applications/银河居所.app/Contents/Resources");
+
+    assert_eq!(
+      packaged_runtime_root(resource_dir),
+      PathBuf::from("/Applications/银河居所.app/Contents/Resources/resources/app")
+    );
+  }
+
+  #[test]
+  fn main_window_reveals_only_after_finished_page_load() {
+    assert!(!should_reveal_main_window("main", PageLoadEvent::Started));
+    assert!(should_reveal_main_window("main", PageLoadEvent::Finished));
+    assert!(!should_reveal_main_window("secondary", PageLoadEvent::Finished));
+  }
 }

@@ -1,6 +1,11 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
-import { type AiReference, aiMessageSchema, aiReferenceSchema, proposedMemorySchema } from "../../shared/ai.js"
+import {
+  type AiReference,
+  aiMessageSchema,
+  aiReferenceSchema,
+  proposedMemorySchema,
+} from "../../shared/ai.js"
 import { pendingChatActionSchema } from "../../shared/aiChatActions.js"
 
 const conversationSchema = z.object({
@@ -95,7 +100,16 @@ export function addMessage(
        (id, conversation_id, role, content, references_json, pending_action_json, proposed_memory_json, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(id, conversationId, role, content, JSON.stringify(references), pendingJson, memoryJson, now)
+    .run(
+      id,
+      conversationId,
+      role,
+      content,
+      JSON.stringify(references),
+      pendingJson,
+      memoryJson,
+      now,
+    )
   database
     .prepare("UPDATE ai_conversations SET updated_at = ? WHERE id = ?")
     .run(now, conversationId)
