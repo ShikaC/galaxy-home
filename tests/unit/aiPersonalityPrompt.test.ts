@@ -42,4 +42,16 @@ describe("buildAiChatSystemPrompt", () => {
     )
     expect(prompt).toContain(DEFAULT_AI_PERSONALITY_PROMPT)
   })
+
+  it("does not invent duplicate-title ambiguity in conservative mode", () => {
+    const prompt = buildAiChatSystemPrompt(baseSettings, "无工作区条目上下文")
+
+    expect(prompt).toContain("保守模式不提供工作区条目列表")
+    expect(prompt).toContain("用户给出准确待办标题时直接附上操作块")
+    expect(prompt).toContain("标题的一部分且当前对话中只有一个明确匹配")
+    expect(prompt).toContain("使用当前对话中的完整标题直接附上操作块")
+    expect(prompt).toContain("创建分类并将已有待办归类时不要追问哪一条")
+    expect(prompt).toContain("直接在同一数组中创建分类并用待办完整标题关联")
+    expect(prompt).toContain("由服务器解析唯一活跃项并在真正歧义时拦截")
+  })
 })

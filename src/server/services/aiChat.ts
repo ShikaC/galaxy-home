@@ -3,7 +3,7 @@ import type { AiChatInput } from "../../shared/ai.js"
 import { addMessage, createConversation, listMessages } from "../repositories/conversations.js"
 import { getSettings } from "../repositories/settings.js"
 import { type ChatMessage, chat } from "./ai.js"
-import { applyAiChatActions, buildAiChatSystemPrompt } from "./aiChatActions.js"
+import { applyAiChatActions, buildAiChatSystemPrompt, extractChatActions } from "./aiChatActions.js"
 import { buildAiContext } from "./aiContext.js"
 
 export type PreparedAiChat = {
@@ -15,6 +15,8 @@ export type PreparedAiChat = {
 }
 
 const MAX_HISTORY_CHARS = 60_000
+const ACTION_REPAIR_PROMPT =
+  "上一条回答的 JSON 操作块无法解析。请保留用户原意，只重新输出合法的完整回答和动作块；不要追问，不要声称已执行，动作字段必须符合协议。"
 
 function recentHistory(database: DatabaseSync, conversationId: string): readonly ChatMessage[] {
   const messages = listMessages(database, conversationId).map((message) => ({
@@ -64,7 +66,14 @@ export async function completeAiChat(
   secretPath: string,
   prepared: PreparedAiChat,
 ): Promise<string> {
-  return chat(secretPath, prepared.messages)
+  const answer = await chat(secretPath, prepared.messages)
+  const extracted = extractChatActions(answer)
+  if (!extracted.parseFailed || extracted.parseFailureKind === "incomplete_project") return answer
+  return chat(secretPath, [
+    ...prepared.messages,
+    { role: "assistant", content: answer },
+    { role: "user", content: ACTION_REPAIR_PROMPT },
+  ])
 }
 
 export function persistAiChat(database: DatabaseSync, prepared: PreparedAiChat, answer: string) {

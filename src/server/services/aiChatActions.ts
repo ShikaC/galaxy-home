@@ -1232,6 +1232,6 @@ export function buildAiChatSystemPrompt(
   const capability =
     settings.aiPermission === "open"
       ? `当前为开放模式。支持 action：create_habit, complete_habit, create_category, create_item, create_project, update_item, set_today(mode: today|focus|secondary|clear), trash_item, set_item_categories, complete_item, archive_item, update_project_progress, propose_memory。除 trash_item 外，附加操作块后服务器会立即执行；archive_item 会立即归档。trash_item（软删进回收站）仍须附加操作块，服务器会挂起并由界面确认后执行——不要只口头问「确认吗」而不附代码块。${protocol}`
-      : `当前为保守模式。用户明确要求且信息足够时可附加操作块，但服务器只会挂起待用户确认后执行。支持非删除操作：create_habit, complete_habit, create_category, create_item, create_project, update_item, set_today, set_item_categories, complete_item, update_project_progress, propose_memory。不要输出 trash_item 或 archive_item；若用户要求删除/归档，说明需切换到开放模式（删除仍需确认）。${protocol}`
+      : `当前为保守模式。用户明确要求且信息足够时可附加操作块，但服务器只会挂起待用户确认后执行。支持非删除操作：create_habit, complete_habit, create_category, create_item, create_project, update_item, set_today, set_item_categories, complete_item, update_project_progress, propose_memory。不要输出 trash_item 或 archive_item；若用户要求删除/归档，说明需切换到开放模式（删除仍需确认）。保守模式不提供工作区条目列表；用户给出准确待办标题时直接附上操作块；若用户使用标题的一部分且当前对话中只有一个明确匹配，使用当前对话中的完整标题直接附上操作块。创建分类并将已有待办归类时不要追问哪一条，直接在同一数组中创建分类并用待办完整标题关联。不要因为看不到列表而猜测重复或追问，由服务器解析唯一活跃项并在真正歧义时拦截。${protocol}`
   return `${identity}${honesty}${focusHint}${capability}以下是本次允许参考的本地上下文：${contextPrompt}`
 }
