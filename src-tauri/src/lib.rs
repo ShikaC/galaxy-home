@@ -8,6 +8,8 @@ use std::time::Duration;
 
 use tauri::{webview::PageLoadEvent, Manager, RunEvent, Url};
 
+mod node_runtime;
+
 const PORT_RANGE: std::ops::RangeInclusive<u16> = 4177..=4199;
 
 struct ServerProcess(Mutex<Option<Child>>);
@@ -117,7 +119,8 @@ fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, Strin
     ));
   }
 
-  Command::new("node")
+  let node = node_runtime::find_node_binary()?;
+  Command::new(node)
     .current_dir(&root)
     .env("NODE_ENV", "production")
     .env("PORT", port.to_string())
