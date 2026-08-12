@@ -33,3 +33,21 @@ Windows Node 安装目录的 npm 启动脚本直接调用同目录的 `node.exe`
 ### 下次避免
 
 Windows 多 Node 环境验收时，同时检查 `node --version` 和 npm 生命周期中的 `process.version`；不要仅凭 PATH 顺序判断 npm 使用的 Node。
+
+## 开发态启动命令陷阱
+
+### 发现
+
+第一次启动开发桌面端时把 npm CLI 写成了仓库内不存在的 `node_modules/npm/bin/npm-cli.js`，进程立即以 `MODULE_NOT_FOUND` 退出。
+
+### 根因
+
+npm 是随系统 Node 安装的 CLI，不是项目依赖；项目根目录没有 `node_modules/npm`。
+
+### 处理
+
+改用 Node 24 直接调用 `C:\\Program Files\\nodejs\\node_modules\\npm\\bin\\npm-cli.js`，并将启动日志和退出码单独保存。
+
+### 下次避免
+
+启动前先用 `npm root -g` 或 `Get-Command npm` 确认 npm CLI 实际路径，再构造跨 Node 版本的启动命令。
