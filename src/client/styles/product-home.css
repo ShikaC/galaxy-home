@@ -9,7 +9,7 @@
   background:
     linear-gradient(105deg, var(--color-action-soft), transparent 42%), var(--color-surface);
   color: var(--color-action-hover);
-  box-shadow: 0 1px 0 rgb(32 35 31 / 3%);
+  box-shadow: var(--shadow-quote-band);
 }
 .quote-band blockquote {
   margin: 0;

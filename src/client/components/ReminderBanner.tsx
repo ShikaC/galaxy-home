@@ -7,6 +7,22 @@ import { notificationsSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
+const MORNING_REMINDER_CLAUSE = "或保留一个足够小的今日重点。"
+
+function ReminderDetail({ detail }: { readonly detail: string }) {
+  const clauseStart = detail.indexOf(MORNING_REMINDER_CLAUSE)
+  if (clauseStart === -1) return detail
+  const before = detail.slice(0, clauseStart)
+  const after = detail.slice(clauseStart + MORNING_REMINDER_CLAUSE.length)
+  return (
+    <>
+      {before}
+      <span className="reminder-banner__clause">{MORNING_REMINDER_CLAUSE}</span>
+      {after}
+    </>
+  )
+}
+
 export function ReminderBanner() {
   const client = useQueryClient()
   const mirrored = useRef(new Set<string>())
@@ -38,7 +54,9 @@ export function ReminderBanner() {
       <Bell aria-hidden="true" size={17} />
       <div>
         <strong>{reminder.title}</strong>
-        <span>{reminder.detail}</span>
+        <span>
+          <ReminderDetail detail={reminder.detail} />
+        </span>
       </div>
       <Button
         onClick={() => update.mutate({ id: reminder.id, action: "snooze" })}

@@ -99,7 +99,12 @@ export function ReviewPage() {
             </Button>
           </div>
         }
-        subtitle="原始收获只由你修改；周回顾会从真实记录中总结，不替你改写原文。"
+        subtitle={
+          <>
+            原始收获只由你修改；周回顾会从真实记录中总结，
+            <span className="page-header__clause">不替你改写原文。</span>
+          </>
+        }
         title="回顾"
       />
       {generate.isError || generateAi.isError ? (
@@ -129,7 +134,12 @@ export function ReviewPage() {
           </div>
           {filteredGains.length === 0 ? (
             <EmptyState
-              description="今天还没有留下收获，也可以回到首页随时追加。"
+              description={
+                <>
+                  今天还没有留下收获，也可以回到首页
+                  <span className="empty-state__phrase">随时追加。</span>
+                </>
+              }
               icon={CalendarDays}
               title="没有匹配记录"
             />

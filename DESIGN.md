@@ -83,6 +83,7 @@ App shell:
 - Main content maximum width is `1180px`, centered with `32px` inline padding and `28px` block padding.
 - Home uses `minmax(0, 1.45fr) minmax(320px, 0.8fr)`; intrinsic sections collapse below `1120px`.
 - Below `980px`, the left navigation becomes a `68px` icon rail with accessible tooltips. Dedicated phone layout is out of scope, but no horizontal overflow is allowed at `768px`.
+- Responsive page composition follows the available `.main-scroll` container when the AI drawer compresses the work surface. At a `720px` container width, todos, habits, gains, review, and other multi-column page regions must stack or reflow so content remains readable at the accepted `768px` viewport.
 
 Scroll ownership: navigation stays fixed, main page scrolls, AI drawer body scrolls independently. Modals lock background scroll. Nested page-section scrollbars are prohibited.
 

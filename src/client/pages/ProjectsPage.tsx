@@ -46,7 +46,12 @@ export function ProjectsPage() {
             新项目
           </Button>
         }
-        subtitle="只看当前阶段与紧接着的一步，不提前展开未知的完整任务链。"
+        subtitle={
+          <>
+            只看当前阶段与紧接着的一步，
+            <span className="page-header__clause">不提前展开未知的完整任务链。</span>
+          </>
+        }
         title="周期项目"
       />
       {projects.data?.length === 0 ? (

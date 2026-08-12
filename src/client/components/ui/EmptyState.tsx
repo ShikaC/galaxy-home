@@ -8,7 +8,7 @@ export function EmptyState({
   title,
 }: {
   readonly action?: ReactNode
-  readonly description: string
+  readonly description: ReactNode
   readonly icon: LucideIcon
   readonly title: string
 }) {

@@ -103,3 +103,161 @@
     flex-direction: column;
   }
 }
+
+@container (max-width: 720px) {
+  .reminder-banner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .reminder-banner > svg {
+    grid-column: 1;
+    grid-row: 1;
+    margin-block-start: var(--space-1);
+  }
+  .reminder-banner > div {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .reminder-banner > div strong {
+    text-wrap: balance;
+  }
+  .reminder-banner > div span {
+    text-wrap: wrap;
+  }
+  .reminder-banner > div > span > .reminder-banner__clause {
+    display: inline-block;
+    white-space: nowrap;
+    text-wrap: nowrap;
+  }
+  .reminder-banner > .button {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    margin-block-start: var(--space-1);
+  }
+  .reminder-banner > .icon-button {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .todo-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .filter-nav {
+    display: flex;
+    flex-wrap: wrap;
+    padding-block-end: var(--space-2);
+  }
+  .filter-nav > strong {
+    display: none;
+  }
+  .filter-nav__heading {
+    flex: 1 0 100%;
+  }
+  .filter-nav button:not(.icon-button) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .task-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .task-actions-menu > .icon-button {
+    align-self: start;
+  }
+  .habit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .habit-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .habit-row > .habit-complete {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+  .habit-row__body {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+  }
+  .habit-row__title {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .habit-row__title > strong,
+  .habit-row__body p {
+    overflow-wrap: anywhere;
+  }
+  .habit-row__title > strong {
+    white-space: normal;
+  }
+  .habit-row > .habit-count {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: center;
+  }
+  .habit-row > .icon-button {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+  .habit-row__actions {
+    grid-column: 2;
+    grid-row: 2;
+    justify-content: flex-start;
+  }
+  .analytics-grid,
+  .review-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .review-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gain-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .gain-row > time {
+    grid-column: 1 / -1;
+  }
+  .gain-row > p,
+  .gain-row > textarea {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+  .gain-row > div {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .review-card {
+    padding: var(--space-4);
+  }
+  .review-card > p,
+  .review-card li,
+  .suggestions p {
+    overflow-wrap: anywhere;
+  }
+  .review-grid .empty-state__phrase {
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .page-header__clause {
+    display: inline-block;
+    white-space: nowrap;
+    text-wrap: nowrap;
+  }
+  .settings-section > header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .settings-section > header h2 {
+    white-space: nowrap;
+  }
+  .correction-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

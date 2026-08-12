@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReminderBanner } from "../../src/client/components/ReminderBanner.js"
 import { apiRequest, apiVoid } from "../../src/client/lib/api.js"
@@ -11,6 +11,7 @@ vi.mock("../../src/client/lib/api.js", () => ({
 }))
 
 afterEach(() => {
+  cleanup()
   vi.clearAllMocks()
 })
 
@@ -38,6 +39,9 @@ describe("ReminderBanner", () => {
     )
 
     expect(await screen.findByText("今天最想推进什么？")).toBeInTheDocument()
+    expect(screen.getByText("或保留一个足够小的今日重点。", { exact: true })).toHaveClass(
+      "reminder-banner__clause",
+    )
     fireEvent.click(screen.getByRole("button", { name: /30 分钟后/ }))
     await waitFor(() => {
       expect(apiVoid).toHaveBeenCalledWith(`/api/notifications/${id}/snooze`, {
@@ -53,5 +57,28 @@ describe("ReminderBanner", () => {
         method: "POST",
       })
     })
+  })
+
+  it("leaves unrelated reminder details unsplit", async () => {
+    vi.mocked(apiRequest).mockResolvedValue([
+      {
+        id: crypto.randomUUID(),
+        reminderId: crypto.randomUUID(),
+        kind: "deadline",
+        title: "待办提醒：整理",
+        detail: "截止时间 2026/8/12 09:00",
+        scheduledAt: "2026-08-12T01:00:00.000Z",
+        entityId: crypto.randomUUID(),
+      },
+    ])
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <ReminderBanner />
+      </QueryClientProvider>,
+    )
+
+    expect(await screen.findByText("截止时间 2026/8/12 09:00")).toBeInTheDocument()
+    expect(document.querySelector(".reminder-banner__clause")).not.toBeInTheDocument()
   })
 })

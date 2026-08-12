@@ -19,6 +19,7 @@
   --color-reminder-soft: #fff7e3;
   --color-chart-secondary: #4f7f86;
   --color-overlay-scrim: rgb(32 35 31 / 24%);
+  --color-sidebar-glow: rgb(36 111 75 / 4%);
   --color-star-trail: rgb(36 111 75 / 10%);
   --color-star-glow: rgb(79 127 134 / 8%);
   --font-family-ui: "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
@@ -46,6 +47,7 @@
   --radius-card: 8px;
   --shadow-popover: 0 6px 22px rgb(32 35 31 / 8%);
   --shadow-overlay: 0 18px 52px rgb(32 35 31 / 12%);
+  --shadow-quote-band: 0 1px 0 rgb(32 35 31 / 3%);
   --motion-fast: 120ms;
   --motion-base: 180ms;
   --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);

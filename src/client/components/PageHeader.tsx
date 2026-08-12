@@ -8,7 +8,7 @@ export function PageHeader({
 }: {
   readonly actions?: ReactNode
   readonly eyebrow?: string
-  readonly subtitle?: string
+  readonly subtitle?: ReactNode
   readonly title: string
 }) {
   return (

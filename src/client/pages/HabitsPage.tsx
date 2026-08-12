@@ -104,7 +104,12 @@ export function HabitsPage() {
             新习惯
           </Button>
         }
-        subtitle="休息和请假不打断连续；所有统计都以修正后的记录为准。"
+        subtitle={
+          <>
+            休息和请假不打断连续；
+            <span className="page-header__clause">所有统计都以修正后的记录为准。</span>
+          </>
+        }
         title="习惯"
       />
       <section className="section-band">

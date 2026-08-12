@@ -48,7 +48,7 @@ export function CategoryDialog({
 }) {
   const client = useQueryClient()
   const [name, setName] = useState("")
-  const [color, setColor] = useState("#26734d")
+  const [color, setColor] = useState(defaultCategoryColor)
   const [icon, setIcon] = useState("tag")
   useEffect(() => {
     if (!open) return
