@@ -15,3 +15,21 @@
 ## 下次避免
 
 新会话先解析真实盘符和 Git 根目录，不直接拼接用户提供的类 Unix 路径。
+
+## npm 启动器版本陷阱
+
+### 发现
+
+Git Bash 中 `node` 已指向 Node 24，但直接运行 `npm ci` 的生命周期日志仍报告 Node 22.17.0。
+
+### 根因
+
+Windows Node 安装目录的 npm 启动脚本直接调用同目录的 `node.exe`，不跟随 PATH 中排在前面的便携 Node。
+
+### 处理
+
+使用 Node 24 可执行文件直接调用 `node_modules/npm/bin/npm-cli.js`，并在日志中记录 `process.execPath`。
+
+### 下次避免
+
+Windows 多 Node 环境验收时，同时检查 `node --version` 和 npm 生命周期中的 `process.version`；不要仅凭 PATH 顺序判断 npm 使用的 Node。
