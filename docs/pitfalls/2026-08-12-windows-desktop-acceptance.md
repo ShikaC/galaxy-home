@@ -51,3 +51,39 @@ npm 是随系统 Node 安装的 CLI，不是项目依赖；项目根目录没有
 ### 下次避免
 
 启动前先用 `npm root -g` 或 `Get-Command npm` 确认 npm CLI 实际路径，再构造跨 Node 版本的启动命令。
+
+## Windows 安全弹窗与原生验收阻塞
+
+### 发现
+
+Tauri 开发窗口首次启动 Node 服务时出现 Windows 安全中心的 Node.js 防火墙访问提示。Computer Use 的点击被系统安全层拦截，无法继续输入原生窗口。
+
+### 根因
+
+这是 Windows 的外部安全/隐私提示，不属于应用 WebView 内容；自动化不能代替用户决定网络访问权限。
+
+### 处理
+
+保留遮挡状态截图，停止原生输入，不把浏览器开发态结果外推为 Tauri 原生验收通过。
+
+### 下次避免
+
+在启动桌面端前预先由测试者处理 Node.js 防火墙提示，并在操作时明确确认是否允许运行本地安装器和卸载程序；随后重新采集原生窗口、安装、退出和重启证据。
+
+## WiX MSI 打包失败但 NSIS 成功
+
+### 发现
+
+`npm run desktop:build` 在 WiX `light.exe` 阶段失败，但 `tauri build --bundles nsis --no-sign` 成功生成 NSIS 安装器。
+
+### 根因
+
+当前环境的 WiX `light.exe` 未能完成 MSI 链接；本轮没有将 NSIS 专项成功误写成完整桌面打包命令通过。
+
+### 处理
+
+保留完整 desktop build 日志、NSIS 日志和安装器 SHA256，分别记录两个结果。
+
+### 下次避免
+
+同时执行完整打包命令和明确的 NSIS 专项命令，并按文档要求以完整命令退出码作为门槛。
