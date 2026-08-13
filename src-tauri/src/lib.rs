@@ -25,6 +25,20 @@ fn packaged_runtime_root(resource_dir: PathBuf) -> PathBuf {
   resource_dir.join("resources").join("app")
 }
 
+fn normalize_node_path(path: PathBuf) -> PathBuf {
+  #[cfg(windows)]
+  {
+    let value = path.to_string_lossy();
+    if let Some(unc) = value.strip_prefix("\\\\?\\UNC\\") {
+      return PathBuf::from(format!("\\\\{unc}"));
+    }
+    if let Some(normal) = value.strip_prefix("\\\\?\\") {
+      return PathBuf::from(normal);
+    }
+  }
+  path
+}
+
 fn should_reveal_main_window(label: &str, event: PageLoadEvent) -> bool {
   label == "main" && event == PageLoadEvent::Finished
 }
@@ -33,7 +47,9 @@ fn runtime_root(app: &tauri::AppHandle) -> PathBuf {
   if cfg!(debug_assertions) {
     return project_root();
   }
-  packaged_runtime_root(app.path().resource_dir().expect("resource dir"))
+  normalize_node_path(packaged_runtime_root(
+    app.path().resource_dir().expect("resource dir"),
+  ))
 }
 
 fn find_free_port() -> Result<u16, String> {
@@ -46,14 +62,21 @@ fn find_free_port() -> Result<u16, String> {
   Err("本机 4177–4199 端口均不可用，请关闭占用进程后重试".into())
 }
 
-fn wait_for_port(port: u16) -> bool {
+fn wait_for_port(child: &mut Child, port: u16) -> Result<(), String> {
   for _ in 0..75 {
     if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-      return true;
+      return Ok(());
+    }
+    match child.try_wait() {
+      Ok(Some(status)) => {
+        return Err(format!("银河居所服务启动后立即退出（状态码：{status}）"));
+      }
+      Ok(None) => {}
+      Err(error) => return Err(format!("无法检查银河居所服务状态：{error}")),
     }
     thread::sleep(Duration::from_millis(200));
   }
-  false
+  Err(format!("银河居所服务未能在 127.0.0.1:{port} 就绪"))
 }
 
 fn wait_for_http(port: u16, path: &str) -> bool {
@@ -104,10 +127,11 @@ fn wait_for_dev_services() -> Result<(), std::io::Error> {
 }
 
 fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, String> {
-  let data_dir = app
-    .path()
-    .app_data_dir()
-    .map_err(|error| error.to_string())?;
+  let data_dir = normalize_node_path(
+    app.path()
+      .app_data_dir()
+      .map_err(|error| error.to_string())?,
+  );
   std::fs::create_dir_all(&data_dir).map_err(|error| error.to_string())?;
 
   let root = runtime_root(app);
@@ -119,7 +143,7 @@ fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, Strin
     ));
   }
 
-  let node = node_runtime::find_node_binary()?;
+  let node = normalize_node_path(node_runtime::find_node_binary()?);
   Command::new(node)
     .current_dir(&root)
     .env("NODE_ENV", "production")
@@ -147,6 +171,68 @@ fn show_main_window(app: &tauri::AppHandle, port: u16) -> Result<(), String> {
     .map_err(|error| error.to_string())?;
   window.navigate(url).map_err(|error| error.to_string())?;
   Ok(())
+}
+
+fn show_startup_error(app: &tauri::AppHandle, error: &str) -> Result<(), String> {
+  let window = app
+    .get_webview_window("main")
+    .ok_or_else(|| "找不到主窗口".to_string())?;
+  let error_html = html_escape(error);
+  let html = format!(
+    r#"<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <title>银河居所 - 启动失败</title>
+    <style>
+      :root {{ color-scheme: light; font-family: system-ui, sans-serif; }}
+      body {{ margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f6f4ef; color: #272522; }}
+      main {{ width: min(560px, calc(100vw - 48px)); padding: 32px; border: 1px solid #d8d2c8; background: #fffdf9; box-shadow: 0 12px 32px rgb(39 37 34 / 10%); }}
+      h1 {{ margin: 0 0 12px; font-size: 24px; }}
+      p {{ margin: 0; line-height: 1.6; white-space: pre-wrap; }}
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>银河居所无法启动</h1>
+      <p>{error_html}</p>
+    </main>
+  </body>
+</html>"#
+  );
+  let encoded = percent_encode(html.as_bytes());
+  let url = Url::parse(&format!("data:text/html;charset=utf-8,{encoded}"))
+    .map_err(|error| error.to_string())?;
+  window
+    .set_title("银河居所 - 启动失败")
+    .map_err(|error| error.to_string())?;
+  window.show().map_err(|error| error.to_string())?;
+  window.navigate(url).map_err(|error| error.to_string())?;
+  Ok(())
+}
+
+fn html_escape(value: &str) -> String {
+  value
+    .replace('&', "&amp;")
+    .replace('<', "&lt;")
+    .replace('>', "&gt;")
+    .replace('"', "&quot;")
+    .replace('\'', "&#39;")
+}
+
+fn percent_encode(value: &[u8]) -> String {
+  const HEX: &[u8; 16] = b"0123456789ABCDEF";
+  let mut encoded = String::with_capacity(value.len());
+  for byte in value {
+    if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'.' | b'_' | b'~') {
+      encoded.push(*byte as char);
+    } else {
+      encoded.push('%');
+      encoded.push(HEX[(byte >> 4) as usize] as char);
+      encoded.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+  }
+  encoded
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -177,19 +263,26 @@ pub fn run() {
         return Ok(());
       }
 
-      let port = find_free_port()?;
-      let child = spawn_galaxy_server(app.handle(), port)?;
-      if !wait_for_port(port) {
-        let mut child = child;
-        stop_server(&mut child);
-        return Err(format!("银河居所服务未能在 127.0.0.1:{port} 就绪").into());
+      let startup = (|| -> Result<(), String> {
+        let port = find_free_port()?;
+        let mut child = spawn_galaxy_server(app.handle(), port)?;
+        if let Err(error) = wait_for_port(&mut child, port) {
+          stop_server(&mut child);
+          return Err(error);
+        }
+        *app
+          .state::<ServerProcess>()
+          .0
+          .lock()
+          .expect("server lock") = Some(child);
+        show_main_window(app.handle(), port)?;
+        Ok(())
+      })();
+      if let Err(error) = startup {
+        if show_startup_error(app.handle(), &error).is_err() {
+          app.handle().exit(1);
+        }
       }
-      *app
-        .state::<ServerProcess>()
-        .0
-        .lock()
-        .expect("server lock") = Some(child);
-      show_main_window(app.handle(), port)?;
       Ok(())
     })
     .build(tauri::generate_context!())
@@ -209,7 +302,10 @@ pub fn run() {
 
 #[cfg(test)]
 mod tests {
-  use super::{packaged_runtime_root, should_reveal_main_window};
+  use super::{
+    html_escape, normalize_node_path, packaged_runtime_root, percent_encode,
+    should_reveal_main_window,
+  };
   use tauri::webview::PageLoadEvent;
   use std::path::PathBuf;
 
@@ -228,5 +324,40 @@ mod tests {
     assert!(!should_reveal_main_window("main", PageLoadEvent::Started));
     assert!(should_reveal_main_window("main", PageLoadEvent::Finished));
     assert!(!should_reveal_main_window("secondary", PageLoadEvent::Finished));
+  }
+
+  #[test]
+  fn startup_error_content_is_escaped_and_percent_encoded() {
+    let error = html_escape("Node <24 & unavailable");
+    let html = format!("<p>{error}</p>");
+
+    assert_eq!(
+      html,
+      "<p>Node &lt;24 &amp; unavailable</p>"
+    );
+    assert!(percent_encode(html.as_bytes()).contains("%3C%2Fp%3E"));
+    assert!(!percent_encode(html.as_bytes()).contains('<'));
+  }
+
+  #[test]
+  fn normalizes_windows_extended_paths_before_starting_node() {
+    let extended = PathBuf::from(r"\\?\C:\Galaxy Home\resources\app");
+    let normalized = normalize_node_path(extended);
+
+    #[cfg(windows)]
+    assert_eq!(normalized, PathBuf::from(r"C:\Galaxy Home\resources\app"));
+    #[cfg(not(windows))]
+    assert_eq!(normalized, PathBuf::from(r"\\?\C:\Galaxy Home\resources\app"));
+  }
+
+  #[test]
+  fn normalizes_windows_extended_unc_paths_before_starting_node() {
+    let extended = PathBuf::from(r"\\?\UNC\server\share\app");
+    let normalized = normalize_node_path(extended);
+
+    #[cfg(windows)]
+    assert_eq!(normalized, PathBuf::from(r"\\server\share\app"));
+    #[cfg(not(windows))]
+    assert_eq!(normalized, PathBuf::from(r"\\?\UNC\server\share\app"));
   }
 }

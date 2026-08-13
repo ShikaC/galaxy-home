@@ -49,9 +49,11 @@
 
 - 任务类型：共享服务、Windows/macOS 桌面壳和 Web 启动链的对抗式代码审查，并修复本轮确认的漏洞与 bug。
 - 审查基线：`0d24435c9adafa39e1d7d01d92dec4a993604f11`（`更正 NSIS 验收记录表述`）。
-- 已完成：跨源本地 API 防护、Node.js 版本门禁、桌面命令统一使用 Node 24、父进程异常退出后的 Node 服务清理。
-- 已验证：Node 24 下 typecheck/build、针对性 Vitest、Rust 桌面壳单元测试、真实 Node 服务父 stdin 关闭退出、Node 22 门禁、NSIS 专项打包。
+- 已完成：跨源本地 API 防护、Node.js 版本门禁、桌面命令统一使用 Node 24、父进程异常退出后的 Node 服务清理、Windows 扩展路径归一化和启动失败可见错误页。
+- 已验证：Node 24 下 typecheck/build、针对性 Vitest、Rust 桌面壳单元测试、真实 Node 服务父 stdin 关闭退出、Node 22 门禁、最终 NSIS 包安装/启动/退出/卸载。
 - 已补充：Windows 无 `npm_execpath` 时仍由当前 Node 解析并执行 npm CLI；生产壳不再创建无人消费的 stderr 管道。
+- 已修复：NSIS 卸载钩子无条件清理当前用户和所有用户范围的 `银河居所.lnk` 及空快捷方式目录，覆盖旧安装目标变化导致的失效快捷方式残留。
+- 已验证：最新 NSIS 包在全新隔离目录完成安装；卸载入口实际执行后，安装目录、卸载器、桌面/开始菜单快捷方式、4177-4199 监听端口和卸载注册表均清零；本轮新增钩子同时清理非升级卸载的产品定位键并保留 app data。
 - 未改变：用户已有的 `src-tauri/Cargo.toml`、`src-tauri/resources/app/README.md` 和 `.tmp/` 验收证据未纳入本轮提交。
 
 ### 当前阻塞与残余风险
@@ -60,6 +62,7 @@
 - 全量测试 42 个文件、125 个测试中 123 个通过；剩余两个是既有 Windows 文件权限和临时目录 EPERM 失败，本轮未改动其测试语义。
 - 全量 lint 仍受仓库既有 CRLF/格式基线和 Windows glob/io 问题影响；本轮新增实现已通过 typecheck、脚本语法和目标 lint 检查。
 - Origin 检查只解决浏览器跨源状态修改，不构成对本机其他进程的认证；服务仍按项目设计仅监听 loopback。
+- 已修复历史运行时问题：Tauri Windows 资源路径前缀在传给 Node 前会归一化；Node 启动失败时主窗口显示可读错误，不再静默留下无响应壳进程。
 
 ### 证据与记录
 

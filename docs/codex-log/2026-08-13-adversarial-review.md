@@ -34,6 +34,24 @@
 - 修复：生产壳将该 stderr 重定向到 null，避免无人消费的有限管道成为服务阻塞点。
 - 验证：Rust 单元测试、生产构建和真实 Node 生命周期测试通过；该路径不再创建无人消费的 stderr pipe。
 
+### P1：Windows 生产包把 `\\?\\` 扩展路径直接传给 Node
+
+- 复现：Windows Tauri `resource_dir()` 返回带 `\\?\\` 前缀的路径；旧壳直接把 `dist/server/index.js` 作为 Node 主入口传入，Node 24 以 `EISDIR` 和退出码 1 结束，隐藏主窗口因此留下无响应壳。
+- 修复：`src-tauri/src/lib.rs` 在资源根、Tauri app data 目录和 Node 可执行文件进入 `Command` 前移除本地盘符扩展前缀，并把 UNC 扩展路径转换为普通 UNC 路径；增加启动失败 `data:` 错误页和子进程提前退出检测。
+- 验证：路径归一化 Rust 测试通过；最终 NSIS 包安装后用有效 `GALAXY_NODE_PATH` 启动，主窗口显示首次设置页，Node 24 子进程监听 4177；Alt+F4 后壳、Node 和端口均清零。默认 PATH 的 Node 22 场景显示可读“服务启动后立即退出”错误页。
+
+### P2：NSIS 卸载后可能残留失效快捷方式
+
+- 复现：旧卸载逻辑先用 `IsShortcutTarget` 比较快捷方式目标；安装目录变化或旧版本目标不再匹配时，开始菜单/桌面上的 `银河居所.lnk` 不会被删除，最终留下指向已删除 exe 的快捷方式。
+- 修复：新增 `src-tauri/nsis-hooks.nsh`，在卸载后分别以当前用户和所有用户上下文无条件删除产品名快捷方式及空目录；非升级卸载同时删除产品安装定位键但保留 app data，并在 `src-tauri/tauri.conf.json` 注册 `installerHooks`。
+- 验证：NSIS 专项构建成功；最新包在隔离目录实际安装后执行卸载，安装目录、卸载器、桌面/开始菜单快捷方式、4177-4199 监听端口、卸载注册表和产品定位键均清零。
+
+### P1：Windows 生产包路径问题导致启动失败（已修复）
+
+- 现象：旧包用 `galaxy-home-desktop.exe` 启动后进程存在但无响应、没有可操作窗口且没有 4177-4199 监听端口。
+- 根因：Windows 资源路径扩展前缀直接传给 Node，Node 以 `EISDIR` 退出；错误没有进入可见错误页。
+- 状态：已由路径归一化、子进程提前退出检测和 `data:` 启动错误页修复；最终包已实际打开首次设置页并正常退出。
+
 ## 启动链与构建改动
 
 - `scripts/run-tauri.mjs` 不再经由 `npx` 选择 CLI，而是使用当前 Node 直接执行项目内 Tauri CLI。
@@ -44,16 +62,17 @@
 
 ## 验证结果
 
-- 针对性 Vitest：3 个文件、8 个测试通过。
-- Rust：`cargo test --manifest-path src-tauri/Cargo.toml --lib --no-fail-fast`，5 个测试通过。
+- 针对性 Vitest：3 个文件、9 个测试通过。
+- Rust：`cargo test --manifest-path src-tauri/Cargo.toml --lib --no-fail-fast`，8 个测试通过。
 - TypeScript：`typecheck` 通过。
 - Web build：`build` 通过。
 - 脚本：新增和被修改的 `.mjs` 通过 `node --check`。
 - 全量 Vitest：42 个文件、125 个测试，123 通过、2 个既有 Windows 失败：secret 文件权限断言、transcription 临时目录清理 EPERM。
 - 全量 lint：仍受仓库既有 CRLF/格式基线和 Windows glob/io 问题影响；本轮新增逻辑没有引入 TypeScript 或运行时错误。
 - 完整桌面打包：前端、资源准备、Rust release 成功；WiX `light.exe` MSI 链接失败。
-- NSIS 专项打包：成功生成 `src-tauri/target/release/bundle/nsis/银河居所_0.1.0_x64-setup.exe`；SHA256 为 `F56483584C0B90E88AC0C5F8C0EA4E3F2322C1F5769D8331E3E09E0B32CFC908`。
+- NSIS 专项打包：成功生成 `src-tauri/target/release/bundle/nsis/银河居所_0.1.0_x64-setup.exe`；最终 SHA256 为 `19FEC50CA7FA74F321FCA98AB2D7F45A00D6D080419A386BADB20D80008FC5A2`。
+- 最终 NSIS 实测：隔离目录安装成功；有效 Node 24 路径下主窗口和 4177 监听成功；正常退出后对应进程/端口清零；卸载后快捷方式、应用文件、目标进程、卸载注册表和产品定位键清零；未勾选删除应用数据时 app data 保留。
 
 ## 结论
 
-本轮确认的 4 个 P1 问题均已修复并有针对性验证。代码修复本身不存在已确认的 P0；Windows 完整 MSI 仍受外部 WiX 环境阻塞，不能据此宣称完整桌面打包通过。
+本轮确认的 5 个 P1 问题和 1 个 P2 问题均已修复并有针对性验证。代码修复本身不存在已确认的 P0。Windows 完整 MSI 仍受外部 WiX 环境阻塞，不能据此宣称完整桌面打包通过。

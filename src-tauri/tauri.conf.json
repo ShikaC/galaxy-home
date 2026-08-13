@@ -30,6 +30,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "windows": {
+      "nsis": {
+        "installerHooks": "nsis-hooks.nsh"
+      }
+    },
     "macOS": {
       "infoPlist": "Info.plist"
     },
