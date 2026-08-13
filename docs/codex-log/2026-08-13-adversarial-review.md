@@ -96,7 +96,7 @@ Windows 版本 / OS Build：Windows 11 / 26200
 Node：PATH v22.17.0；合规验收显式使用 v24.14.0；npm 10.9.2
 Rust：stable 1.95.0；Cargo 1.95.0
 WebView2：151.0.4129.78
-Git 提交：`77ca0306449153ad23e03c36c1e50f9f975ca7ae`
+Git 提交：`a2fb314284d263e19b8e792d8172546aadeb00d4`（修复 commit；本报告 SHA 修正另有后续记录 commit）
 
 构建：PASS（显式 Node 24 + Rust stable；完整 `desktop:build -- --no-sign` 退出码 0，MSI/NSIS 均生成）
 npm ci：PASS（Node 24 CLI；资源准备阶段 `npm ci --omit=dev` 审计 0 vulnerabilities）
