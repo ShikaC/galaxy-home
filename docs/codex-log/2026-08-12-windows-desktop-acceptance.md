@@ -81,7 +81,7 @@
 
 - 正常关闭后 1 秒、5 秒均无目标 Node 子进程和 4177-4199 监听，PASS。
 - 精确 PID 强制结束生产壳后，Node 子进程仍存活并监听 4177；1 秒和 5 秒均未清理，FAIL。随后仅终止本次验收记录的遗留 PID，重启应用后测试空间和业务记录仍在。
-- 在独立临时安装目录重新运行同一 NSIS 安装器，运行其卸载器并保持“Delete the application data”未勾选；卸载窗口显示“Uninstallation Complete”，安装目录、目标进程和端口清零，数据目录保留。
+- 运行本地 NSIS 安装器完成首次安装并实际启动生产副本；关闭应用后运行该安装副本的卸载器，保持“Delete the application data”未勾选。卸载窗口显示“Uninstallation Complete”，安装目录、目标进程和端口清零，数据目录保留。
 - 卸载后开始菜单快捷方式仍存在，但目标文件已不存在，形成失效入口，FAIL/P2。
 - 生产数据在本机 AppModel 下实际位于 Tauri app data 的包缓存 `LocalCache/Roaming/app.galaxyhome.desktop`，包含 SQLite、WAL/SHM 和两份备份；普通 `%APPDATA%/app.galaxyhome.desktop` 目录未被生产壳使用。
 
