@@ -125,10 +125,11 @@ fn spawn_galaxy_server(app: &tauri::AppHandle, port: u16) -> Result<Child, Strin
     .env("NODE_ENV", "production")
     .env("PORT", port.to_string())
     .env("GALAXY_DATA_DIR", &data_dir)
+    .env("GALAXY_PARENT_LIFETIME", "1")
     .arg(&entry)
-    .stdin(Stdio::null())
+    .stdin(Stdio::piped())
     .stdout(Stdio::null())
-    .stderr(Stdio::piped())
+    .stderr(Stdio::null())
     .spawn()
     .map_err(|error| format!("无法启动 Node 服务（需本机 Node ≥24）：{error}"))
 }

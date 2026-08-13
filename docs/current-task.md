@@ -4,7 +4,7 @@
 
 按 `docs/windows-desktop-acceptance.md` 完整验收银河居所 Windows Tauri 桌面端，实际覆盖构建、启动、安装、业务操作、重启、退出、卸载和异常恢复。
 
-## 当前状态
+## 前序 Windows 验收状态
 
 - 任务类型：只读验收，允许写入验收记录和脱敏证据，不修改产品源码。
 - 已获取最新提交；本轮验收基线为 `8e61d6b9e6e883798adfe6008794b8ea2bcb60c6`。
@@ -40,3 +40,29 @@
 - 本轮验收证据：`.tmp/windows-desktop-acceptance/`
 - 重要更新日志：`docs/codex-log/`
 - 踩坑记录：`docs/pitfalls/`
+
+---
+
+## 2026-08-13 对抗式审查与修复
+
+### 当前状态
+
+- 任务类型：共享服务、Windows/macOS 桌面壳和 Web 启动链的对抗式代码审查，并修复本轮确认的漏洞与 bug。
+- 审查基线：`0d24435c9adafa39e1d7d01d92dec4a993604f11`（`更正 NSIS 验收记录表述`）。
+- 已完成：跨源本地 API 防护、Node.js 版本门禁、桌面命令统一使用 Node 24、父进程异常退出后的 Node 服务清理。
+- 已验证：Node 24 下 typecheck/build、针对性 Vitest、Rust 桌面壳单元测试、真实 Node 服务父 stdin 关闭退出、Node 22 门禁、NSIS 专项打包。
+- 已补充：Windows 无 `npm_execpath` 时仍由当前 Node 解析并执行 npm CLI；生产壳不再创建无人消费的 stderr 管道。
+- 未改变：用户已有的 `src-tauri/Cargo.toml`、`src-tauri/resources/app/README.md` 和 `.tmp/` 验收证据未纳入本轮提交。
+
+### 当前阻塞与残余风险
+
+- 完整 `desktop:build` 的 Rust release 和资源准备成功，但 WiX `light.exe` 仍无法链接 MSI；NSIS 专项打包成功。
+- 全量测试 42 个文件、125 个测试中 123 个通过；剩余两个是既有 Windows 文件权限和临时目录 EPERM 失败，本轮未改动其测试语义。
+- 全量 lint 仍受仓库既有 CRLF/格式基线和 Windows glob/io 问题影响；本轮新增实现已通过 typecheck、脚本语法和目标 lint 检查。
+- Origin 检查只解决浏览器跨源状态修改，不构成对本机其他进程的认证；服务仍按项目设计仅监听 loopback。
+
+### 证据与记录
+
+- 详细审查记录：`docs/codex-log/2026-08-13-adversarial-review.md`
+- 踩坑记录：`docs/pitfalls/2026-08-13-adversarial-review.md`
+- 既有 Windows 验收现场：`.tmp/windows-desktop-acceptance/`

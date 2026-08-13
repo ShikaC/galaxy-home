@@ -1,4 +1,7 @@
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+const MIN_NODE_MAJOR: u32 = 24;
 
 #[cfg(target_os = "macos")]
 fn add_versioned_candidates(candidates: &mut Vec<PathBuf>, root: &Path, suffix: &Path) {
@@ -71,20 +74,43 @@ fn candidates() -> Vec<PathBuf> {
   candidates
 }
 
-fn first_existing_candidate(candidates: impl IntoIterator<Item = PathBuf>) -> Option<PathBuf> {
-  candidates.into_iter().find(|path| path.is_file())
+fn parse_node_major_version(output: &str) -> Option<u32> {
+  output
+    .trim()
+    .strip_prefix('v')?
+    .split('.')
+    .next()?
+    .parse()
+    .ok()
+}
+
+fn node_major_version(path: &Path) -> Option<u32> {
+  let output = Command::new(path).arg("--version").output().ok()?;
+  if !output.status.success() {
+    return None;
+  }
+  parse_node_major_version(&String::from_utf8_lossy(&output.stdout))
+}
+
+fn first_supported_candidate(
+  candidates: impl IntoIterator<Item = PathBuf>,
+  version_of: impl Fn(&Path) -> Option<u32>,
+) -> Option<PathBuf> {
+  candidates.into_iter().find(|path| {
+    path.is_file() && version_of(path).is_some_and(|major| major >= MIN_NODE_MAJOR)
+  })
 }
 
 pub(crate) fn find_node_binary() -> Result<PathBuf, String> {
-  first_existing_candidate(candidates())
+  first_supported_candidate(candidates(), node_major_version)
     .ok_or_else(|| {
-      "无法定位 Node.js（需本机 Node ≥24）；请设置 GALAXY_NODE_PATH 或将 Node 加入桌面端可见的 PATH".into()
+      "无法定位满足 Node.js ≥24 的运行时；请设置 GALAXY_NODE_PATH 或将 Node 加入桌面端可见的 PATH".into()
     })
 }
 
 #[cfg(test)]
 mod tests {
-  use super::first_existing_candidate;
+  use super::{first_supported_candidate, parse_node_major_version};
   use std::path::PathBuf;
 
   #[test]
@@ -93,12 +119,34 @@ mod tests {
     let missing = existing.with_file_name("missing-node-binary");
 
     assert_eq!(
-      first_existing_candidate([missing, existing.clone()]),
+      first_supported_candidate([missing, existing.clone()], |path| {
+        (path == &existing).then_some(24)
+      }),
       Some(existing)
     );
     assert_eq!(
-      first_existing_candidate([PathBuf::from("missing-node-a")]),
+      first_supported_candidate([PathBuf::from("missing-node-a")], |_| Some(24)),
       None
+    );
+  }
+
+  #[test]
+  fn parses_node_major_version_from_node_output() {
+    assert_eq!(parse_node_major_version("v24.14.0\n"), Some(24));
+    assert_eq!(parse_node_major_version("v22.17.0\r\n"), Some(22));
+    assert_eq!(parse_node_major_version("node 24.14.0"), None);
+  }
+
+  #[test]
+  fn skips_existing_node_candidates_below_the_minimum_version() {
+    let old = std::env::current_exe().expect("current test executable");
+    let new = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+
+    assert_eq!(
+      first_supported_candidate([old.clone(), new.clone()], |path| {
+        (path == &old).then_some(22).or_else(|| (path == &new).then_some(24))
+      }),
+      Some(new),
     );
   }
 }

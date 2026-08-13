@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { buildApp } from "./app.js"
 import { migrateDatabase, openDatabase } from "./database.js"
+import { watchParentLifetime } from "./parentLifetime.js"
 import { getSettings } from "./repositories/settings.js"
 import { purgeExpiredTrash } from "./repositories/trash.js"
 import { ensureDailyBackup } from "./services/backup.js"
@@ -13,7 +14,7 @@ import { getAiConfigStatus } from "./services/secrets.js"
 
 const environment = process.env as Pick<
   NodeJS.ProcessEnv,
-  "GALAXY_CLOCK_NOW" | "GALAXY_DATA_DIR" | "NODE_ENV"
+  "GALAXY_CLOCK_NOW" | "GALAXY_DATA_DIR" | "GALAXY_PARENT_LIFETIME" | "NODE_ENV"
 >
 
 function resolveClock(): Clock {
@@ -66,6 +67,7 @@ app.addHook("onClose", () => database.close())
 
 try {
   await app.listen({ host: "127.0.0.1", port })
+  watchParentLifetime(environment.GALAXY_PARENT_LIFETIME === "1", process.stdin, () => app.close())
 } catch (error) {
   app.log.error(error)
   database.close()

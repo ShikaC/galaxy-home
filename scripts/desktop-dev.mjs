@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process"
-import { createConnection } from "node:net"
 import { mkdirSync } from "node:fs"
+import { createConnection } from "node:net"
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSupportedNodeRuntime, npmInvocation, runtimeEnv } from "./node-runtime.mjs"
+
+assertSupportedNodeRuntime()
 
 const identifier = "app.galaxyhome.desktop"
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
@@ -53,10 +56,11 @@ if (await portInUse(apiPort)) {
 console.log(`桌面开发：Web http://127.0.0.1:${webPort}  API :${apiPort}`)
 console.log(`数据目录：${dataDir}`)
 
-const child = spawn("npm", ["run", "dev"], {
+const npm = npmInvocation(["run", "dev"])
+const child = spawn(npm.command, npm.args, {
   cwd: root,
   env: {
-    ...process.env,
+    ...runtimeEnv(),
     GALAXY_DATA_DIR: dataDir,
     VITE_PORT: String(webPort),
     VITE_API_PORT: String(apiPort),
@@ -64,7 +68,7 @@ const child = spawn("npm", ["run", "dev"], {
     VITE_DISABLE_REACT_DEVTOOLS: process.env["VITE_DISABLE_REACT_DEVTOOLS"] ?? "1",
   },
   stdio: "inherit",
-  shell: process.platform === "win32",
+  shell: process.platform === "win32" && npm.command === "npm.cmd",
 })
 
 child.on("exit", (code, signal) => {

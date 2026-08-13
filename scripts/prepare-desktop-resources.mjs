@@ -3,6 +3,9 @@ import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSupportedNodeRuntime, npmInvocation, runtimeEnv } from "./node-runtime.mjs"
+
+assertSupportedNodeRuntime()
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const dest = join(root, "src-tauri", "resources", "app")
@@ -23,10 +26,12 @@ cpSync(join(root, "db"), join(dest, "db"), { recursive: true })
 cpSync(join(root, "package.json"), join(dest, "package.json"))
 cpSync(join(root, "package-lock.json"), join(dest, "package-lock.json"))
 
-const install = spawnSync("npm", ["ci", "--omit=dev"], {
+const npm = npmInvocation(["ci", "--omit=dev"])
+const install = spawnSync(npm.command, npm.args, {
   cwd: dest,
+  env: runtimeEnv(),
   stdio: "inherit",
-  shell: process.platform === "win32",
+  shell: process.platform === "win32" && npm.command === "npm.cmd",
 })
 if (install.status !== 0) {
   process.exit(install.status ?? 1)

@@ -2,6 +2,9 @@
 import { spawn } from "node:child_process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { assertSupportedNodeRuntime, runtimeEnv, tauriCliPath } from "./node-runtime.mjs"
+
+assertSupportedNodeRuntime()
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..")
 const args = process.argv.slice(2)
@@ -15,11 +18,10 @@ const env = {
 }
 delete env.RUSTUP_TOOLCHAIN
 
-const child = spawn("npx", ["tauri", ...args], {
+const child = spawn(process.execPath, [tauriCliPath(root), ...args], {
   cwd: root,
-  env,
+  env: runtimeEnv(env),
   stdio: "inherit",
-  shell: process.platform === "win32",
 })
 
 child.on("exit", (code, signal) => {

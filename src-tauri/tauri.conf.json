@@ -7,7 +7,7 @@
     "frontendDist": "http://127.0.0.1:4177",
     "devUrl": "http://127.0.0.1:5180",
     "beforeDevCommand": "node scripts/desktop-dev.mjs",
-    "beforeBuildCommand": "npm run build && node scripts/prepare-desktop-resources.mjs"
+    "beforeBuildCommand": "node scripts/desktop-build.mjs"
   },
   "app": {
     "windows": [

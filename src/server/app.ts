@@ -20,8 +20,33 @@ import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
 import { AiConfirmationRequiredError } from "./services/aiReview.js"
 import { ImportArchiveInvalidError, ImportArchiveTooLargeError } from "./services/backup.js"
 
+function localBrowserOrigins(production: boolean): ReadonlySet<string> {
+  const defaultPort = production ? "4173" : "5173"
+  const port = process.env[production ? "PORT" : "VITE_PORT"] ?? defaultPort
+  return new Set([`http://127.0.0.1:${port}`, `http://localhost:${port}`, `http://[::1]:${port}`])
+}
+
+function normalizeBrowserOrigin(origin: string): string | null {
+  let url: URL
+  try {
+    url = new URL(origin)
+  } catch {
+    return null
+  }
+  return url.protocol === "http:" ? url.origin : null
+}
+
 export async function buildApp(context: AppContext, production = false) {
   const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 })
+  const allowedOrigins = localBrowserOrigins(production)
+  app.addHook("onRequest", (request, reply, done) => {
+    const origin = request.headers.origin
+    if (origin !== undefined && !allowedOrigins.has(normalizeBrowserOrigin(origin) ?? "")) {
+      reply.code(403).send({ code: "ORIGIN_NOT_ALLOWED", message: "只允许本机页面访问此服务" })
+      return
+    }
+    done()
+  })
   await app.register(multipart, { limits: { fileSize: 20 * 1024 * 1024, files: 1 } })
   app.addContentTypeParser("application/zip", { parseAs: "buffer" }, (_request, body, done) =>
     done(null, body),

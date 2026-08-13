@@ -13,6 +13,49 @@ afterEach(() => {
 })
 
 describe("local API", () => {
+  it("rejects browser requests from non-local origins before changing state", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-origin-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+    })
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/tutorial/dismiss",
+      headers: { origin: "https://attacker.example" },
+    })
+
+    expect(blocked.statusCode).toBe(403)
+    expect(blocked.json<{ code: string }>()).toMatchObject({ code: "ORIGIN_NOT_ALLOWED" })
+    expect(
+      database.prepare("SELECT guide_dismissed FROM tutorial_state WHERE id = 1").get(),
+    ).toEqual({
+      guide_dismissed: 0,
+    })
+
+    const allowed = await app.inject({
+      method: "POST",
+      url: "/api/tutorial/dismiss",
+      headers: { origin: "http://127.0.0.1:5173" },
+    })
+
+    expect(allowed.statusCode).toBe(204)
+    expect(
+      database.prepare("SELECT guide_dismissed FROM tutorial_state WHERE id = 1").get(),
+    ).toEqual({
+      guide_dismissed: 1,
+    })
+
+    await app.close()
+    database.close()
+  })
+
   it("completes onboarding and persists a captured item through HTTP", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-"))
     directories.push(directory)
