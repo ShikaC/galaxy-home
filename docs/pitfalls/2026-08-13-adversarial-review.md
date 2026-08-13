@@ -143,3 +143,57 @@ Windows 扩展路径适用于 Win32 文件 API，但不是 Node 命令行入口�
 ### 下次避免
 
 Windows 桌面验收要记录 Node 子进程的完整命令行、可执行路径和退出码；仅看到壳进程存在不能证明服务已经启动。
+
+## Windows 环境变量 `Path` 大小写
+
+### 发现
+
+PowerShell 启动 Node 24 时，Windows 进程环境中有效的 PATH 键是 `Path`；只写 `PATH` 会让 `runtimeEnv()` 的子进程环境丢失原有 `.cargo\\bin`，Tauri 随后报 `cargo metadata: program not found`。
+
+### 根因
+
+Windows 环境变量名大小写不敏感，但 Node 的 `process.env` 会保留继承时的键名。代码只读取 `base.PATH`，在 `base.Path` 存在时读到空字符串并覆盖路径。
+
+### 处理
+
+根据 Windows 实际继承键选择 `Path`，其他平台使用 `PATH`；增加 `runtimeEnv()` 回归测试，并在显式 Node 24 + Rust stable 环境下重新生成 MSI/NSIS。
+
+### 下次避免
+
+Windows 子进程启动链同时检查 Node、Cargo、WiX 的绝对路径和子进程实际命令行；不要假设跨平台环境变量键名的大小写形态一致。
+
+## WiX 中文 MSI 与生产依赖测试夹具
+
+### 发现
+
+WiX `light.exe` 的直接链接可启动，但原始 MSI 使用英文 1252 本地化时无法编码中文；切换代码页后又被生产依赖中的测试夹具文件名 `snow ☃` 阻断。
+
+### 根因
+
+Tauri 生成的 MSI 会把生产资源目录中的每个文件交给 WiX；`npm ci --omit=dev` 不等于依赖包内不存在测试/示例目录。WiX 代码页必须与中文产品元数据一致，且打包输入不能包含不需要运行的非运行时夹具。
+
+### 处理
+
+配置 WiX `zh-CN`，生产依赖复制完成后裁剪通用的 `test/tests/example/examples/doc/docs/bench` 目录；保留运行时代码并用单测锁定裁剪边界。完整 `desktop:build -- --no-sign` 现可生成 MSI 和 NSIS。
+
+### 下次避免
+
+遇到 WiX `light.exe` 黑盒失败时，先独立运行等价的 `candle/light` 并保存 stderr，再分别验证代码页、扩展参数和生产资源清单；不要只依据 Tauri 汇总日志判断根因。
+
+## perMachine MSI 安装权限
+
+### 发现
+
+MSI 已成功生成，但在标准完整性级别的当前会话中执行安装返回错误 1925，随后 1603 回滚；隔离安装目录保持空，未能继续 MSI 启动/卸载。
+
+### 根因
+
+WiX 包的 `<Package InstallScope="perMachine">` 需要管理员提升；当前会话虽然属于 Administrators 组，但令牌为 Medium，自动化调用 `RunAs` 也被环境拒绝。
+
+### 处理
+
+保留完整 `msiexec` 日志和回滚现场，不把“生成 MSI”误写成“安装通过”；release EXE 的启动、正常退出和强制退出清理另行实测。
+
+### 下次避免
+
+MSI 安装验收前先确认提升状态；使用全新管理员测试用户或人工确认 UAC 后，再复测 `msiexec /i`、实际启动、退出、卸载和残留检查。

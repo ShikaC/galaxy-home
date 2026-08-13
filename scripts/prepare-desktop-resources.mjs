@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process"
 import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { pruneProductionDependencyArtifacts } from "./desktop-resource-pruning.mjs"
 import { assertSupportedNodeRuntime, npmInvocation, runtimeEnv } from "./node-runtime.mjs"
 
 assertSupportedNodeRuntime()
@@ -36,5 +37,8 @@ const install = spawnSync(npm.command, npm.args, {
 if (install.status !== 0) {
   process.exit(install.status ?? 1)
 }
+
+const removedDirectories = pruneProductionDependencyArtifacts(join(dest, "node_modules"))
+console.log(`已移除 ${removedDirectories} 个生产依赖非运行时目录`)
 
 console.log(`桌面运行时资源已写入 ${dest}`)

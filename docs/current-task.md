@@ -69,3 +69,21 @@
 - 详细审查记录：`docs/codex-log/2026-08-13-adversarial-review.md`
 - 踩坑记录：`docs/pitfalls/2026-08-13-adversarial-review.md`
 - 既有 Windows 验收现场：`.tmp/windows-desktop-acceptance/`
+
+---
+
+## 2026-08-13 Windows 环境阻塞收口
+
+### 当前状态
+
+- 已修复 WiX 中文 MSI 链接阻塞：配置 `zh-CN` 本地化，生产依赖准备阶段移除不会被运行时使用的测试/示例目录，避免 WiX 936 编码无法处理依赖测试夹具文件名。
+- 已修复 Windows 环境变量大小写问题：Node 24 启动子命令时保留 `Path`，不再丢失 `.cargo\\bin`，因此 `cargo metadata` 和完整 Tauri 打包可以找到 Rust 工具链。
+- 显式 Node 24.14.0、Rust stable 1.95.0 环境下，`npm run desktop:build -- --no-sign` 退出码 0，同时生成 MSI 和 NSIS；MSI SHA256 为 `9818555490A18DC663220EBB15157E967B9D82DEBF7EC32DADBEA58DB54507E4`。
+- release Tauri 壳已实际启动首次设置页，Node 24 子进程监听 `127.0.0.1:4177`；正常关闭和精确 PID 强制退出后 5 秒内壳、对应 Node 和 4177-4199 监听均清零。
+
+### 当前阻塞与残余风险
+
+- MSI 安装实测未通过：MSI 为 `perMachine`，当前 Windows 会话管理员组令牌是 Medium，安装日志返回错误 1925/1603 并回滚；UAC 提升调用被当前自动化会话拒绝。因此 MSI 安装后的启动、操作和卸载仍未测试，不能写“Windows 完整验收通过”。
+- 默认 PATH 的 `node` 仍是 22.17.0；Node 22 门禁正确拒绝桌面命令。合规构建和 release 实测使用显式 Node 24.14.0。Node 24.14.0 还会触发 jsdom 要求 `^24.15.0` 的 EBADENGINE 警告，未阻断本次构建。
+- `npm test` 仍为既有 Windows 失败：43 个文件中 16 个通过、2 个测试失败，分别是 secret 文件权限断言和 transcription 临时 SQLite 清理 EBUSY；另有 25 个集成套件因 Vitest/Vite 将 `node:sqlite` 解析到 client 环境而未收集测试。
+- `npm run lint` 仍受仓库既有 CRLF/格式基线影响；本轮新增资源裁剪与运行时修复的目标单测 2 个文件、7 个测试通过。

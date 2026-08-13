@@ -1,6 +1,6 @@
 export declare function assertSupportedNodeRuntime(version?: string): void
 
-export declare function runtimeEnv(base?: NodeJS.ProcessEnv): NodeJS.ProcessEnv & { PATH: string }
+export declare function runtimeEnv(base?: NodeJS.ProcessEnv): NodeJS.ProcessEnv & { PATH?: string; Path?: string }
 
 export declare function npmInvocation(args: string[]): {
   command: string

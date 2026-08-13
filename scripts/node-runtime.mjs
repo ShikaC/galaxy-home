@@ -14,9 +14,11 @@ export function assertSupportedNodeRuntime(version = process.versions.node) {
 
 export function runtimeEnv(base = process.env) {
   const runtimeDirectory = dirname(process.execPath)
+  const inheritedPathKey = process.platform === "win32" && base.Path !== undefined ? "Path" : "PATH"
+  const inheritedPath = base[inheritedPathKey] ?? ""
   return {
     ...base,
-    PATH: `${runtimeDirectory}${pathDelimiter}${base.PATH ?? ""}`,
+    [inheritedPathKey]: `${runtimeDirectory}${pathDelimiter}${inheritedPath}`,
   }
 }
 

@@ -14,6 +14,17 @@ describe("desktop runtime commands", () => {
     expect(env.PATH).toBe(`${dirname(process.execPath)}${delimiter}C:\\old-node`)
   })
 
+  it("preserves the Windows Path environment key when prepending the runtime", () => {
+    const env = runtimeEnv(process.platform === "win32" ? { Path: "C:/rust-bin" } : { PATH: "C:/rust-bin" })
+
+    if (process.platform === "win32") {
+      expect(env["Path"]).toBe(`${dirname(process.execPath)}${delimiter}C:/rust-bin`)
+      expect(env.PATH).toBeUndefined()
+    } else {
+      expect(env.PATH).toBe(`${dirname(process.execPath)}${delimiter}C:/rust-bin`)
+    }
+  })
+
   it("rejects Node versions below the desktop requirement", () => {
     expect(() => assertSupportedNodeRuntime("22.17.0")).toThrow(/Node\.js ≥24/)
     expect(() => assertSupportedNodeRuntime("24.14.0")).not.toThrow()

@@ -75,4 +75,82 @@
 
 ## 结论
 
-本轮确认的 5 个 P1 问题和 1 个 P2 问题均已修复并有针对性验证。代码修复本身不存在已确认的 P0。Windows 完整 MSI 仍受外部 WiX 环境阻塞，不能据此宣称完整桌面打包通过。
+本轮确认的 5 个 P1 问题和 1 个 P2 问题均已修复并有针对性验证。代码修复本身不存在已确认的 P0。
+
+## 2026-08-13 Windows MSI 环境阻塞复测
+
+### 根因与修复
+
+- WiX `light.exe` 原先按英文 1252 本地化链接中文 MSI，且生产依赖中包含带非 936 编码字符的测试夹具文件名；新增 WiX `zh-CN` 配置和生产资源裁剪，构建时移除依赖包内的 `test/tests/example/examples/doc/docs/bench` 等非运行时目录。
+- Windows Node 子进程环境的有效 PATH 键为 `Path`，旧实现只更新 `PATH`，导致显式 Node 24 构建时找不到 `cargo`；`runtimeEnv()` 现在保留并前置到实际继承的键，并增加回归测试。
+
+### Windows 验收报告
+
+```text
+项目：银河居所 Windows 桌面端
+测试日期：2026-08-13
+测试主机：Windows 11 家庭版中文版，OS Build 26200
+Windows 版本 / OS Build：Windows 11 / 26200
+架构：x64
+显示缩放：125%
+Node：PATH v22.17.0；合规验收显式使用 v24.14.0；npm 10.9.2
+Rust：stable 1.95.0；Cargo 1.95.0
+WebView2：151.0.4129.78
+Git 提交：`77ca0306449153ad23e03c36c1e50f9f975ca7ae`
+
+构建：PASS（显式 Node 24 + Rust stable；完整 `desktop:build -- --no-sign` 退出码 0，MSI/NSIS 均生成）
+npm ci：PASS（Node 24 CLI；资源准备阶段 `npm ci --omit=dev` 审计 0 vulnerabilities）
+typecheck：PASS（Node 24 CLI）
+lint：FAIL（仓库既有 CRLF/格式基线，206 项诊断）
+npm test：FAIL（43 个文件、36 个测试；34 通过、2 失败，另有 25 个套件未能收集）
+build：PASS（`tsc -b && vite build`）
+安装：FAIL（已实际执行；MSI 返回 1925/1603，因未提升会话回滚）
+开发态启动：PASS（既有实测；桌面端口冲突错误可见）
+生产包冷启动：PASS（release 壳首次设置页实际出现）
+生产端口回退：PASS（既有 NSIS 实测记录 4177 占用后回退到 4178）
+退出进程清理：PASS（正常退出和本轮精确 PID 强制退出，5 秒内目标 Node/4177-4199 清零）
+数据目录与持久化：PASS（既有隔离数据、重启和 NSIS 卸载后保留数据实测；本轮 MSI 未安装）
+黄金路径 A：PASS（既有 NSIS 实测：待办 -> 今日 -> 完成 -> 刷新 -> 回顾）
+黄金路径 B：PASS（既有 NSIS 实测：习惯 -> 打卡 -> 撤销 -> 再次打卡 -> 刷新）
+黄金路径 C：PASS（既有 NSIS 实测：项目 -> 手动推进 -> 提交反馈 -> 刷新）
+AI 未配置降级：PASS（既有浏览器/NSIS 首次设置实测）
+AI 配置路径：未测试（未配置真实 AI、API Key 或 Token）
+搜索与弹窗：PASS（既有隔离数据实测）
+高 DPI：PASS（125%；960x640/1280x800 截图证据；150% 未测试）
+系统通知：未测试（本轮范围内未取得系统通知权限拒绝/降级证据）
+导出恢复与密钥隔离：PASS（既有导出 ZIP 仅含 `galaxy-home.json`；恢复未执行）
+
+P0 数量：1（MSI 安装未完成，按清单安装包无法安装即为发布阻塞）
+P1 数量：2（全量测试失败；lint 失败）
+P2 数量：0
+
+失败项与复现步骤：
+1. MSI 安装：以 `msiexec /i <MSI> /qn /norestart INSTALLDIR=<隔离目录> /l*v <日志>` 执行；实际错误 1925“没有足够的特权为该计算机所有用户完成此安装”，最终 1603 并回滚，隔离目录无文件。预期是安装完成并可启动，实际是权限失败。
+2. 以资源管理器打开 MSI 也未产生可见安装窗口；当前自动化会话不能获得 UAC 提升，不能继续执行 MSI 启动/卸载。
+3. 全量 `npm test`：43 个文件、36 个测试，34 通过、2 失败；失败为 Windows secret 权限断言和 transcription SQLite 清理 EBUSY，25 个套件因 `node:sqlite` 被 client Vite 解析而收集失败。
+4. `npm run lint`：206 项既有格式/CRLF 诊断；本轮目标测试和构建未受影响。
+
+产物路径与 SHA256：
+- `src-tauri/target/release/bundle/msi/银河居所_0.1.0_x64_zh-CN.msi`
+  SHA256 `9818555490A18DC663220EBB15157E967B9D82DEBF7EC32DADBEA58DB54507E4`
+- `src-tauri/target/release/bundle/nsis/银河居所_0.1.0_x64-setup.exe`
+  SHA256 `A7C3ED738CB891DAEA583B8A0CBAC77F2F4DE1D7FAB0F7BD8ADDE680BACB4FBC`
+
+证据文件：
+- 截图：`.tmp/windows-desktop-acceptance/screens/`，含首次设置、主页面、设置、搜索、回顾、侧栏和 960x640/1280x800
+- 构建日志：`.tmp/windows-desktop-acceptance/build/desktop-build-full-after-msi-fix.log`、`desktop-build-msi-unblocked.log`
+- 启动日志：`.tmp/windows-desktop-acceptance/install/production-lifecycle.log`、`.tmp/windows-desktop-acceptance/install/force-exit.log`
+- 进程/端口记录：`.tmp/windows-desktop-acceptance/runtime/process-port-record.txt`、`install/nsis-final-status.log`、本轮 release 壳实测记录
+- 数据目录文件列表：`.tmp/windows-desktop-acceptance/runtime/data-dir-file-list.txt`
+- MSI 安装日志：`.tmp/windows-desktop-acceptance/install/msi-install.log`
+
+最终结论：不通过
+环境阻塞说明：MSI 构建环境阻塞已解除；当前会话无法提升 Windows Installer 的 perMachine 安装权限，因此 MSI 安装/启动/卸载闭环仍是环境阻塞。另有既有全量测试和 lint 失败，不能宣称满足第 17 节通过门槛。
+```
+
+### 本轮新增验证
+
+- `npm run desktop:build -- --no-sign`：显式 Node 24.14.0 下退出码 0，产出 2 个 bundle。
+- `tests/unit/desktopRuntime.test.ts` 和 `tests/unit/desktopResources.test.ts`：2 个文件、7 个测试通过。
+- release EXE 实测：首次设置页可见，Node 24 子进程监听 4177；正常关闭与精确强制退出后目标 Node 和端口清零。
+- MSI 摘要代码页为 936，中文产品标题可读；未安装，因此未生成 MSI 安装后数据目录文件列表。
