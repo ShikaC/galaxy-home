@@ -15,10 +15,12 @@ describe("desktop runtime commands", () => {
   })
 
   it("preserves the Windows Path environment key when prepending the runtime", () => {
-    const env = runtimeEnv(process.platform === "win32" ? { Path: "C:/rust-bin" } : { PATH: "C:/rust-bin" })
+    const env = runtimeEnv(
+      process.platform === "win32" ? { Path: "C:/rust-bin" } : { PATH: "C:/rust-bin" },
+    )
 
     if (process.platform === "win32") {
-      expect(env["Path"]).toBe(`${dirname(process.execPath)}${delimiter}C:/rust-bin`)
+      expect(env.Path).toBe(`${dirname(process.execPath)}${delimiter}C:/rust-bin`)
       expect(env.PATH).toBeUndefined()
     } else {
       expect(env.PATH).toBe(`${dirname(process.execPath)}${delimiter}C:/rust-bin`)

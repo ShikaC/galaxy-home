@@ -10,7 +10,7 @@ afterEach(() => {
 })
 
 describe("AI secret storage", () => {
-  it("repairs permissions on an existing secret file", async () => {
+  it("preserves an existing API key when other settings change", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-secrets-"))
     directories.push(directory)
     const path = join(directory, "secrets.json")
@@ -21,7 +21,6 @@ describe("AI secret storage", () => {
       transcriptionBaseUrl: "",
       transcriptionModel: "",
     })
-    chmodSync(path, 0o644)
     await writeSecretConfig(path, {
       chatBaseUrl: "http://127.0.0.1:11434/v2",
       chatModel: "model-2",
@@ -30,9 +29,34 @@ describe("AI secret storage", () => {
       transcriptionModel: "",
     })
 
-    expect(statSync(path).mode & 0o777).toBe(0o600)
     expect(readFileSync(path, "utf8")).toContain("secret")
   })
+
+  it.skipIf(process.platform === "win32")(
+    "repairs POSIX permissions on an existing secret file",
+    async () => {
+      const directory = mkdtempSync(join(tmpdir(), "galaxy-secrets-permissions-"))
+      directories.push(directory)
+      const path = join(directory, "secrets.json")
+      await writeSecretConfig(path, {
+        chatBaseUrl: "http://127.0.0.1:11434/v1",
+        chatModel: "model",
+        apiKey: "secret",
+        transcriptionBaseUrl: "",
+        transcriptionModel: "",
+      })
+      chmodSync(path, 0o644)
+      await writeSecretConfig(path, {
+        chatBaseUrl: "http://127.0.0.1:11434/v2",
+        chatModel: "model-2",
+        apiKey: "",
+        transcriptionBaseUrl: "",
+        transcriptionModel: "",
+      })
+
+      expect(statSync(path).mode & 0o777).toBe(0o600)
+    },
+  )
 
   it("treats malformed local configuration as unconfigured", () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-secrets-invalid-"))

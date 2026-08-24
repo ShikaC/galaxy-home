@@ -11,7 +11,7 @@
     "build": "tsc -b && vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "typecheck": "tsc -b --pretty false",
-    "lint": "biome check src tests *.ts",
+    "lint": "biome check src tests vite.config.ts vitest.config.ts",
     "test": "vitest run --exclude 'tests/e2e/**'",
     "test:e2e": "playwright test",
     "doctor": "react-doctor --json",

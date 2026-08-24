@@ -12,15 +12,18 @@ import { writeSecretConfig } from "../../src/server/services/secrets.js"
 
 let app: FastifyInstance | undefined
 let transcriptionServer: Server | undefined
+let database: ReturnType<typeof openDatabase> | undefined
 let directory = ""
 
 afterEach(async () => {
   if (app !== undefined) await app.close()
   if (transcriptionServer !== undefined)
     await new Promise<void>((resolve) => transcriptionServer?.close(() => resolve()))
+  if (database !== undefined) database.close()
   if (directory !== "") rmSync(directory, { force: true, recursive: true })
   app = undefined
   transcriptionServer = undefined
+  database = undefined
   directory = ""
 })
 
@@ -44,7 +47,7 @@ describe("voice transcription", () => {
     if (address === null || typeof address === "string") throw new Error("test server failed")
 
     directory = mkdtempSync(join(tmpdir(), "galaxy-transcription-"))
-    const database = openDatabase(join(directory, "app.sqlite"))
+    database = openDatabase(join(directory, "app.sqlite"))
     migrateDatabase(database)
     const secretPath = join(directory, "secrets.json")
     await writeSecretConfig(secretPath, {
