@@ -8,3 +8,5 @@ export declare function npmInvocation(args: string[]): {
 }
 
 export declare function tauriCliPath(root: string): string
+
+export declare function tauriInvocation(args: string[], webPort: string): string[]

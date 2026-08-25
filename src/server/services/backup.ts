@@ -209,7 +209,8 @@ export async function restoreManualExport(
     throw new ImportArchiveMalformedError(error)
   }
   for (const table of DATA_TABLES)
-    if (data.tables[table] === undefined) throw new Error(`导入文件缺少 ${table}`)
+    if (data.tables[table] === undefined)
+      throw new ImportArchiveMalformedError(new Error(`导入文件缺少 ${table}`))
   for (const table of Object.keys(data.tables)) {
     if (!DATA_TABLE_SET.has(table)) throw new ImportArchiveInvalidError(table)
     const columns = new Set(

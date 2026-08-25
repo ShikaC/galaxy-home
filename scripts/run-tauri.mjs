@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertSupportedNodeRuntime, runtimeEnv, tauriCliPath } from "./node-runtime.mjs"
+import { assertSupportedNodeRuntime, runtimeEnv, tauriCliPath, tauriInvocation } from "./node-runtime.mjs"
 
 assertSupportedNodeRuntime()
 
@@ -17,8 +17,9 @@ const env = {
   VITE_PORT: desktopWebPort,
 }
 delete env.RUSTUP_TOOLCHAIN
+const invocation = tauriInvocation(args, desktopWebPort)
 
-const child = spawn(process.execPath, [tauriCliPath(root), ...args], {
+const child = spawn(process.execPath, [tauriCliPath(root), ...invocation], {
   cwd: root,
   env: runtimeEnv(env),
   stdio: "inherit",

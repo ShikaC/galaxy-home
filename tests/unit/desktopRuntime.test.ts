@@ -5,6 +5,7 @@ import {
   npmInvocation,
   runtimeEnv,
   tauriCliPath,
+  tauriInvocation,
 } from "../../scripts/node-runtime.mjs"
 
 describe("desktop runtime commands", () => {
@@ -68,5 +69,24 @@ describe("desktop runtime commands", () => {
     expect(tauriCliPath("E:/Projects/galaxy-home")).toBe(
       join("E:/Projects/galaxy-home", "node_modules", "@tauri-apps", "cli", "tauri.js"),
     )
+  })
+
+  it("overrides the Tauri dev URL when the desktop web port changes", () => {
+    const invocation = tauriInvocation(["dev", "--no-watch"], "5190")
+
+    expect(invocation[0]).toBe("dev")
+    expect(invocation[1]).toBe("--config")
+    expect(JSON.parse(invocation[2] ?? "{}")).toEqual({
+      build: { devUrl: "http://127.0.0.1:5190" },
+    })
+    expect(invocation.slice(3)).toEqual(["--no-watch"])
+  })
+
+  it("does not add a dev URL override to desktop build commands", () => {
+    expect(tauriInvocation(["build", "--", "--no-sign"], "5190")).toEqual([
+      "build",
+      "--",
+      "--no-sign",
+    ])
   })
 })

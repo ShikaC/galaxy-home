@@ -65,6 +65,7 @@ const child = spawn(npm.command, npm.args, {
     VITE_PORT: String(webPort),
     VITE_API_PORT: String(apiPort),
     API_PORT: String(apiPort),
+    GALAXY_REQUIRE_ORIGIN: "1",
     VITE_DISABLE_REACT_DEVTOOLS: process.env["VITE_DISABLE_REACT_DEVTOOLS"] ?? "1",
   },
   stdio: "inherit",

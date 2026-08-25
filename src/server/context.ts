@@ -7,6 +7,7 @@ export type AppContext = {
   readonly backupDirectory: string
   readonly secretPath: string
   readonly clock?: Clock
+  readonly apiCapability?: string
 }
 
 export function getAppClock(context: AppContext): Clock {

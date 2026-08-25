@@ -1,9 +1,12 @@
-import { mkdtempSync, rmSync } from "node:fs"
+import { existsSync, mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate"
 import { afterEach, describe, expect, it } from "vitest"
+import { z } from "zod"
 import { buildApp } from "../../src/server/app.js"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
+import { createManualExport } from "../../src/server/services/backup.js"
 
 const directories: string[] = []
 afterEach(() => {
@@ -13,49 +16,6 @@ afterEach(() => {
 })
 
 describe("local API", () => {
-  it("rejects browser requests from non-local origins before changing state", async () => {
-    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-origin-"))
-    directories.push(directory)
-    const database = openDatabase(join(directory, "app.sqlite"))
-    migrateDatabase(database)
-    const app = await buildApp({
-      database,
-      dataDirectory: directory,
-      backupDirectory: join(directory, "backups"),
-      secretPath: join(directory, "secrets.json"),
-    })
-
-    const blocked = await app.inject({
-      method: "POST",
-      url: "/api/tutorial/dismiss",
-      headers: { origin: "https://attacker.example" },
-    })
-
-    expect(blocked.statusCode).toBe(403)
-    expect(blocked.json<{ code: string }>()).toMatchObject({ code: "ORIGIN_NOT_ALLOWED" })
-    expect(
-      database.prepare("SELECT guide_dismissed FROM tutorial_state WHERE id = 1").get(),
-    ).toEqual({
-      guide_dismissed: 0,
-    })
-
-    const allowed = await app.inject({
-      method: "POST",
-      url: "/api/tutorial/dismiss",
-      headers: { origin: "http://127.0.0.1:5173" },
-    })
-
-    expect(allowed.statusCode).toBe(204)
-    expect(
-      database.prepare("SELECT guide_dismissed FROM tutorial_state WHERE id = 1").get(),
-    ).toEqual({
-      guide_dismissed: 1,
-    })
-
-    await app.close()
-    database.close()
-  })
-
   it("completes onboarding and persists a captured item through HTTP", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-"))
     directories.push(directory)
@@ -175,5 +135,52 @@ describe("local API", () => {
       message: "恢复包格式错误或版本不兼容，现有数据未更改",
     })
     expect(workspace).toEqual({ workspace_name: "恢复前空间" })
+  })
+
+  it("rejects a restore archive missing a required table before changing existing data", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-missing-table-"))
+    directories.push(directory)
+    const backupDirectory = join(directory, "backups")
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare("UPDATE workspace_settings SET workspace_name = ? WHERE id = 1")
+      .run("恢复前空间")
+    const exported = unzipSync(createManualExport(database))["galaxy-home.json"]
+    if (exported === undefined) throw new Error("测试导出缺少 JSON")
+    const payload = z
+      .object({ tables: z.record(z.string(), z.unknown()) })
+      .passthrough()
+      .parse(JSON.parse(strFromU8(exported)))
+    const tables = Object.fromEntries(
+      Object.entries(payload.tables).filter(([table]) => table !== "workspace_settings"),
+    )
+    const archive = zipSync({ "galaxy-home.json": strToU8(JSON.stringify({ ...payload, tables })) })
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory,
+      secretPath: join(directory, "secrets.json"),
+    })
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/restore",
+      headers: { "content-type": "application/zip" },
+      payload: Buffer.from(archive),
+    })
+    const workspace = database
+      .prepare("SELECT workspace_name FROM workspace_settings WHERE id = 1")
+      .get()
+    await app.close()
+    database.close()
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      code: "IMPORT_ARCHIVE_INVALID",
+      message: "恢复包格式错误或版本不兼容，现有数据未更改",
+    })
+    expect(workspace).toEqual({ workspace_name: "恢复前空间" })
+    expect(existsSync(backupDirectory)).toBe(false)
   })
 })

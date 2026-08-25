@@ -53,3 +53,14 @@ export function npmInvocation(args) {
 export function tauriCliPath(root) {
   return join(root, "node_modules", "@tauri-apps", "cli", "tauri.js")
 }
+
+export function tauriInvocation(args, webPort) {
+  const [command, ...commandArgs] = args
+  if (command !== "dev") return args
+  return [
+    command,
+    "--config",
+    JSON.stringify({ build: { devUrl: `http://127.0.0.1:${webPort}` } }),
+    ...commandArgs,
+  ]
+}

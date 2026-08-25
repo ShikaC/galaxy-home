@@ -59,6 +59,18 @@ describe("AI upstream error mapping", () => {
     } satisfies Partial<AiServiceError>)
   })
 
+  it("maps upstream 403 policy blocks to AI_AUTH for chat", async () => {
+    const { secretPath } = await listen((_request, response) => {
+      response.writeHead(403, { "Content-Type": "application/json" })
+      response.end(JSON.stringify({ error: "blocked by policy" }))
+    })
+    await expect(chat(secretPath, [{ role: "user", content: "你好" }])).rejects.toMatchObject({
+      name: "AiServiceError",
+      code: "AI_AUTH",
+      message: "AI 服务鉴权失败",
+    } satisfies Partial<AiServiceError>)
+  })
+
   it("maps 429 to AI_RATE_LIMIT for transcription", async () => {
     const { secretPath } = await listen((_request, response) => {
       response.writeHead(429, { "Content-Type": "application/json" })

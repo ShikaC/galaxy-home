@@ -2,6 +2,7 @@ import type { ZodType } from "zod"
 import { z } from "zod"
 
 const errorSchema = z.object({ code: z.string(), message: z.string() })
+const capabilityHashKey = "capability"
 
 export class ApiError extends Error {
   readonly name = "ApiError"
@@ -19,6 +20,18 @@ export async function throwApiError(response: Response): Promise<never> {
     parsed.success ? parsed.data.code : "NETWORK_ERROR",
     parsed.success ? parsed.data.message : "请求失败，请稍后再试",
   )
+}
+
+export async function bootstrapApiCapability(): Promise<void> {
+  const capability = new URLSearchParams(window.location.hash.slice(1)).get(capabilityHashKey)
+  if (capability === null || capability === "") return
+  const response = await fetch("/api/session", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "X-Galaxy-Capability": capability },
+  })
+  if (!response.ok) await throwApiError(response)
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`)
 }
 
 export async function apiRequest<T>(

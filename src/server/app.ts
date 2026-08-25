@@ -40,13 +40,70 @@ function normalizeBrowserOrigin(origin: string): string | null {
   return url.protocol === "http:" ? url.origin : null
 }
 
+const stateChangingMethods = new Set(["POST", "PUT", "PATCH", "DELETE"])
+const capabilityCookieName = "galaxy_capability"
+const environment = process.env as NodeJS.ProcessEnv & {
+  readonly GALAXY_REQUIRE_ORIGIN?: string
+}
+
+function requestPath(url: string): string {
+  return new URL(url, "http://127.0.0.1").pathname
+}
+
+function headerValue(value: string | string[] | undefined): string | undefined {
+  return typeof value === "string" ? value : value?.[0]
+}
+
+function hasCapabilityCookie(cookieHeader: string | undefined, capability: string): boolean {
+  return (
+    cookieHeader
+      ?.split(";")
+      .some((part) => part.trim() === `${capabilityCookieName}=${capability}`) ?? false
+  )
+}
+
+function capabilityCookie(capability: string): string {
+  return `${capabilityCookieName}=${capability}; HttpOnly; Path=/; SameSite=Strict`
+}
+
 export async function buildApp(context: AppContext, production = false) {
   const app = Fastify({ logger: true, bodyLimit: 25 * 1024 * 1024 })
   const allowedOrigins = localBrowserOrigins(production)
+  const requireOrigin = production || environment.GALAXY_REQUIRE_ORIGIN === "1"
+  const apiCapability = context.apiCapability
   app.addHook("onRequest", (request, reply, done) => {
+    const path = requestPath(request.url)
     const origin = request.headers.origin
-    if (origin !== undefined && !allowedOrigins.has(normalizeBrowserOrigin(origin) ?? "")) {
+    const capabilityHeader = headerValue(request.headers["x-galaxy-capability"])
+    const isSessionBootstrap =
+      apiCapability !== undefined && path === "/api/session" && capabilityHeader === apiCapability
+    const hasCapability =
+      apiCapability !== undefined && hasCapabilityCookie(request.headers.cookie, apiCapability)
+    if (
+      (requireOrigin &&
+        stateChangingMethods.has(request.method) &&
+        origin === undefined &&
+        !hasCapability &&
+        !isSessionBootstrap) ||
+      (origin !== undefined && !allowedOrigins.has(normalizeBrowserOrigin(origin) ?? ""))
+    ) {
       reply.code(403).send({ code: "ORIGIN_NOT_ALLOWED", message: "只允许本机页面访问此服务" })
+      return
+    }
+    if (isSessionBootstrap) {
+      reply.code(204).header("set-cookie", capabilityCookie(apiCapability)).send()
+      return
+    }
+    if (
+      apiCapability !== undefined &&
+      path.startsWith("/api/") &&
+      path !== "/api/health" &&
+      !hasCapability
+    ) {
+      reply.code(401).send({
+        code: "API_CAPABILITY_REQUIRED",
+        message: "桌面会话已失效，请重新打开应用",
+      })
       return
     }
     done()

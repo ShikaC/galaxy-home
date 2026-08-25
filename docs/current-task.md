@@ -2,19 +2,33 @@
 
 ## 目标
 
-按 `docs/windows-desktop-acceptance.md` 完整验收银河居所 Windows Tauri 桌面端，实际覆盖构建、开发态启动、生产打包、安装、核心业务操作、异常恢复、重启、退出与卸载。
+完成当前工作区的提交前对抗式审查；修复发现的代码漏洞和 Windows/Tauri 启动回归，重点避免历史 403/session-blocked 类用户可见失败。
 
 ## 当前状态
 
-- 日期：2026-08-25。
-- 状态：已完成。
-- 最终结论：通过。
-- 当前验收提交：`a4ee30f12b729c6ba07ecd485b04d2251e5b5325`。
-- 当前缺陷计数：P0 0、P1 0、P2 0。
-- 最终报告：`docs/codex-log/2026-08-25-windows-remaining-acceptance.md`。
-- 本轮仅使用独立验收数据和本地假服务，未使用 API Key、Token 或真实私人数据。
+- 日期：2026-08-26。
+- 状态：已完成并提交。
+- 本轮提交：当前 `HEAD`（加固桌面启动与本地会话边界）。
+- 当前基线：`HEAD` 加工作区已有的桌面启动、API 边界、恢复包和测试改动；未覆盖用户无内容差异的 assume-unchanged 文件。
+- 首轮阻断：缺少 `tauri::Manager` 导入；READY stdout 首行误判及端口冲突竞态；Origin 不是同机认证；外部 AI 403 缺少回归覆盖；Rust 服务模块超过 250 行；自定义桌面 Web 端口未同步 Tauri `devUrl`。
+- 当前结论：上述代码问题已修复；自动化门禁、真实 production/browser Manual QA、Node 环境投毒审查和主工作区 MSI/NSIS bundle 门禁均已通过。
+- 详细记录：`docs/codex-log/2026-08-26-precommit-adversarial-review.md`。
+- 本轮未使用真实 API Key、Token 或私人数据；Manual QA 的 capability token 已脱敏且仅在临时进程中使用。
 
-## 已完成
+## 本轮已完成
+
+- READY 协议现在跳过普通 stdout 日志，只接受目标端口和随机 capability；父进程能继续识别 `EADDRINUSE` 回退。
+- Tauri 生产启动通过随机 capability + URL fragment + HttpOnly cookie 建立本地 API 会话，Origin 作为第二层 CSRF 防护；合法会话无 Origin 不再误报 403。
+- 上游 AI 401/403 均稳定映射为 `AI_AUTH`；不把供应商 cyber-policy 原文返回给应用。
+- `src-tauri/src/server.rs` 测试移到 `server_tests.rs`，生产文件保持在 250 行纯代码以内。
+- 自定义 `VITE_PORT` 现在同步覆盖 Tauri CLI 的 `build.devUrl`，并有 5190 端口单测。
+- TypeScript typecheck/lint/build、npm test、Rust test/strict Clippy、真实 Node parent API QA 和 Chromium QA 均已通过。
+
+## 待完成
+
+- 本轮无剩余发布阻断；`.tmp/` 中保留脱敏验收证据和最终 bundle/e2e 日志。
+
+## 历史验收基线
 
 - Windows 11 家庭版中文版 Build 26200、x64；Node.js 24.15.0、npm 11.12.1、Rust/Cargo stable 1.95.0、WebView2 151.0.4129.101 环境通过。
 - `npm ci`、typecheck、lint、`npm test`、Web build、Rust test、严格 Clippy、完整 E2E 和 `desktop:build -- --no-sign` 全部通过。
@@ -37,9 +51,9 @@
 ## 最终产物
 
 - MSI：`src-tauri/target/release/bundle/msi/银河居所_0.1.0_x64_zh-CN.msi`
-  - SHA256：`7C65138CD54FE001B04ABDE83E12733383C13496BE3CE869C963F47E79EAC083`
+  - SHA256：`B1DCD3E30A9318D7473B94CF024D8C7CFE13FA5E718A157A92839FE3A1B08454`
 - NSIS：`src-tauri/target/release/bundle/nsis/银河居所_0.1.0_x64-setup.exe`
-  - SHA256：`15D558EA010355FC55E497F3C275E8DF8E657A9785E54FBB54327018DF7D3CCB`
+  - SHA256：`D420A46B5AE766A333CE8CB47C07ACADFBCC48C316EF5370804B3770FD293BDD`
 
 ## 工作区边界
 
@@ -47,7 +61,7 @@
 - `.tmp/windows-desktop-acceptance*` 保留本轮脱敏验收证据；其中便携 Node 与基线副本因当前执行策略未递归清理，不影响产品或发布结论。
 - 不在本轮范围：代码签名、SmartScreen、自动更新、内嵌 Node、关机后后台通知、PWA、手机专门适配和本地模型。
 
-## 下一步
+## 后续注意
 
-- Windows 本轮无发布阻塞项。
-- 后续代码若继续扩大 `src-tauri/src/lib.rs`，应先拆分职责，避免超过 250 行纯代码警戒线。
+- 8 月 25 日完整 Windows 安装/卸载验收仍是历史基线，详见上方记录链接；本轮新增 capability、READY 和自定义端口改动必须以当前复审证据为准。
+- 若继续扩大 Tauri 服务模块，保持单文件不超过 250 行纯代码，并优先拆分职责。

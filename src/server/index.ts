@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto"
 import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { buildApp } from "./app.js"
@@ -11,6 +12,7 @@ import { systemClock } from "./services/clock.js"
 import { maybeGenerateScheduledAiWeeklyReview } from "./services/scheduledAiReview.js"
 import { runScheduler } from "./services/scheduler.js"
 import { getAiConfigStatus } from "./services/secrets.js"
+import { serverExitCode } from "./startup.js"
 
 const environment = process.env as Pick<
   NodeJS.ProcessEnv,
@@ -28,6 +30,8 @@ function resolveClock(): Clock {
 }
 
 const clock = resolveClock()
+const apiCapability =
+  environment.GALAXY_PARENT_LIFETIME === "1" ? randomBytes(32).toString("base64url") : undefined
 const dataDirectory = resolve(environment.GALAXY_DATA_DIR ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
@@ -53,23 +57,29 @@ if (deferAiReview) {
 
 const production = environment.NODE_ENV === "production"
 const port = Number(process.env[production ? "PORT" : "API_PORT"] ?? (production ? 4173 : 3001))
-const app = await buildApp(
-  {
-    database,
-    dataDirectory,
-    backupDirectory,
-    secretPath,
-    clock,
-  },
-  production,
-)
+const context = {
+  database,
+  dataDirectory,
+  backupDirectory,
+  secretPath,
+  clock,
+  ...(apiCapability === undefined ? {} : { apiCapability }),
+}
+const app = await buildApp(context, production)
 app.addHook("onClose", () => database.close())
 
 try {
   await app.listen({ host: "127.0.0.1", port })
+  if (environment.GALAXY_PARENT_LIFETIME === "1") {
+    const address = app.server.address()
+    if (address === null || typeof address === "string")
+      throw new Error("银河居所服务未返回有效监听端口")
+    process.stdout.write(`GALAXY_HOME_READY ${address.port} ${apiCapability ?? ""}\n`)
+    process.stdout.end()
+  }
   watchParentLifetime(environment.GALAXY_PARENT_LIFETIME === "1", process.stdin, () => app.close())
 } catch (error) {
   app.log.error(error)
   database.close()
-  process.exitCode = 1
+  process.exitCode = serverExitCode(error)
 }

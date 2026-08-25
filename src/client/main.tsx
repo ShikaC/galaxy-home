@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 import { RouterProvider } from "react-router/dom"
+import { bootstrapApiCapability } from "./lib/api.js"
 import { router } from "./router.js"
 import "./styles/tokens.css"
 import "./styles/base.css"
@@ -17,6 +18,8 @@ const environment = import.meta.env as {
   readonly DEV: boolean
   readonly VITE_DISABLE_REACT_DEVTOOLS?: string
 }
+await bootstrapApiCapability()
+
 const enableDevTools = environment.DEV && environment.VITE_DISABLE_REACT_DEVTOOLS !== "1"
 if (enableDevTools) {
   void import("react-grab")
