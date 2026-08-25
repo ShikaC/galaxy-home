@@ -5,7 +5,7 @@
 - Embedded refs: shortlisted Notion, Intercom, Linear -> picked `taste-skill` + Notion because the product needs a warm, low-pressure workspace with clear information hierarchy rather than a high-urgency project console.
 - Lazyweb: 3 desktop queries, 4 shipped screens viewed (Sunsama, Todoist, Weekrise, Linear) -> kept the low-noise fixed navigation, a dominant "today" scan path, explicit empty states, and review charts below primary actions. No pixels, assets, or brand language are copied.
 - Interaction catalog: read beui.dev `shared-layout-bg`, `button`, and `drawer` sources -> use interruptible background movement for navigation, explicit async button states, and an escape-dismissable right drawer with a reduced-motion opacity fallback.
-- Imagen drafts: `docs/design-research/concept-a.png`, `docs/design-research/concept-b.png` -> picked `concept-a.png` as the geometry and density reference because it matches the confirmed five-item navigation, fixed home regions, and independent AI entry.
+- Local-only Imagen drafts in `docs/design-research/` informed the geometry and density reference; the files are intentionally excluded from version control because they are large design exports rather than runtime assets.
 - Design read: a desktop personal workspace for one user, with a calm operational language, leaning toward warm paper surfaces, forest-green action color, and compact Chinese typography. Post-V1 visual pass (2026-08): keep the desk metaphor, strengthen the quiet “star-trail” focus on canvas, brand mark, home quote band, and settings headers — still no cosmic illustration wall.
 - Dials: `DESIGN_VARIANCE: 4`, `MOTION_INTENSITY: 3`, `VISUAL_DENSITY: 6`.
 
