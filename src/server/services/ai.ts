@@ -37,6 +37,8 @@ async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
     })
   } catch (error) {
     if (error instanceof AiInvalidEndpointError) throw error
+    if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
+      throw new AiServiceError("AI_UNAVAILABLE", "AI 服务请求超时，请稍后重试")
     throw new AiServiceError(
       "AI_UNAVAILABLE",
       error instanceof Error ? error.message : "AI 服务暂时不可用",

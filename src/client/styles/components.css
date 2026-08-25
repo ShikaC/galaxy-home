@@ -233,6 +233,7 @@
 .empty-state p {
   max-inline-size: 34ch;
   color: var(--color-text-muted);
+  text-wrap: balance;
 }
 
 @keyframes spin {

@@ -141,4 +141,39 @@ describe("local API", () => {
     await app.close()
     database.close()
   })
+
+  it("rejects a malformed restore archive before changing existing data", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-api-invalid-restore-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare("UPDATE workspace_settings SET workspace_name = ? WHERE id = 1")
+      .run("恢复前空间")
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+    })
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/restore",
+      headers: { "content-type": "application/zip" },
+      payload: Buffer.from("not a ZIP archive"),
+    })
+    const workspace = database
+      .prepare("SELECT workspace_name FROM workspace_settings WHERE id = 1")
+      .get()
+    await app.close()
+    database.close()
+
+    expect(response.statusCode).toBe(400)
+    expect(response.json()).toEqual({
+      code: "IMPORT_ARCHIVE_INVALID",
+      message: "恢复包格式错误或版本不兼容，现有数据未更改",
+    })
+    expect(workspace).toEqual({ workspace_name: "恢复前空间" })
+  })
 })

@@ -30,6 +30,14 @@ export class ImportArchiveInvalidError extends Error {
   }
 }
 
+export class ImportArchiveMalformedError extends Error {
+  readonly name = "ImportArchiveMalformedError"
+
+  constructor(cause: unknown) {
+    super("恢复包格式错误或版本不兼容，现有数据未更改", { cause })
+  }
+}
+
 const DATA_TABLES = [
   "workspace_settings",
   "quotes",
@@ -192,8 +200,14 @@ export async function restoreManualExport(
   bytes: Uint8Array,
   backupDirectory: string,
 ): Promise<void> {
-  const file = await extractImportPayload(bytes)
-  const data = exportSchema.parse(JSON.parse(strFromU8(file)))
+  let data: z.infer<typeof exportSchema>
+  try {
+    const file = await extractImportPayload(bytes)
+    data = exportSchema.parse(JSON.parse(strFromU8(file)))
+  } catch (error) {
+    if (error instanceof ImportArchiveTooLargeError) throw error
+    throw new ImportArchiveMalformedError(error)
+  }
   for (const table of DATA_TABLES)
     if (data.tables[table] === undefined) throw new Error(`导入文件缺少 ${table}`)
   for (const table of Object.keys(data.tables)) {

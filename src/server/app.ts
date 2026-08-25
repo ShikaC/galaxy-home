@@ -18,7 +18,11 @@ import { registerSystemRoutes } from "./routes/system.js"
 import { AiServiceError } from "./services/ai.js"
 import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
 import { AiConfirmationRequiredError } from "./services/aiReview.js"
-import { ImportArchiveInvalidError, ImportArchiveTooLargeError } from "./services/backup.js"
+import {
+  ImportArchiveInvalidError,
+  ImportArchiveMalformedError,
+  ImportArchiveTooLargeError,
+} from "./services/backup.js"
 
 function localBrowserOrigins(production: boolean): ReadonlySet<string> {
   const defaultPort = production ? "4173" : "5173"
@@ -87,6 +91,8 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(409).send({ code: "AI_ACTION_UNAVAILABLE", message: error.message })
     if (error instanceof ImportArchiveTooLargeError)
       return reply.code(413).send({ code: "IMPORT_ARCHIVE_TOO_LARGE", message: error.message })
+    if (error instanceof ImportArchiveMalformedError)
+      return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: error.message })
     if (error instanceof ImportArchiveInvalidError)
       return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: "导入文件字段无效" })
     if (error instanceof AiInvalidEndpointError)

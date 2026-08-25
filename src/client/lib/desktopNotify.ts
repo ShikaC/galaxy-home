@@ -6,16 +6,20 @@ export async function mirrorDueReminderToSystem(reminder: {
   readonly detail: string
 }): Promise<void> {
   if (!isTauri()) return
-  const { isPermissionGranted, requestPermission, sendNotification } = await import(
-    "@tauri-apps/plugin-notification"
-  )
-  let granted = await isPermissionGranted()
-  if (!granted) {
-    granted = (await requestPermission()) === "granted"
+  try {
+    const { isPermissionGranted, requestPermission, sendNotification } = await import(
+      "@tauri-apps/plugin-notification"
+    )
+    let granted = await isPermissionGranted()
+    if (!granted) {
+      granted = (await requestPermission()) === "granted"
+    }
+    if (!granted) return
+    sendNotification({
+      title: reminder.title,
+      body: reminder.detail,
+    })
+  } catch (error) {
+    if (!(error instanceof Error)) throw error
   }
-  if (!granted) return
-  sendNotification({
-    title: reminder.title,
-    body: reminder.detail,
-  })
 }

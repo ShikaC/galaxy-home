@@ -120,7 +120,7 @@ mod tests {
 
     assert_eq!(
       first_supported_candidate([missing, existing.clone()], |path| {
-        (path == &existing).then_some(24)
+        (path == existing).then_some(24)
       }),
       Some(existing)
     );
@@ -144,7 +144,7 @@ mod tests {
 
     assert_eq!(
       first_supported_candidate([old.clone(), new.clone()], |path| {
-        (path == &old).then_some(22).or_else(|| (path == &new).then_some(24))
+        (path == old).then_some(22).or_else(|| (path == new).then_some(24))
       }),
       Some(new),
     );

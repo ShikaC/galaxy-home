@@ -95,7 +95,7 @@ describe("AI upstream error mapping", () => {
     )
     await expect(chat(secretPath, [{ role: "user", content: "你好" }])).rejects.toMatchObject({
       code: "AI_UNAVAILABLE",
-      message: "The operation was aborted due to timeout",
+      message: "AI 服务请求超时，请稍后重试",
     })
   })
 })
