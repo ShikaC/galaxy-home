@@ -13,6 +13,7 @@
 - 首轮阻断：缺少 `tauri::Manager` 导入；READY stdout 首行误判及端口冲突竞态；Origin 不是同机认证；外部 AI 403 缺少回归覆盖；Rust 服务模块超过 250 行；自定义桌面 Web 端口未同步 Tauri `devUrl`。
 - 当前结论：上述代码问题已修复；自动化门禁、真实 production/browser Manual QA、Node 环境投毒审查和主工作区 MSI/NSIS bundle 门禁均已通过。
 - 详细记录：`docs/codex-log/2026-08-26-precommit-adversarial-review.md`。
+- Windows 验收文档：`docs/windows-desktop-acceptance.md`，含最终结果、证据索引和 macOS 交接清单。
 - 本轮未使用真实 API Key、Token 或私人数据；Manual QA 的 capability token 已脱敏且仅在临时进程中使用。
 
 ## 本轮已完成

@@ -2,6 +2,66 @@
 
 本文档用于 Windows 主机验收「银河居所」Tauri 桌面端。请在真实 Windows 主机上执行，并将完整结果、截图和日志回传。不要只根据源码或构建成功判断通过。
 
+## 0. 2026-08-26 最终验收结论
+
+本节记录当前 Windows 验收基线，后续在 macOS 上继续开发时不要把 Windows 证据误当作 macOS 验收结果。
+
+### 0.1 结论
+
+| 项目 | 结果 |
+|---|---|
+| Windows 桌面端最终结论 | 通过 |
+| 代码验收基线 | `b030ba6`；后续文档提交不改变产品代码 |
+| P0 / P1 / P2 | `0 / 0 / 0` |
+| 测试主机 | Windows 11 Home zh-CN，OS Build 26200，x64 |
+| 显示缩放 | 125% 原始环境；150% 定向复验通过 |
+| Node / npm | Node.js 24.15.0 / npm 11.12.1 |
+| Rust / Cargo | stable 1.95.0 |
+| WebView2 | 151.0.4129.101 |
+
+### 0.2 自动化门禁
+
+| 命令或场景 | 结果 |
+|---|---|
+| `npm ci` | 通过；依赖审计无漏洞 |
+| `npm run typecheck` | 通过 |
+| `npm run lint` | 通过；216 个文件无诊断 |
+| `npm test` | 通过；46 个文件，136 项通过，1 项 Windows 不适用测试跳过 |
+| `npm run build` | 通过 |
+| `cargo test --manifest-path src-tauri/Cargo.toml` | 通过；13 项 |
+| 严格 Clippy | 通过；`-D warnings` |
+| 完整 Playwright | 通过；compact/wide 共 30/30 |
+| `npm run desktop:build -- --no-sign` | 通过；MSI 与 NSIS 均生成 |
+
+### 0.3 关键行为结论
+
+- 默认桌面开发端口 `127.0.0.1:5180` / API `3010` 通过；自定义 `VITE_PORT=5190` / API `3050` 通过。
+- 生产服务只监听 `127.0.0.1`，`4177` 被占用时在 `4177-4199` 内回退；全部占用时显示明确错误。
+- Node READY 协议会跳过 Fastify 普通日志，只接受目标端口和随机 capability；正常退出、stdin EOF 和强制结束均清理子服务与监听端口。
+- Tauri 生产页面通过 URL fragment bootstrap 获取 HttpOnly、SameSite=Strict 会话 cookie；合法 cookie 的无 Origin 状态变更不会误报 403，攻击 Origin 仍返回 403 且不改数据。
+- AI 上游 401/403 统一映射为 `AI_AUTH`，不会把供应商的 cyber-security policy 原文泄露给应用。
+- Tauri Node 子进程清理继承的 `NODE_*`/`NPM_*` 环境变量，阻断 `NODE_OPTIONS` inspector 注入。
+- 错误恢复包不会覆盖现有数据库，也不会提前创建恢复点；导出包不含 `secrets.json`、API Key 或 Token。
+- 待办、习惯、项目、回顾、设置、搜索、回收站、提醒、AI 侧栏和 125%/150% 高 DPI 路径均已通过历史 Windows 实测。
+
+### 0.4 最终产物
+
+| 产物 | 路径 | SHA256 |
+|---|---|---|
+| MSI | `src-tauri/target/release/bundle/msi/银河居所_0.1.0_x64_zh-CN.msi` | `B1DCD3E30A9318D7473B94CF024D8C7CFE13FA5E718A157A92839FE3A1B08454` |
+| NSIS | `src-tauri/target/release/bundle/nsis/银河居所_0.1.0_x64-setup.exe` | `D420A46B5AE766A333CE8CB47C07ACADFBCC48C316EF5370804B3770FD293BDD` |
+
+### 0.5 证据索引
+
+- 详细审查与命令记录：`docs/codex-log/2026-08-26-precommit-adversarial-review.md`
+- 当前任务快照：`docs/current-task.md`
+- 最终 Playwright：`.tmp/manual-qa-final-20260826/playwright-final-rerun.log`、`playwright-final-rerun.exit`
+- 最终 Node 门禁：`.tmp/manual-qa-final-20260826/final-*-node24.log`、同名 `.exit`
+- 最终桌面构建：`.tmp/manual-qa-final-20260826/desktop-build-final-main.log`、`desktop-build-final-main.exit`
+- 生产父子进程、Origin、capability、恢复和清理证据：`.tmp/manual-qa-final-20260826/`
+
+本节中的真实 token、API Key、私人数据均未写入；证据目录中的 capability 只记录长度或已脱敏。
+
 ## 1. 本轮范围
 
 本轮目标是确认 Windows 上的 Tauri 轻壳可安装、可启动、可使用、可退出，且本地数据不会丢失。
@@ -517,3 +577,48 @@ P2 数量：
 - 是否只发生在开发态、生产态或两者都有。
 
 发现问题后不要直接删除数据库、修改安装目录或重装覆盖现场。先保留证据，再使用新的独立测试数据目录复现。
+
+## 20. macOS 后续开发交接
+
+Windows 验收通过后，macOS 继续开发应从 GitHub 拉取代码基线，重新安装依赖并单独验证 macOS 行为。不要直接复制 Windows 的 `node_modules`、`dist`、`target` 或安装包。
+
+### 20.1 开始工作
+
+```bash
+git fetch origin
+git switch main
+git pull --ff-only origin main
+node --version
+npm --version
+rustc --version
+cargo --version
+npm ci
+```
+
+Node.js 仍要求 `>=24`。macOS 不需要 Windows WebView2，但 Tauri WebKit 运行环境、Xcode Command Line Tools 和 Rust stable 需要单独确认。
+
+### 20.2 macOS 基础门禁
+
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
+npm run test:e2e
+npm run desktop
+```
+
+完成开发态检查后再按 macOS 实际打包方式运行构建。签名、公证、DMG、自动更新和系统权限不属于本 Windows 验收结论，必须建立 macOS 专用证据。
+
+### 20.3 macOS 专项检查
+
+- 数据目录是否落在 macOS 预期的 Application Support 路径，且升级/卸载不误删业务数据；
+- `GALAXY_NODE_PATH`、PATH 和 Node 24 解析是否适配 macOS 安装方式；
+- `127.0.0.1` 监听、端口冲突、stdin EOF、强制退出和重启后的子进程清理；
+- macOS Retina/DPR 下首页、最小窗口、长中文文本、弹窗和 AI 侧栏布局；
+- macOS 通知权限允许/拒绝后的应用内降级；
+- URL fragment capability bootstrap、HttpOnly cookie 和 Origin 行为；
+- 导出包密钥隔离、错误恢复包数据不变性；
+- Intel/Apple Silicon 目标、代码签名、公证和首次打开安全提示。
+
+Mac 端新增或修改行为后，应在验收回传中记录：macOS 版本、架构、Node/Rust 版本、Git commit、命令退出码、产物哈希、数据目录、截图和未测试事项。Windows 的“通过”不能替代这些 macOS 证据。

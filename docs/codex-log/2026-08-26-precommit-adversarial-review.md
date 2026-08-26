@@ -38,4 +38,5 @@
 ## 未完成门禁
 
 - 本轮最终复审无阻断，已提交当前 `HEAD`（加固桌面启动与本地会话边界）。
+- `docs/windows-desktop-acceptance.md` 已补充最终 Windows 结论、产物哈希、证据索引和 macOS 后续开发交接要求。
 - 完整 crate 的 rustfmt 仍有既有 `build.rs`/`main.rs` 漂移，未改无关文件。
