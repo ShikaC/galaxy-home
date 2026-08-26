@@ -16,3 +16,5 @@ src-tauri/resources/app/node_modules/
 src-tauri/resources/app/db/
 src-tauri/resources/app/package.json
 src-tauri/resources/app/package-lock.json
+# Local design references; runtime icons stay tracked.
+docs/design-research/
