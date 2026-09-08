@@ -34,24 +34,26 @@ export function completeOnboarding(database: DatabaseSync, input: OnboardingInpu
       insertQuote.run(quote[0], quote[1], now, now)
     }
 
-    database
-      .prepare(
-        `INSERT OR IGNORE INTO items
+    if (input.includeExamples !== false) {
+      database
+        .prepare(
+          `INSERT OR IGNORE INTO items
          (id, title, notes, status, is_tutorial, created_at, updated_at)
          VALUES (?, '试着完成一个小待办', '这是教学示例。编辑后会转为真实数据。', 'active', 1, ?, ?)`,
-      )
-      .run(TUTORIAL_ITEM_ID, now, now)
-    database
-      .prepare(
-        `INSERT OR IGNORE INTO habits
+        )
+        .run(TUTORIAL_ITEM_ID, now, now)
+      database
+        .prepare(
+          `INSERT OR IGNORE INTO habits
          (id, name, type, target_count, frequency_type, rest_days_json,
           active, is_tutorial, created_at, updated_at)
          VALUES (?, '喝一杯水', 'check', 1, 'daily', '[]', 1, 1, ?, ?)`,
-      )
-      .run(TUTORIAL_HABIT_ID, now, now)
-    database
-      .prepare("UPDATE tutorial_state SET examples_created = 1, updated_at = ? WHERE id = 1")
-      .run(now)
+        )
+        .run(TUTORIAL_HABIT_ID, now, now)
+      database
+        .prepare("UPDATE tutorial_state SET examples_created = 1, updated_at = ? WHERE id = 1")
+        .run(now)
+    }
     database.exec("COMMIT")
   } catch (error) {
     database.exec("ROLLBACK")

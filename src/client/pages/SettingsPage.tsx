@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router"
 import { PageHeader } from "../components/PageHeader.js"
 import { AiSettings } from "../settings/AiSettings.js"
 import { DataSettings } from "../settings/DataSettings.js"
@@ -19,7 +19,11 @@ const SECTIONS = [
 type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
-  const [section, setSection] = useState<Section>("个人空间")
+  const [params, setParams] = useSearchParams()
+  const selected = params.get("section")
+  const section =
+    selected === "ai" ? "AI 服务" : (SECTIONS.find((entry) => entry === selected) ?? "个人空间")
+  const setSection = (value: Section) => setParams({ section: value })
   return (
     <div className="page">
       <PageHeader subtitle="所有配置只作用于这台电脑上的个人空间。" title="设置" />

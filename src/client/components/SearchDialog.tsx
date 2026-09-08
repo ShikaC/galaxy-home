@@ -11,6 +11,7 @@ import { IconButton } from "./ui/IconButton.js"
 import { DialogSurface } from "./ui/ModalSurface.js"
 
 const TYPE_LABELS = {
+  note: "笔记",
   item: "待办",
   category: "分类",
   project: "项目",
@@ -21,6 +22,7 @@ const TYPE_LABELS = {
 } as const
 type SearchType = keyof typeof TYPE_LABELS
 const searchTypeSchema = z.enum([
+  "note",
   "item",
   "category",
   "project",
@@ -32,6 +34,7 @@ const searchTypeSchema = z.enum([
 ])
 
 function resultPath(type: SearchType, id: string): string {
+  if (type === "note") return `/notes?note=${id}`
   if (type === "project") return `/projects/${id}`
   if (type === "category") return `/todos?category=${id}`
   if (type === "habit") return "/habits"
@@ -71,7 +74,7 @@ export function SearchDialog({
         <input
           aria-label="搜索空间"
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索待办、项目、习惯、回顾或会话"
+          placeholder="搜索笔记、任务、项目或 AI 会话"
           value={query}
         />
         <IconButton label="关闭搜索" onClick={onClose}>

@@ -18,13 +18,14 @@ import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useMeta } from "../lib/queries.js"
 import { itemSchema, itemsSchema, projectSchema } from "../lib/schemas.js"
 
-type View = "active" | "inbox" | "completed" | "archived"
+type View = "today" | "active" | "inbox" | "completed" | "archived"
 type StatusNotice = Readonly<{
   readonly message: string
   readonly showCompletedLink: boolean
 }>
 const VIEWS: readonly { readonly id: View; readonly label: string }[] = [
   { id: "inbox", label: "收集箱" },
+  { id: "today", label: "今日计划" },
   { id: "active", label: "全部活跃" },
   { id: "completed", label: "已完成" },
   { id: "archived", label: "已归档" },
@@ -152,9 +153,7 @@ export function TodosPage() {
   const selectView = (next: View) => {
     setView(next)
     setCategoryId(null)
-    if (searchParameters.get("category") !== null) {
-      void navigate(next === "inbox" ? "/todos" : `/todos?view=${next}`)
-    }
+    void navigate(next === "inbox" ? "/todos" : `/todos?view=${next}`)
   }
   return (
     <div className="page">

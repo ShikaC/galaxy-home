@@ -33,9 +33,15 @@ export function DesignShowcasePage() {
           <Sparkles size={18} />
         </div>
         <div>
-          <p className="showcase__kicker">银河居所设计系统</p>
-          <h1>安静，但每一步都清楚。</h1>
-          <p>组件保持稳定尺寸、完整状态和自然中文换行。</p>
+          <p className="showcase__kicker">Galaxy 设计系统</p>
+          <h1>
+            <span>清晰，专注，</span>
+            <span>有所创造。</span>
+          </h1>
+          <p>
+            <span>组件保持稳定尺寸与完整状态。</span>
+            <span>中文自然换行，交互有迹可循。</span>
+          </p>
         </div>
       </header>
 

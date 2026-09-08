@@ -48,11 +48,12 @@ export function ProjectsPage() {
         }
         subtitle={
           <>
-            只看当前阶段与紧接着的一步，
-            <span className="page-header__clause">不提前展开未知的完整任务链。</span>
+            把值得投入的目标，
+            <span className="page-header__clause">变成持续向前的行动。</span>
           </>
         }
-        title="周期项目"
+        eyebrow="MAKE THINGS HAPPEN"
+        title="项目空间"
       />
       {projects.data?.length === 0 ? (
         <EmptyState
@@ -63,7 +64,7 @@ export function ProjectsPage() {
           }
           description="把一个长期目标缩小到今天能开始的动作。"
           icon={FolderKanban}
-          title="还没有周期项目"
+          title="你的下一个项目，从这里开始"
         />
       ) : (
         <div className="project-sections">

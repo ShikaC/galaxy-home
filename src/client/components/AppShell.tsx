@@ -1,14 +1,19 @@
 import {
   Archive,
+  BookOpen,
   CheckSquare2,
+  ChevronDown,
+  Command,
   FolderKanban,
   Home,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightOpen,
+  Plus,
   RefreshCw,
   Search,
   Settings,
+  ShieldCheck,
   Sparkles,
   Target,
 } from "lucide-react"
@@ -21,9 +26,9 @@ import {
   useMemo,
   useState,
 } from "react"
-import { NavLink, Outlet } from "react-router"
+import { Link, NavLink, Outlet, useLocation } from "react-router"
 import { localDateFor } from "../lib/date.js"
-import { useMeta } from "../lib/queries.js"
+import { useMeta, useProjects } from "../lib/queries.js"
 import { OnboardingPage } from "../pages/OnboardingPage.js"
 import { AiDrawer } from "./AiDrawer.js"
 import { AppActionsContext, AppTimeContext } from "./AppContext.js"
@@ -34,9 +39,10 @@ import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
 const NAV_ITEMS = [
-  { to: "/", label: "首页", icon: Home, end: true },
-  { to: "/todos", label: "待办", icon: CheckSquare2, end: false },
+  { to: "/", label: "工作台", icon: Home, end: true },
+  { to: "/todos", label: "任务", icon: CheckSquare2, end: false },
   { to: "/projects", label: "项目", icon: FolderKanban, end: false },
+  { to: "/notes", label: "知识笔记", icon: BookOpen, end: false },
   { to: "/habits", label: "习惯", icon: Target, end: false },
   { to: "/review", label: "回顾", icon: Archive, end: false },
 ] as const
@@ -59,6 +65,8 @@ function readAiDrawerWidth(): number {
 
 export function AppShell() {
   const meta = useMeta()
+  const projects = useProjects()
+  const location = useLocation()
   const [captureOpen, setCaptureOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
@@ -95,6 +103,12 @@ export function AppShell() {
   const clearAiDraft = useCallback(() => setAiDraft(null), [])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault()
+        setAiOpen((current) => !current)
+        return
+      }
       if (event.key === "Escape") {
         setCaptureOpen(false)
         setSearchOpen(false)
@@ -174,11 +188,40 @@ export function AppShell() {
           >
             <div className="brand">
               <span className="brand-mark">
-                <Sparkles aria-hidden="true" size={18} />
+                <span className="orbit-mark" />
               </span>
-              <strong>银河居所</strong>
+              <strong>
+                galaxy<span>个人工作空间</span>
+              </strong>
             </div>
-            <p className="workspace-name">{meta.data.settings.workspaceName}</p>
+            <Link className="workspace-name" to="/settings">
+              <span className="workspace-avatar">
+                {meta.data.settings.workspaceName.slice(0, 1)}
+              </span>
+              <span>{meta.data.settings.workspaceName}</span>
+              <ChevronDown size={13} />
+            </Link>
+            <button
+              className="sidebar-search"
+              type="button"
+              aria-label="全局搜索"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search size={16} />
+              <span>搜索任何内容</span>
+              <kbd>⌘ ⇧ K</kbd>
+            </button>
+            <button
+              aria-label="记录新想法"
+              className="sidebar-create"
+              type="button"
+              onClick={() => setCaptureOpen(true)}
+            >
+              <Plus size={16} />
+              <span>记录新想法</span>
+              <kbd>⌘ K</kbd>
+            </button>
+            <p className="sidebar-label">我的工作空间</p>
             <nav aria-label="主导航">
               {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
                 <NavLink
@@ -196,7 +239,40 @@ export function AppShell() {
                 </NavLink>
               ))}
             </nav>
+            <div className="sidebar-projects">
+              <p className="sidebar-label">
+                正在进行{" "}
+                <span>
+                  {projects.data?.filter((project) => project.status === "active").length ?? 0}
+                </span>
+              </p>
+              {projects.data
+                ?.filter((project) => project.status === "active")
+                .slice(0, 4)
+                .map((project, index) => (
+                  <Link key={project.id} to={`/projects/${project.id}`}>
+                    <span className={`project-dot project-dot--${index % 3}`} />
+                    <span>{project.name}</span>
+                  </Link>
+                ))}
+              <Link to="/projects">
+                <Plus size={13} />
+                <span>探索项目空间</span>
+              </Link>
+            </div>
             <div className="sidebar__bottom">
+              <button
+                aria-label="和 AI 一起思考"
+                className="sidebar-ai"
+                type="button"
+                onClick={() => actions.openAi()}
+              >
+                <Sparkles size={17} />
+                <span>
+                  和 AI 一起思考<small>让下一步更清晰</small>
+                </span>
+                <kbd>⌘ J</kbd>
+              </button>
               <button
                 aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
                 className="nav-item"
@@ -211,15 +287,7 @@ export function AppShell() {
                 )}
                 <span>{sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}</span>
               </button>
-              <button
-                aria-label="全局搜索"
-                className="nav-item"
-                onClick={() => setSearchOpen(true)}
-                type="button"
-              >
-                <Search aria-hidden="true" size={18} />
-                <span>全局搜索</span>
-              </button>
+
               <NavLink
                 aria-label="设置"
                 className={({ isActive }) => `nav-item${isActive ? " nav-item--active" : ""}`}
@@ -232,6 +300,33 @@ export function AppShell() {
             </div>
           </aside>
           <main className="main-scroll" data-app-background>
+            <header className="workspace-toolbar">
+              <div>
+                <Command size={15} />
+                <span>{meta.data.settings.workspaceName}</span>
+                <span className="toolbar-slash">/</span>
+                <strong>
+                  {NAV_ITEMS.find((item) =>
+                    item.to === "/"
+                      ? location.pathname === "/"
+                      : location.pathname.startsWith(item.to),
+                  )?.label ?? "设置"}
+                </strong>
+              </div>
+              <div>
+                <Link className="toolbar-settings" aria-label="设置" to="/settings">
+                  <Settings size={16} />
+                </Link>
+                <span className="local-status">
+                  <ShieldCheck size={13} />
+                  本地优先
+                </span>
+                <button type="button" aria-label="打开 AI 助手" onClick={() => actions.openAi()}>
+                  <Sparkles size={15} />
+                  <span>AI 助手</span>
+                </button>
+              </div>
+            </header>
             <ReminderBanner />
             <Suspense fallback={<p className="page-loading">正在打开你的空间...</p>}>
               <Outlet />

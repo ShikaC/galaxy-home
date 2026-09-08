@@ -17,6 +17,7 @@ export const timezoneSchema = z
 
 export const onboardingInputSchema = z
   .object({
+    includeExamples: z.boolean().optional(),
     workspaceName: z.string().trim().min(1).max(60),
     aiNickname: z.string().trim().min(1).max(30),
     userName: z.string().trim().min(1).max(30),
