@@ -14,6 +14,7 @@ import { registerAiRoutes } from "./routes/ai.js"
 import { registerContentRoutes } from "./routes/content.js"
 import { registerDomainRoutes } from "./routes/domain.js"
 import { registerItemRoutes } from "./routes/items.js"
+import { registerNoteRoutes } from "./routes/notes.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { AiServiceError } from "./services/ai.js"
 import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
@@ -122,6 +123,7 @@ export async function buildApp(context: AppContext, production = false) {
   registerItemRoutes(app, context)
   registerDomainRoutes(app, context)
   registerContentRoutes(app, context)
+  registerNoteRoutes(app, context)
   registerAiRoutes(app, context)
 
   app.setErrorHandler((error, _request, reply) => {

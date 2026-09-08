@@ -58,7 +58,16 @@ export const searchResultsSchema = z
   .array(
     z.object({
       id: z.string(),
-      type: z.enum(["item", "category", "project", "habit", "gain", "review", "conversation"]),
+      type: z.enum([
+        "item",
+        "category",
+        "project",
+        "habit",
+        "gain",
+        "review",
+        "conversation",
+        "note",
+      ]),
       title: z.string(),
       detail: z.string().nullable(),
       date: z.string().nullable(),

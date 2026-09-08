@@ -13,6 +13,7 @@ export const aiReferenceSchema = z
       "review",
       "conversation",
       "memory",
+      "note",
     ]),
     id: z.string().nullable(),
     label: z.string(),
