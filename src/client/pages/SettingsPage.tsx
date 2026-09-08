@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useSearchParams } from "react-router"
 import { PageHeader } from "../components/PageHeader.js"
 import { AiSettings } from "../settings/AiSettings.js"
 import { DataSettings } from "../settings/DataSettings.js"
@@ -19,7 +19,11 @@ const SECTIONS = [
 type Section = (typeof SECTIONS)[number]
 
 export function SettingsPage() {
-  const [section, setSection] = useState<Section>("个人空间")
+  const [params, setParams] = useSearchParams()
+  const selected = params.get("section")
+  const section =
+    selected === "ai" ? "AI 服务" : (SECTIONS.find((entry) => entry === selected) ?? "个人空间")
+  const setSection = (value: Section) => setParams({ section: value })
   return (
     <div className="page">
       <PageHeader subtitle="所有配置只作用于这台电脑上的个人空间。" title="设置" />
@@ -53,13 +57,15 @@ export function SettingsPage() {
             <section className="settings-section">
               <header>
                 <h2>快捷键</h2>
-                <p>捕捉用 ⌘N，搜索与指令用 ⌘K。随手记里 ⌘回车会放进今天。</p>
+                <p>随手记用 ⌘K 或 ⌘N，搜索与指令用 ⌘⇧K。随手记里 ⌘回车会放进今天。</p>
               </header>
               <dl className="shortcut-list">
                 <div>
                   <dt>命令面板 / 搜索</dt>
                   <dd>
                     <kbd>⌘ / Ctrl</kbd>
+                    <span>+</span>
+                    <kbd>Shift</kbd>
                     <span>+</span>
                     <kbd>K</kbd>
                   </dd>

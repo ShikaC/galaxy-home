@@ -16,7 +16,8 @@ type PendingMessage = {
 }
 
 const PAGE_LABELS: Readonly<Record<string, string>> = {
-  "/": "首页",
+  "/": "工作台",
+  "/notes": "知识笔记",
   "/habits": "习惯",
   "/projects": "项目",
   "/review": "回顾",

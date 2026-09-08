@@ -17,9 +17,9 @@ describe("parseTheme", () => {
     expect(parseTheme("dawn")).toBe("dawn")
   })
 
-  it("falls back to night when the stored value is unknown", () => {
-    expect(parseTheme("solar")).toBe("night")
-    expect(parseTheme(null)).toBe("night")
+  it("falls back to dawn when the stored value is unknown", () => {
+    expect(parseTheme("solar")).toBe("dawn")
+    expect(parseTheme(null)).toBe("dawn")
   })
 })
 

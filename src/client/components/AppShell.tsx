@@ -1,4 +1,22 @@
-import { PanelRightOpen, RefreshCw } from "lucide-react"
+import {
+  Archive,
+  BookOpen,
+  CheckSquare2,
+  ChevronDown,
+  Command,
+  FolderKanban,
+  Home,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightOpen,
+  Plus,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Target,
+} from "lucide-react"
 import {
   type CSSProperties,
   type PointerEvent,
@@ -8,9 +26,27 @@ import {
   useMemo,
   useState,
 } from "react"
-import { Outlet } from "react-router"
+import { Link, NavLink, Outlet, useLocation } from "react-router"
 import { localDateFor } from "../lib/date.js"
-import { useMeta } from "../lib/queries.js"
+import { useMeta, useProjects } from "../lib/queries.js"
+import { OnboardingPage } from "../pages/OnboardingPage.js"
+import { AiDrawer } from "./AiDrawer.js"
+import { AppActionsContext, AppAppearanceContext, AppTimeContext } from "./AppContext.js"
+import { CaptureDialog } from "./CaptureDialog.js"
+import { ReminderBanner } from "./ReminderBanner.js"
+import { SearchDialog } from "./SearchDialog.js"
+import { Button } from "./ui/Button.js"
+import { IconButton } from "./ui/IconButton.js"
+
+const NAV_ITEMS = [
+  { to: "/", label: "工作台", icon: Home, end: true },
+  { to: "/todos", label: "任务", icon: CheckSquare2, end: false },
+  { to: "/projects", label: "项目", icon: FolderKanban, end: false },
+  { to: "/notes", label: "知识笔记", icon: BookOpen, end: false },
+  { to: "/habits", label: "习惯", icon: Target, end: false },
+  { to: "/review", label: "回顾", icon: Archive, end: false },
+] as const
+
 import {
   applyTheme,
   nextTheme,
@@ -18,19 +54,10 @@ import {
   readStoredTheme,
   type ThemeName,
 } from "../lib/theme.js"
-import { OnboardingPage } from "../pages/OnboardingPage.js"
-import { AiDrawer } from "./AiDrawer.js"
-import { AppActionsContext, AppAppearanceContext, AppTimeContext } from "./AppContext.js"
-import { AppSidebar } from "./AppSidebar.js"
-import { CaptureDialog } from "./CaptureDialog.js"
-import { ReminderBanner } from "./ReminderBanner.js"
-import { SearchDialog } from "./SearchDialog.js"
-import { Button } from "./ui/Button.js"
-import { IconButton } from "./ui/IconButton.js"
 
 const AI_DRAWER_WIDTH_KEY = "galaxy:ai-drawer-width"
-const AI_DRAWER_WIDTH_DEFAULT = 380
-const AI_DRAWER_WIDTH_MIN = 300
+const AI_DRAWER_WIDTH_DEFAULT = 360
+const AI_DRAWER_WIDTH_MIN = 280
 const AI_DRAWER_WIDTH_MAX = 560
 
 function clampAiDrawerWidth(value: number): number {
@@ -46,6 +73,8 @@ function readAiDrawerWidth(): number {
 
 export function AppShell() {
   const meta = useMeta()
+  const projects = useProjects()
+  const location = useLocation()
   const [captureOpen, setCaptureOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
@@ -54,6 +83,12 @@ export function AppShell() {
   const [aiFocusItemId, setAiFocusItemId] = useState<string | null>(null)
   const [aiWidth, setAiWidth] = useState(readAiDrawerWidth)
   const [theme, setTheme] = useState<ThemeName>(readStoredTheme)
+  const toggleTheme = useCallback(() => setTheme((current) => nextTheme(current)), [])
+  const appearance = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, toggleTheme])
+  useEffect(() => {
+    applyTheme(theme)
+    persistTheme(theme)
+  }, [theme])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
   )
@@ -63,9 +98,6 @@ export function AppShell() {
     () => ({ timezone, today: localDateFor(timezone, new Date(clockTick)) }),
     [clockTick, timezone],
   )
-  const toggleTheme = useCallback(() => {
-    setTheme((current) => nextTheme(current))
-  }, [])
   const actions = useMemo(
     () => ({
       openCapture: () => setCaptureOpen(true),
@@ -83,48 +115,30 @@ export function AppShell() {
     }),
     [],
   )
-  const appearance = useMemo(
-    () => ({
-      theme,
-      setTheme,
-      toggleTheme,
-    }),
-    [theme, toggleTheme],
-  )
   const clearAiDraft = useCallback(() => setAiDraft(null), [])
-  const clockLabel = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: timezone,
-    month: "short",
-    day: "numeric",
-    weekday: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date(clockTick))
-
-  useEffect(() => {
-    applyTheme(theme)
-    persistTheme(theme)
-  }, [theme])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.isComposing || event.repeat) return
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n") {
+        event.preventDefault()
+        setCaptureOpen(true)
+        return
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "j") {
+        event.preventDefault()
+        setAiOpen((current) => !current)
+        return
+      }
       if (event.key === "Escape") {
         setCaptureOpen(false)
         setSearchOpen(false)
         setAiOpen(false)
         return
       }
-      if (!(event.metaKey || event.ctrlKey) || event.repeat) return
-      const key = event.key.toLowerCase()
-      if (key === "k") {
-        event.preventDefault()
-        setSearchOpen(true)
-        return
-      }
-      if (key === "n") {
-        event.preventDefault()
-        setCaptureOpen(true)
-      }
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") return
+      event.preventDefault()
+      if (event.shiftKey) setSearchOpen(true)
+      else setCaptureOpen(true)
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
@@ -136,7 +150,7 @@ export function AppShell() {
     window.localStorage.setItem(AI_DRAWER_WIDTH_KEY, String(aiWidth))
   }, [aiWidth])
   useEffect(() => {
-    const timer = window.setInterval(() => setClockTick(Date.now()), 30_000)
+    const timer = window.setInterval(() => setClockTick(Date.now()), 60_000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -185,23 +199,158 @@ export function AppShell() {
   } as CSSProperties
 
   return (
-    <AppTimeContext.Provider value={time}>
-      <AppActionsContext.Provider value={actions}>
-        <AppAppearanceContext.Provider value={appearance}>
+    <AppAppearanceContext.Provider value={appearance}>
+      <AppTimeContext.Provider value={time}>
+        <AppActionsContext.Provider value={actions}>
           <div className={shellClassName} style={shellStyle}>
             <a className="skip-link" href="#workspace-main">
               跳到主要内容
             </a>
-            <AppSidebar
-              clockLabel={clockLabel}
-              collapsed={sidebarCollapsed}
-              onOpenSearch={() => setSearchOpen(true)}
-              onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
-              onToggleTheme={toggleTheme}
-              theme={theme}
-              workspaceName={meta.data.settings.workspaceName}
-            />
+            <aside
+              className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}
+              data-app-background
+            >
+              <div className="brand">
+                <span className="brand-mark">
+                  <span className="orbit-mark" />
+                </span>
+                <strong>
+                  galaxy<span>个人工作空间</span>
+                </strong>
+              </div>
+              <Link className="workspace-name" to="/settings">
+                <span className="workspace-avatar">
+                  {meta.data.settings.workspaceName.slice(0, 1)}
+                </span>
+                <span>{meta.data.settings.workspaceName}</span>
+                <ChevronDown size={13} />
+              </Link>
+              <button
+                className="sidebar-search"
+                type="button"
+                aria-label="全局搜索"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search size={16} />
+                <span>搜索任何内容</span>
+                <kbd>⌘ ⇧ K</kbd>
+              </button>
+              <button
+                aria-label="记录新想法"
+                className="sidebar-create"
+                type="button"
+                onClick={() => setCaptureOpen(true)}
+              >
+                <Plus size={16} />
+                <span>记录新想法</span>
+                <kbd>⌘ K</kbd>
+              </button>
+              <p className="sidebar-label">我的工作空间</p>
+              <nav aria-label="主导航">
+                {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
+                  <NavLink
+                    aria-label={label}
+                    className={({ isActive, isPending }) =>
+                      `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
+                    }
+                    end={end}
+                    key={to}
+                    to={to}
+                    title={label}
+                  >
+                    <Icon aria-hidden="true" size={18} />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </nav>
+              <div className="sidebar-projects">
+                <p className="sidebar-label">
+                  正在进行{" "}
+                  <span>
+                    {projects.data?.filter((project) => project.status === "active").length ?? 0}
+                  </span>
+                </p>
+                {projects.data
+                  ?.filter((project) => project.status === "active")
+                  .slice(0, 4)
+                  .map((project, index) => (
+                    <Link key={project.id} to={`/projects/${project.id}`}>
+                      <span className={`project-dot project-dot--${index % 3}`} />
+                      <span>{project.name}</span>
+                    </Link>
+                  ))}
+                <Link to="/projects">
+                  <Plus size={13} />
+                  <span>探索项目空间</span>
+                </Link>
+              </div>
+              <div className="sidebar__bottom">
+                <button
+                  aria-label="和 AI 一起思考"
+                  className="sidebar-ai"
+                  type="button"
+                  onClick={() => actions.openAi()}
+                >
+                  <Sparkles size={17} />
+                  <span>
+                    和 AI 一起思考<small>让下一步更清晰</small>
+                  </span>
+                  <kbd>⌘ J</kbd>
+                </button>
+                <button
+                  aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+                  className="nav-item"
+                  onClick={() => setSidebarCollapsed((current) => !current)}
+                  title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+                  type="button"
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeftOpen aria-hidden="true" size={18} />
+                  ) : (
+                    <PanelLeftClose aria-hidden="true" size={18} />
+                  )}
+                  <span>{sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}</span>
+                </button>
+
+                <NavLink
+                  aria-label="设置"
+                  className={({ isActive }) => `nav-item${isActive ? " nav-item--active" : ""}`}
+                  to="/settings"
+                  title="设置"
+                >
+                  <Settings aria-hidden="true" size={18} />
+                  <span>设置</span>
+                </NavLink>
+              </div>
+            </aside>
             <main className="main-scroll" data-app-background id="workspace-main">
+              <header className="workspace-toolbar">
+                <div>
+                  <Command size={15} />
+                  <span>{meta.data.settings.workspaceName}</span>
+                  <span className="toolbar-slash">/</span>
+                  <strong>
+                    {NAV_ITEMS.find((item) =>
+                      item.to === "/"
+                        ? location.pathname === "/"
+                        : location.pathname.startsWith(item.to),
+                    )?.label ?? "设置"}
+                  </strong>
+                </div>
+                <div>
+                  <Link className="toolbar-settings" aria-label="设置" to="/settings">
+                    <Settings size={16} />
+                  </Link>
+                  <span className="local-status">
+                    <ShieldCheck size={13} />
+                    本地优先
+                  </span>
+                  <button type="button" aria-label="打开 AI 助手" onClick={() => actions.openAi()}>
+                    <Sparkles size={15} />
+                    <span>AI 助手</span>
+                  </button>
+                </div>
+              </header>
               <ReminderBanner />
               <Suspense fallback={<p className="page-loading">正在打开你的空间...</p>}>
                 <Outlet />
@@ -243,8 +392,8 @@ export function AppShell() {
             <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
             <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
           </div>
-        </AppAppearanceContext.Provider>
-      </AppActionsContext.Provider>
-    </AppTimeContext.Provider>
+        </AppActionsContext.Provider>
+      </AppTimeContext.Provider>
+    </AppAppearanceContext.Provider>
   )
 }

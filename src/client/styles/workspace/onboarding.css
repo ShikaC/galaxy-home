@@ -1,0 +1,193 @@
+.onboarding--workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  padding: 0;
+  gap: 0;
+  height: 100dvh;
+  overflow-y: auto;
+  background: var(--color-canvas);
+  align-items: stretch;
+}
+.onboarding-story {
+  background: var(--color-sidebar);
+  color: var(--color-sidebar-text);
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 52px 10%;
+}
+.onboarding-wordmark {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-family: var(--font-family-editorial);
+  font-size: 37px;
+}
+.onboarding-wordmark .orbit-mark {
+  color: #dfa07a;
+}
+.onboarding-kicker {
+  font-family: var(--font-family-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #dfa07a;
+  margin-bottom: 24px;
+}
+.onboarding-story h2 {
+  font-family: var(--font-family-editorial);
+  font-size: clamp(28px, 3vw, 44px);
+  font-weight: 400;
+  line-height: 1.7;
+  letter-spacing: 1px;
+  margin-bottom: 22px;
+}
+.onboarding-story h2 + p {
+  color: var(--color-sidebar-muted);
+  font-size: 13px;
+  line-height: 2;
+}
+.onboarding-principles {
+  display: flex;
+  gap: 24px;
+  margin-top: 54px;
+  border-top: 1px solid var(--color-sidebar-hover);
+  padding-top: 20px;
+}
+.onboarding-principles > span {
+  color: #dfa07a;
+  font-family: var(--font-family-mono);
+  font-size: 10px;
+}
+.onboarding-principles strong {
+  display: block;
+  font-family: var(--font-family-ui);
+  color: var(--color-sidebar-text);
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 9px;
+}
+.onboarding-story small {
+  color: var(--color-sidebar-muted);
+  font-family: var(--font-family-mono);
+  font-size: 8px;
+  letter-spacing: 1.8px;
+}
+.onboarding--workspace .onboarding__panel {
+  width: 100%;
+  max-width: 510px;
+  margin: auto;
+  padding: 50px 44px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.onboarding--workspace .onboarding__panel > .brand-mark {
+  color: var(--color-action);
+}
+.onboarding--workspace .onboarding__panel h1 {
+  font-size: 28px;
+  font-family: var(--font-family-editorial);
+  font-weight: 500;
+  margin: 8px 0 12px;
+}
+.onboarding--workspace .onboarding__panel .muted {
+  font-size: 12px;
+  line-height: 1.9;
+}
+.onboarding--workspace .onboarding__optional {
+  background: transparent;
+  padding: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+.onboarding__optional summary {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+.onboarding__optional > section {
+  padding-top: 20px;
+}
+.onboarding__optional h2 {
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.onboarding--workspace .form-stack > .button {
+  min-height: 44px;
+}
+@media (max-width: 750px) {
+  .onboarding--workspace {
+    display: block;
+  }
+  .onboarding-story {
+    min-height: auto;
+    padding: 30px 28px;
+    gap: 42px;
+  }
+  .onboarding-story h2 {
+    font-size: 28px;
+  }
+  .onboarding-story > div:nth-child(2) {
+    padding: 0;
+  }
+  .onboarding-story h2 + p,
+  .onboarding-principles,
+  .onboarding-story > small {
+    display: none;
+  }
+  .onboarding-kicker {
+    margin-bottom: 13px;
+    font-size: 8px;
+  }
+  .onboarding--workspace .onboarding__panel {
+    padding: 32px 26px;
+  }
+}
+fieldset.work-tabs,
+fieldset.focus-durations {
+  min-width: 0;
+  border-inline: 0;
+  border-top: 0;
+  padding-inline: 0;
+}
+fieldset.work-tabs {
+  margin-inline: 0;
+  padding-top: 0;
+}
+fieldset.focus-durations {
+  border-bottom: 0;
+  padding-block: 0;
+}
+.onboarding--workspace {
+  place-items: stretch;
+}
+.onboarding-story {
+  width: 100%;
+}
+.focus-dialog {
+  width: min(700px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.focus-widget--expanded {
+  position: relative;
+  inset: auto;
+  min-height: 420px;
+  box-shadow: none;
+}
+.toolbar-settings {
+  display: none;
+  color: var(--color-text-muted);
+}
+@media (max-width: 600px) {
+  .toolbar-settings {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+  }
+}

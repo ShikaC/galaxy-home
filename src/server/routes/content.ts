@@ -23,7 +23,7 @@ const dateSchema = z.object({ localDate: z.string() })
 const searchSchema = z.object({
   q: z.string().max(200),
   type: z
-    .enum(["item", "category", "project", "habit", "gain", "review", "conversation"])
+    .enum(["item", "category", "project", "habit", "gain", "review", "conversation", "note"])
     .optional(),
   dateFrom: z.iso.date().optional(),
   dateTo: z.iso.date().optional(),

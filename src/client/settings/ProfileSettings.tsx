@@ -105,7 +105,7 @@ export function ProfileSettings() {
             </button>
           </div>
           <span className="field__hint">
-            夜间是默认。拂晓是同一套语言的纸面版本，不是简单反相。
+            默认使用拂晓外观，也可以切换夜间。选择会保存在当前浏览器中。
           </span>
         </fieldset>
         <div>

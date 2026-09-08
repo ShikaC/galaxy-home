@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import { notesSchema } from "../../shared/notes.js"
 import { useAppTime } from "../components/AppContext.js"
 import { apiRequest } from "./api.js"
 import {
@@ -62,5 +63,12 @@ export function useQuote() {
   return useQuery({
     queryKey: queryKeys.quote(today),
     queryFn: () => apiRequest(`/api/quote?localDate=${today}`, quoteSchema.nullable()),
+  })
+}
+
+export function useNotes(archived = false) {
+  return useQuery({
+    queryKey: ["notes", archived],
+    queryFn: () => apiRequest(`/api/notes?archived=${archived}`, notesSchema),
   })
 }

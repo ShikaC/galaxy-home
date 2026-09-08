@@ -13,6 +13,7 @@ import { IconButton } from "./ui/IconButton.js"
 import { DialogSurface } from "./ui/ModalSurface.js"
 
 const TYPE_LABELS = {
+  note: "笔记",
   item: "待办",
   category: "分类",
   project: "项目",
@@ -23,6 +24,7 @@ const TYPE_LABELS = {
 } as const
 type SearchType = keyof typeof TYPE_LABELS
 const searchTypeSchema = z.enum([
+  "note",
   "item",
   "category",
   "project",
@@ -35,6 +37,8 @@ const searchTypeSchema = z.enum([
 
 function resultPath(type: SearchType, id: string): string {
   switch (type) {
+    case "note":
+      return `/notes?note=${id}`
     case "project":
       return `/projects/${id}`
     case "category":

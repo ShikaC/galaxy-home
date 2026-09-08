@@ -1,0 +1,30 @@
+[data-theme="night"] .ai-launchpad {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="night"] .ai-emblem {
+  background: var(--color-action-soft);
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="night"] .ai-launchpad form,
+[data-theme="night"] .ai-launchpad__suggestions button {
+  border-color: var(--color-border-strong);
+}
+
+[data-theme="night"] .ai-launchpad :where(form) button {
+  color: var(--color-on-action);
+}
+
+[data-theme="night"] .workspace-project {
+  background: var(--color-surface-subtle);
+}
+
+[data-theme="night"] .workspace-project__top > span {
+  background: var(--color-surface-raised);
+}
+
+[data-theme="night"] .project-progress-track {
+  background: var(--color-border-strong);
+}

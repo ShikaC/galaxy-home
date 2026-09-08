@@ -1,0 +1,215 @@
+/* Focus and personal context */
+.focus-widget {
+  background: var(--color-focus);
+  color: #eaf0e6;
+  border-radius: 12px;
+  padding: 17px 20px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.focus-widget > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.focus-widget > :where(header) > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-family-mono);
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  color: #b5c1b1;
+}
+.live-dot {
+  display: inline-block;
+  background: #bacaa9;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+.focus-widget .icon-button {
+  color: #b5c1b1;
+  background: transparent;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+}
+.focus-widget .icon-button:hover {
+  background: #ffffff12;
+}
+.focus-widget h2 {
+  font-family: var(--font-family-editorial);
+  font-size: 20px;
+  font-weight: 400;
+  margin: 18px 0 8px;
+}
+.focus-widget p {
+  color: #b5c1b1;
+  font-size: 10px;
+  margin: 0;
+  line-height: 1.8;
+}
+.focus-clock {
+  font-family: var(--font-family-mono);
+  font-size: 52px;
+  font-weight: 300;
+  letter-spacing: -3px;
+  text-align: center;
+  margin: 25px 0 8px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.focus-clock > span {
+  color: #a2b39a;
+}
+.focus-durations {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 13px 0 22px;
+}
+.focus-durations button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #b5c1b1;
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 9px;
+  cursor: pointer;
+}
+.focus-durations button[aria-pressed="true"] {
+  border-color: #b5c1b144;
+  background: #ffffff09;
+  color: #eaf0e6;
+}
+.focus-durations button:disabled {
+  cursor: default;
+}
+.focus-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.focus-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  border: 1px solid #b5c1b14a;
+  border-radius: 7px;
+  background: #ffffff0b;
+  color: #eaf0e6;
+  height: 35px;
+  font-size: 11px;
+  padding: 0 22px;
+  cursor: pointer;
+}
+.focus-start:hover {
+  background: #ffffff18;
+}
+.focus-widget--expanded {
+  position: fixed;
+  z-index: 30;
+  inset: 15% max(24px, 25%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 0 0 100vmax #242824aa;
+}
+.focus-widget--expanded .focus-clock {
+  font-size: clamp(60px, 8vw, 100px);
+}
+.focus-widget--expanded h2,
+.focus-widget--expanded p {
+  text-align: center;
+}
+.focus-widget--expanded header {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  right: 24px;
+}
+.workspace-habits {
+  padding: 27px 0 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+.workspace-habits .work-section__heading {
+  margin-bottom: 7px;
+}
+.workspace-habits h2 {
+  font-size: 13px;
+}
+.section-caption {
+  color: var(--color-text-muted);
+  font-size: 10px;
+  margin: 0 0 16px;
+  line-height: 1.8;
+}
+.workspace-habits .habit-row {
+  padding: 10px 0;
+  background: transparent;
+  border: 0;
+  gap: 8px;
+}
+.workspace-habits .habit-row strong {
+  font-size: 12px;
+}
+.workspace-habits .habit-row p {
+  font-size: 10px;
+}
+.habit-empty-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 10px 0;
+}
+.habit-empty-link:hover {
+  color: var(--color-action);
+}
+.workspace-ai-status {
+  display: flex;
+  gap: 12px;
+  padding: 24px 0;
+}
+.workspace-ai-status .ai-emblem {
+  flex-basis: 30px;
+  height: 30px;
+  border-radius: 8px;
+}
+.workspace-ai-status h3 {
+  font-size: 11px;
+  font-weight: 550;
+  margin: 2px 0 7px;
+}
+.workspace-ai-status p {
+  font-size: 10px;
+  line-height: 1.9;
+  color: var(--color-text-muted);
+  margin: 0 0 10px;
+}
+.workspace-ai-status a,
+.workspace-ai-status button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-action);
+  font-size: 10px;
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+.workspace-footnote {
+  font-family: var(--font-family-mono);
+  font-size: 8px;
+  letter-spacing: 1.6px;
+  line-height: 2;
+  color: var(--color-text-faint);
+  padding-top: 8px;
+}

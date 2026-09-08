@@ -40,6 +40,7 @@ export class ImportArchiveMalformedError extends Error {
 
 const DATA_TABLES = [
   "workspace_settings",
+  "workspace_notes",
   "quotes",
   "daily_quote_selections",
   "categories",
@@ -209,7 +210,7 @@ export async function restoreManualExport(
     throw new ImportArchiveMalformedError(error)
   }
   for (const table of DATA_TABLES)
-    if (data.tables[table] === undefined)
+    if (data.tables[table] === undefined && table !== "workspace_notes")
       throw new ImportArchiveMalformedError(new Error(`导入文件缺少 ${table}`))
   for (const table of Object.keys(data.tables)) {
     if (!DATA_TABLE_SET.has(table)) throw new ImportArchiveInvalidError(table)

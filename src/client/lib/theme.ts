@@ -2,7 +2,7 @@ export const THEME_NAMES = ["night", "dawn"] as const
 export type ThemeName = (typeof THEME_NAMES)[number]
 
 export const THEME_STORAGE_KEY = "galaxy:theme"
-export const DEFAULT_THEME: ThemeName = "night"
+export const DEFAULT_THEME: ThemeName = "dawn"
 
 export function parseTheme(value: string | null): ThemeName {
   if (value === "dawn" || value === "night") return value
@@ -18,7 +18,7 @@ export function applyTheme(theme: ThemeName, root: HTMLElement = document.docume
   root.style.colorScheme = themeColorScheme(theme)
   const themeColor = root.ownerDocument.querySelector('meta[name="theme-color"]')
   if (themeColor) {
-    themeColor.setAttribute("content", theme === "dawn" ? "#efe8dc" : "#0a0c11")
+    themeColor.setAttribute("content", theme === "dawn" ? "#f8f7f4" : "#0a0c11")
   }
 }
 

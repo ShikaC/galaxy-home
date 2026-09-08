@@ -3,7 +3,7 @@ import { z } from "zod"
 
 export const searchResultSchema = z.object({
   id: z.string(),
-  type: z.enum(["item", "category", "project", "habit", "gain", "review", "conversation"]),
+  type: z.enum(["item", "category", "project", "habit", "gain", "review", "conversation", "note"]),
   title: z.string(),
   detail: z.string().nullable(),
   date: z.string().nullable(),
@@ -17,6 +17,10 @@ export type SearchOptions = {
 }
 
 const workspaceSnapshotQueries = [
+  {
+    type: "note",
+    sql: `SELECT id, 'note' AS type, title, substr(content, 1, 8000) AS detail, substr(updated_at, 1, 10) AS date FROM workspace_notes WHERE archived = 0 ORDER BY pinned DESC, updated_at DESC LIMIT ?`,
+  },
   {
     type: "item",
     sql: `SELECT id, 'item' AS type, title, notes AS detail, substr(updated_at, 1, 10) AS date
@@ -84,9 +88,10 @@ export function searchWorkspace(database: DatabaseSync, options: SearchOptions) 
        (ai_conversations.title LIKE ? OR EXISTS (
          SELECT 1 FROM ai_messages WHERE conversation_id = ai_conversations.id AND content LIKE ?
        ))
+     UNION ALL SELECT id, 'note', title, substr(content, 1, 8000), substr(updated_at, 1, 10) FROM workspace_notes WHERE archived = 0 AND (title LIKE ? OR content LIKE ?)
      ORDER BY date DESC LIMIT 500`,
     )
-    .all(like, like, like, like, like, like, like, like, like, like, like, like, like)
+    .all(like, like, like, like, like, like, like, like, like, like, like, like, like, like, like)
     .map((row) => searchResultSchema.parse(row))
   return results
     .filter((result) => options.type === undefined || result.type === options.type)

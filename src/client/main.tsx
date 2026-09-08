@@ -13,15 +13,12 @@ import "./styles/layout.css"
 import "./styles/product.css"
 import "./styles/overlays.css"
 import "./styles/settings.css"
+import "./styles/workspace.css"
 
-const environment = import.meta.env as {
-  readonly DEV: boolean
-  readonly VITE_DISABLE_REACT_DEVTOOLS?: string
-}
 await bootstrapApiCapability()
 
-const enableDevTools = environment.DEV && environment.VITE_DISABLE_REACT_DEVTOOLS !== "1"
-if (enableDevTools) {
+const environment = import.meta.env as { readonly VITE_DISABLE_REACT_DEVTOOLS?: string }
+if (import.meta.env.DEV && environment.VITE_DISABLE_REACT_DEVTOOLS !== "1") {
   void import("react-grab")
   void import("react-scan")
 }

@@ -3,7 +3,11 @@ import { endOfWeek, format, startOfWeek } from "date-fns"
 import { Bot, CalendarDays, Check, Lightbulb } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { ReviewSuggestion } from "../../shared/app.js"
-import { reviewSuggestionConversionSchema, weeklyReviewSchema } from "../../shared/app.js"
+import {
+  gainSchema,
+  reviewSuggestionConversionSchema,
+  weeklyReviewSchema,
+} from "../../shared/app.js"
 import { useAppTime } from "../components/AppContext.js"
 import { GainRow } from "../components/GainRow.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
@@ -21,6 +25,20 @@ export function ReviewPage() {
   const client = useQueryClient()
   const [date, setDate] = useState("")
   const [search, setSearch] = useState("")
+  const [reflection, setReflection] = useState("")
+  const record = useMutation({
+    mutationFn: (content: string) =>
+      apiRequest("/api/gains", gainSchema, {
+        method: "POST",
+        body: jsonBody({ localDate: today, content }),
+      }),
+    onSuccess: () => {
+      setReflection("")
+      setDate("")
+      setSearch("")
+      void client.invalidateQueries({ queryKey: queryKeys.gains })
+    },
+  })
   const now = new Date(`${today}T12:00:00.000Z`)
   const weekStart = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd")
   const weekEnd = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd")
@@ -113,6 +131,34 @@ export function ReviewPage() {
       <div className="review-grid">
         <section className="section-band">
           <SectionHeader title="每日收获" />
+          <form
+            className="reflection-compose"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (reflection.trim() && !record.isPending) record.mutate(reflection.trim())
+            }}
+          >
+            <label htmlFor="daily-reflection">今天，有什么值得留下？</label>
+            <textarea
+              className="field__control field__control--area"
+              disabled={record.isPending}
+              id="daily-reflection"
+              maxLength={5000}
+              onChange={(event) => setReflection(event.target.value)}
+              placeholder="一个新的发现，一点小小的进步，或是想对明天的自己说的话。"
+              rows={3}
+              value={reflection}
+            />
+            <div className="button-row">
+              <Button disabled={!reflection.trim()} loading={record.isPending} type="submit">
+                记录今日收获
+              </Button>
+              {record.isSuccess && reflection === "" ? (
+                <span role="status">已记录，留给未来的自己。</span>
+              ) : null}
+            </div>
+            {record.isError ? <p className="inline-error">{record.error.message}</p> : null}
+          </form>
           <div className="review-filters">
             <label>
               <span>按日期</span>
@@ -134,12 +180,7 @@ export function ReviewPage() {
           </div>
           {filteredGains.length === 0 ? (
             <EmptyState
-              description={
-                <>
-                  今天还没有留下收获，也可以回到首页
-                  <span className="empty-state__phrase">随时追加。</span>
-                </>
-              }
+              description="记录会在这里汇聚，成为每周回顾的素材。"
               icon={CalendarDays}
               title="没有匹配记录"
             />

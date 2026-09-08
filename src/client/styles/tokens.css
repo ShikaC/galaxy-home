@@ -1,4 +1,82 @@
-:root,
+:root {
+  --color-surface-raised: var(--color-surface);
+  --color-on-action: #ffffff;
+  --font-family-display: var(--font-family-ui);
+  --font-size-section: 17px;
+  --radius-small: 6px;
+  --radius-panel: 18px;
+  --motion-slow: 380ms;
+  --shadow-rim: inset 0 1px 0 rgb(255 255 255 / 7%);
+  --color-sidebar: #242824;
+  --color-sidebar-text: #e9eae4;
+  --color-sidebar-muted: #a3aaa0;
+  --color-sidebar-hover: #333932;
+  --color-focus: #303b32;
+  --color-success: #47715a;
+  --font-family-editorial: Georgia, "Songti SC", "Noto Serif CJK SC", serif;
+  --font-family-mono: "SFMono-Regular", Consolas, monospace;
+  color-scheme: light;
+  --color-canvas: #f8f7f4;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f1efea;
+  --color-surface-selected: #f6e9df;
+  --color-surface-hover: #eeece6;
+  --color-text: #292b29;
+  --color-text-muted: #73736d;
+  --color-text-faint: #8a8880;
+  --color-border: #e5e2db;
+  --color-border-strong: #cbc7bd;
+  --color-action: #b6532d;
+  --color-action-hover: #954323;
+  --color-action-soft: #f8eade;
+  --color-attention: #d65f45;
+  --color-attention-soft: #fff0eb;
+  --color-reminder: #b7791f;
+  --color-reminder-soft: #fff7e3;
+  --color-chart-secondary: #4f7f86;
+  --color-overlay-scrim: rgb(32 35 31 / 24%);
+  --color-sidebar-glow: rgb(36 111 75 / 4%);
+  --color-star-trail: rgb(36 111 75 / 10%);
+  --color-star-glow: rgb(79 127 134 / 8%);
+  --font-family-ui: "SF Pro Text", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-size-display: 28px;
+  --font-size-title: 18px;
+  --font-size-heading: 15px;
+  --font-size-body: 14px;
+  --font-size-action: 13px;
+  --font-size-meta: 12px;
+  --font-size-micro: 11px;
+  --font-size-nano: 8px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 550;
+  --font-weight-semibold: 600;
+  --font-weight-strong: 650;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --shadow-popover: 0 6px 22px rgb(32 35 31 / 8%);
+  --shadow-overlay: 0 18px 52px rgb(32 35 31 / 12%);
+  --shadow-quote-band: 0 1px 0 rgb(32 35 31 / 3%);
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family: var(--font-family-ui);
+  font-synthesis: none;
+  letter-spacing: 0;
+  color: var(--color-text);
+  background:
+    radial-gradient(ellipse 80% 50% at 12% -10%, var(--color-star-glow), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 88% 0%, var(--color-star-trail), transparent 50%),
+    var(--color-canvas);
+}
+
 [data-theme="night"] {
   color-scheme: dark;
   --color-canvas: #0a0c11;
@@ -31,95 +109,4 @@
   --shadow-quote-band: inset 0 1px 0 rgb(238 230 214 / 8%);
   --shadow-rim: inset 0 1px 0 rgb(238 230 214 / 7%);
   --grain-opacity: 0.22;
-}
-
-[data-theme="dawn"] {
-  color-scheme: light;
-  --color-canvas: #efe8dc;
-  --color-surface: #f7f2e9;
-  --color-surface-subtle: #f1eadf;
-  --color-surface-raised: #fffaf3;
-  --color-surface-selected: #dceae2;
-  --color-surface-hover: #ebe4d8;
-  --color-text: #1c211c;
-  --color-text-muted: #5d665c;
-  --color-text-faint: #858e84;
-  --color-border: #ddd4c6;
-  --color-border-strong: #cfc5b6;
-  --color-action: #2d6a52;
-  --color-action-hover: #245844;
-  --color-action-soft: #e2efe8;
-  --color-on-action: #f7f2e9;
-  --color-attention: #c45c42;
-  --color-attention-soft: #fbece7;
-  --color-reminder: #a36b1f;
-  --color-reminder-soft: #f7ecd6;
-  --color-chart-secondary: #4d7c86;
-  --color-overlay-scrim: rgb(42 36 28 / 28%);
-  --color-sidebar-glow: rgb(45 106 82 / 8%);
-  --color-star-trail: rgb(45 106 82 / 10%);
-  --color-star-glow: rgb(77 124 134 / 12%);
-  --color-nebula-gold: rgb(163 107 31 / 8%);
-  --shadow-popover: 0 10px 28px rgb(48 40 28 / 10%);
-  --shadow-overlay: 0 22px 64px rgb(48 40 28 / 16%);
-  --shadow-quote-band: 0 1px 0 rgb(48 40 28 / 4%);
-  --shadow-rim: inset 0 1px 0 rgb(255 255 255 / 70%);
-  --grain-opacity: 0.12;
-}
-
-:root {
-  --font-family-display:
-    "Iowan Old Style", "Palatino Linotype", "Songti SC", "STSong", "PMingLiU", serif;
-  --font-family-ui:
-    "SF Pro Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", system-ui, sans-serif;
-  --font-family-mono: "SF Mono", ui-monospace, Menlo, monospace;
-  --font-size-display: 34px;
-  --font-size-title: 17px;
-  --font-size-section: 17px;
-  --font-size-heading: 15px;
-  --font-size-body: 14px;
-  --font-size-action: 13px;
-  --font-size-meta: 12px;
-  --font-size-micro: 11px;
-  --font-size-nano: 8px;
-  --font-weight-regular: 400;
-  --font-weight-medium: 550;
-  --font-weight-semibold: 600;
-  --font-weight-strong: 650;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-  --radius-small: 6px;
-  --radius-control: 8px;
-  --radius-card: 14px;
-  --radius-panel: 18px;
-  --motion-fast: 140ms;
-  --motion-base: 220ms;
-  --motion-slow: 380ms;
-  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  font-family: var(--font-family-ui);
-  font-synthesis: none;
-  letter-spacing: 0;
-  color: var(--color-text);
-  background:
-    radial-gradient(ellipse 88% 52% at 8% -12%, var(--color-star-glow), transparent 58%),
-    radial-gradient(ellipse 62% 42% at 96% -8%, var(--color-star-trail), transparent 52%),
-    radial-gradient(ellipse 40% 28% at 72% 0%, var(--color-nebula-gold), transparent 60%),
-    var(--color-canvas);
-}
-
-:root::before {
-  content: "";
-  position: fixed;
-  z-index: 80;
-  inset: 0;
-  pointer-events: none;
-  opacity: var(--grain-opacity);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
-  mix-blend-mode: overlay;
 }
