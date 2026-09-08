@@ -15,8 +15,11 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--space-3);
-  border-block-end: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
   padding: var(--space-2);
+}
+.task-row:hover {
+  background: var(--color-surface-hover);
 }
 .task-check {
   display: grid;
@@ -109,7 +112,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
-  background: var(--color-surface);
+  background: transparent;
 }
 .drag-handle {
   display: grid;

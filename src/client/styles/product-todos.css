@@ -27,8 +27,9 @@
 }
 .filter-nav button:not(.icon-button).selected,
 .settings-nav button.selected {
-  background: var(--color-surface-selected);
+  background: var(--color-action-soft);
   color: var(--color-action-hover);
+  box-shadow: inset 3px 0 0 var(--color-action);
   font-weight: var(--font-weight-semibold);
 }
 .color-swatch {

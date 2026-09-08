@@ -60,10 +60,7 @@ export function AiDrawerBody({
           <div className="ai-unavailable">
             <Bot size={24} />
             <h3>AI 尚未配置</h3>
-            <p>
-              待办、习惯、项目手动推进和回顾仍可正常使用。<span className="cjk-keep">配置服务</span>
-              后可继续当前会话。
-            </p>
+            <p>待办、习惯、项目手动推进和回顾仍可正常使用。需要时再去设置里配置。</p>
             <Link
               className="button button--secondary button--regular"
               onClick={onClose}
@@ -76,9 +73,7 @@ export function AiDrawerBody({
         ) : messages.length === 0 ? (
           <div className="ai-welcome">
             <p>今天想一起理清什么？</p>
-            <span>
-              可以一起讨论安排；开放模式下除删除（进回收站）需你确认外，其余已支持操作会立即写入；保守模式可创建与更新，但会先请你确认，且不支持删除或归档。
-            </span>
+            <span>配好服务后，可以一起整理今天的事。权限模式可在设置里改。</span>
           </div>
         ) : (
           messages.map((message) => (

@@ -1,17 +1,4 @@
-import {
-  Archive,
-  CheckSquare2,
-  FolderKanban,
-  Home,
-  PanelLeftClose,
-  PanelLeftOpen,
-  PanelRightOpen,
-  RefreshCw,
-  Search,
-  Settings,
-  Sparkles,
-  Target,
-} from "lucide-react"
+import { PanelRightOpen, RefreshCw } from "lucide-react"
 import {
   type CSSProperties,
   type PointerEvent,
@@ -21,29 +8,29 @@ import {
   useMemo,
   useState,
 } from "react"
-import { NavLink, Outlet } from "react-router"
+import { Outlet } from "react-router"
 import { localDateFor } from "../lib/date.js"
 import { useMeta } from "../lib/queries.js"
+import {
+  applyTheme,
+  nextTheme,
+  persistTheme,
+  readStoredTheme,
+  type ThemeName,
+} from "../lib/theme.js"
 import { OnboardingPage } from "../pages/OnboardingPage.js"
 import { AiDrawer } from "./AiDrawer.js"
-import { AppActionsContext, AppTimeContext } from "./AppContext.js"
+import { AppActionsContext, AppAppearanceContext, AppTimeContext } from "./AppContext.js"
+import { AppSidebar } from "./AppSidebar.js"
 import { CaptureDialog } from "./CaptureDialog.js"
 import { ReminderBanner } from "./ReminderBanner.js"
 import { SearchDialog } from "./SearchDialog.js"
 import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
-const NAV_ITEMS = [
-  { to: "/", label: "首页", icon: Home, end: true },
-  { to: "/todos", label: "待办", icon: CheckSquare2, end: false },
-  { to: "/projects", label: "项目", icon: FolderKanban, end: false },
-  { to: "/habits", label: "习惯", icon: Target, end: false },
-  { to: "/review", label: "回顾", icon: Archive, end: false },
-] as const
-
 const AI_DRAWER_WIDTH_KEY = "galaxy:ai-drawer-width"
-const AI_DRAWER_WIDTH_DEFAULT = 360
-const AI_DRAWER_WIDTH_MIN = 280
+const AI_DRAWER_WIDTH_DEFAULT = 380
+const AI_DRAWER_WIDTH_MIN = 300
 const AI_DRAWER_WIDTH_MAX = 560
 
 function clampAiDrawerWidth(value: number): number {
@@ -66,6 +53,7 @@ export function AppShell() {
   const [aiDraft, setAiDraft] = useState<string | null>(null)
   const [aiFocusItemId, setAiFocusItemId] = useState<string | null>(null)
   const [aiWidth, setAiWidth] = useState(readAiDrawerWidth)
+  const [theme, setTheme] = useState<ThemeName>(readStoredTheme)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(
     () => window.localStorage.getItem("galaxy:sidebar-collapsed") === "1",
   )
@@ -75,6 +63,9 @@ export function AppShell() {
     () => ({ timezone, today: localDateFor(timezone, new Date(clockTick)) }),
     [clockTick, timezone],
   )
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => nextTheme(current))
+  }, [])
   const actions = useMemo(
     () => ({
       openCapture: () => setCaptureOpen(true),
@@ -92,7 +83,29 @@ export function AppShell() {
     }),
     [],
   )
+  const appearance = useMemo(
+    () => ({
+      theme,
+      setTheme,
+      toggleTheme,
+    }),
+    [theme, toggleTheme],
+  )
   const clearAiDraft = useCallback(() => setAiDraft(null), [])
+  const clockLabel = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: timezone,
+    month: "short",
+    day: "numeric",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(clockTick))
+
+  useEffect(() => {
+    applyTheme(theme)
+    persistTheme(theme)
+  }, [theme])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -101,10 +114,17 @@ export function AppShell() {
         setAiOpen(false)
         return
       }
-      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "k") return
-      event.preventDefault()
-      if (event.shiftKey) setSearchOpen(true)
-      else setCaptureOpen(true)
+      if (!(event.metaKey || event.ctrlKey) || event.repeat) return
+      const key = event.key.toLowerCase()
+      if (key === "k") {
+        event.preventDefault()
+        setSearchOpen(true)
+        return
+      }
+      if (key === "n") {
+        event.preventDefault()
+        setCaptureOpen(true)
+      }
     }
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
@@ -116,7 +136,7 @@ export function AppShell() {
     window.localStorage.setItem(AI_DRAWER_WIDTH_KEY, String(aiWidth))
   }, [aiWidth])
   useEffect(() => {
-    const timer = window.setInterval(() => setClockTick(Date.now()), 60_000)
+    const timer = window.setInterval(() => setClockTick(Date.now()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -167,112 +187,63 @@ export function AppShell() {
   return (
     <AppTimeContext.Provider value={time}>
       <AppActionsContext.Provider value={actions}>
-        <div className={shellClassName} style={shellStyle}>
-          <aside
-            className={`sidebar${sidebarCollapsed ? " sidebar--collapsed" : ""}`}
-            data-app-background
-          >
-            <div className="brand">
-              <span className="brand-mark">
-                <Sparkles aria-hidden="true" size={18} />
-              </span>
-              <strong>银河居所</strong>
-            </div>
-            <p className="workspace-name">{meta.data.settings.workspaceName}</p>
-            <nav aria-label="主导航">
-              {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
-                <NavLink
-                  aria-label={label}
-                  className={({ isActive, isPending }) =>
-                    `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
-                  }
-                  end={end}
-                  key={to}
-                  to={to}
-                  title={label}
+        <AppAppearanceContext.Provider value={appearance}>
+          <div className={shellClassName} style={shellStyle}>
+            <a className="skip-link" href="#workspace-main">
+              跳到主要内容
+            </a>
+            <AppSidebar
+              clockLabel={clockLabel}
+              collapsed={sidebarCollapsed}
+              onOpenSearch={() => setSearchOpen(true)}
+              onToggleCollapsed={() => setSidebarCollapsed((current) => !current)}
+              onToggleTheme={toggleTheme}
+              theme={theme}
+              workspaceName={meta.data.settings.workspaceName}
+            />
+            <main className="main-scroll" data-app-background id="workspace-main">
+              <ReminderBanner />
+              <Suspense fallback={<p className="page-loading">正在打开你的空间...</p>}>
+                <Outlet />
+              </Suspense>
+            </main>
+            {aiOpen ? (
+              <div className="ai-panel" data-app-background>
+                <button
+                  aria-label="调整 AI 侧栏宽度"
+                  className="ai-panel__resize"
+                  onPointerDown={onAiResizePointerDown}
+                  type="button"
+                />
+                <AiDrawer
+                  draft={aiDraft}
+                  focusItemId={aiFocusItemId}
+                  onClose={() => {
+                    setAiOpen(false)
+                    setAiDraft(null)
+                    setAiFocusItemId(null)
+                  }}
+                  onConversationChange={setAiConversationId}
+                  onDraftConsumed={clearAiDraft}
+                  open={aiOpen}
+                  requestedConversationId={aiConversationId}
+                />
+              </div>
+            ) : (
+              <aside className="ai-rail" data-app-background>
+                <IconButton
+                  label={`打开 ${meta.data.settings.aiNickname}`}
+                  onClick={() => setAiOpen(true)}
                 >
-                  <Icon aria-hidden="true" size={18} />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </nav>
-            <div className="sidebar__bottom">
-              <button
-                aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
-                className="nav-item"
-                onClick={() => setSidebarCollapsed((current) => !current)}
-                title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
-                type="button"
-              >
-                {sidebarCollapsed ? (
-                  <PanelLeftOpen aria-hidden="true" size={18} />
-                ) : (
-                  <PanelLeftClose aria-hidden="true" size={18} />
-                )}
-                <span>{sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}</span>
-              </button>
-              <button
-                aria-label="全局搜索"
-                className="nav-item"
-                onClick={() => setSearchOpen(true)}
-                type="button"
-              >
-                <Search aria-hidden="true" size={18} />
-                <span>全局搜索</span>
-              </button>
-              <NavLink
-                aria-label="设置"
-                className={({ isActive }) => `nav-item${isActive ? " nav-item--active" : ""}`}
-                to="/settings"
-                title="设置"
-              >
-                <Settings aria-hidden="true" size={18} />
-                <span>设置</span>
-              </NavLink>
-            </div>
-          </aside>
-          <main className="main-scroll" data-app-background>
-            <ReminderBanner />
-            <Suspense fallback={<p className="page-loading">正在打开你的空间...</p>}>
-              <Outlet />
-            </Suspense>
-          </main>
-          {aiOpen ? (
-            <div className="ai-panel" data-app-background>
-              <button
-                aria-label="调整 AI 侧栏宽度"
-                className="ai-panel__resize"
-                onPointerDown={onAiResizePointerDown}
-                type="button"
-              />
-              <AiDrawer
-                draft={aiDraft}
-                focusItemId={aiFocusItemId}
-                onClose={() => {
-                  setAiOpen(false)
-                  setAiDraft(null)
-                  setAiFocusItemId(null)
-                }}
-                onConversationChange={setAiConversationId}
-                onDraftConsumed={clearAiDraft}
-                open={aiOpen}
-                requestedConversationId={aiConversationId}
-              />
-            </div>
-          ) : (
-            <aside className="ai-rail" data-app-background>
-              <IconButton
-                label={`打开 ${meta.data.settings.aiNickname}`}
-                onClick={() => setAiOpen(true)}
-              >
-                <PanelRightOpen size={19} />
-              </IconButton>
-              <span>AI</span>
-            </aside>
-          )}
-          <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
-          <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
-        </div>
+                  <PanelRightOpen size={19} />
+                </IconButton>
+                <span>AI</span>
+              </aside>
+            )}
+            <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
+            <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
+          </div>
+        </AppAppearanceContext.Provider>
       </AppActionsContext.Provider>
     </AppTimeContext.Provider>
   )

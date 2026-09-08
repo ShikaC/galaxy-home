@@ -36,9 +36,12 @@ describe("notification routes", () => {
     const due = await app.inject({ method: "GET", url: "/api/notifications" })
     expect(due.statusCode).toBe(200)
     const morning = due
-      .json<readonly { id: string; kind: string; title: string }[]>()
+      .json<readonly { id: string; kind: string; title: string; detail: string }[]>()
       .find((notification) => notification.kind === "morning")
-    expect(morning).toMatchObject({ title: "今天最想推进什么？" })
+    expect(morning).toMatchObject({
+      title: "今天最想推进什么？",
+      detail: "记下此刻想到的一件事，或保留一个足够小的今日重点。",
+    })
     if (morning === undefined) throw new Error("缺少晨间提醒")
 
     expect(

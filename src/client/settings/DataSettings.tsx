@@ -10,6 +10,7 @@ import { TextField } from "../components/ui/Field.js"
 import { IconButton } from "../components/ui/IconButton.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { queryKeys, useMeta } from "../lib/queries.js"
+import { WorkspaceDataPath } from "./WorkspaceDataPath.js"
 
 const trashSchema = z
   .array(
@@ -103,6 +104,7 @@ export function DataSettings() {
           <code>secrets.json</code>（API Key 不会进 ZIP）。
         </p>
       </header>
+      <WorkspaceDataPath />
       <div className="backup-status">
         <div>
           <span>最近自动备份</span>

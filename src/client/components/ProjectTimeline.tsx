@@ -1,4 +1,6 @@
 import type { Project } from "../../shared/projects.js"
+import { completedStageTaskSummary } from "../lib/projectStage.js"
+import { FormDisclosure } from "./FormDisclosure.js"
 import { Badge } from "./ui/Status.js"
 
 export function ProjectTimeline({ project }: { readonly project: Project }) {
@@ -32,16 +34,29 @@ export function ProjectTimeline({ project }: { readonly project: Project }) {
                 <strong>{stage.title}</strong>
                 <Badge tone="positive">{stage.completedAt.slice(0, 10)}</Badge>
               </header>
-              <p>{stage.outcome}</p>
-              <ul>
-                {stage.tasks.map((task) => (
-                  <li key={task.id}>{task.title}</li>
-                ))}
-              </ul>
+              {stage.outcome ? <p>{stage.outcome}</p> : null}
+              <CompletedStageTasks tasks={stage.tasks} />
             </li>
           ))}
         </ol>
       )}
     </section>
   )
+}
+
+function CompletedStageTasks({
+  tasks,
+}: {
+  readonly tasks: Project["completedStages"][number]["tasks"]
+}) {
+  const list = (
+    <ul>
+      {tasks.map((task) => (
+        <li key={task.id}>{task.title}</li>
+      ))}
+    </ul>
+  )
+  const summary = completedStageTaskSummary(tasks.length)
+  if (summary === null) return list
+  return <FormDisclosure summary={summary}>{list}</FormDisclosure>
 }

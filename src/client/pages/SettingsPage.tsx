@@ -53,11 +53,11 @@ export function SettingsPage() {
             <section className="settings-section">
               <header>
                 <h2>快捷键</h2>
-                <p>随时捕捉与搜索使用不同组合，保存后会回到当前页面。</p>
+                <p>捕捉用 ⌘N，搜索与指令用 ⌘K。随手记里 ⌘回车会放进今天。</p>
               </header>
               <dl className="shortcut-list">
                 <div>
-                  <dt>随手记</dt>
+                  <dt>命令面板 / 搜索</dt>
                   <dd>
                     <kbd>⌘ / Ctrl</kbd>
                     <span>+</span>
@@ -65,13 +65,19 @@ export function SettingsPage() {
                   </dd>
                 </div>
                 <div>
-                  <dt>全局搜索</dt>
+                  <dt>随手记</dt>
                   <dd>
                     <kbd>⌘ / Ctrl</kbd>
                     <span>+</span>
-                    <kbd>Shift</kbd>
+                    <kbd>N</kbd>
+                  </dd>
+                </div>
+                <div>
+                  <dt>随手记放进今天</dt>
+                  <dd>
+                    <kbd>⌘ / Ctrl</kbd>
                     <span>+</span>
-                    <kbd>K</kbd>
+                    <kbd>Enter</kbd>
                   </dd>
                 </div>
               </dl>

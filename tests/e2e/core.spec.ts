@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test"
+import { expandFormDisclosure } from "../helpers/formDisclosure.js"
 
 test("manual work remains complete without an AI key", async ({ page }, testInfo) => {
   const suffix = Date.now().toString().slice(-7)
@@ -59,12 +60,14 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await page.getByRole("button", { name: "新项目" }).click()
   await page.getByLabel("项目名称").fill(projectName)
   await page.getByLabel("最终希望达到的结果").fill("每周完成三次阅读并留下笔记")
-  await page.getByLabel("当前阶段").fill("准备第一周")
   await page.getByLabel("当前任务").fill("选出第一本书")
+  await expandFormDisclosure(page, "更多规划（可选）")
+  await page.getByLabel("当前阶段").fill("准备第一周")
   await page.getByLabel("下一任务").fill("安排第一次阅读")
   await page.getByRole("button", { name: "创建项目" }).click()
   await page.getByRole("link", { name: new RegExp(projectName) }).click()
 
+  await expandFormDisclosure(page, "记下成果（可选）")
   await page.getByLabel("实际成果（可选）").fill("已经选好书")
   await page.getByLabel("遇到的阻碍（可选）").fill("晚间容易分心")
   await page.getByLabel("新的下一任务（可选）").fill("准备阅读笔记模板")

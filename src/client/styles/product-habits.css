@@ -5,13 +5,15 @@
 }
 .habit-row {
   display: grid;
-  min-block-size: 48px;
+  min-block-size: 52px;
   grid-template-columns: auto minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-rim);
 }
 .habit-row--done {
   border-color: var(--color-action);

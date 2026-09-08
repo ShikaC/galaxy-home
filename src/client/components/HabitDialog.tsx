@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import type { Habit } from "../../shared/habits.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { habitSchema } from "../lib/schemas.js"
+import { FormDisclosure } from "./FormDisclosure.js"
 import { Button } from "./ui/Button.js"
 import { TextField } from "./ui/Field.js"
 import { IconButton } from "./ui/IconButton.js"
@@ -130,19 +131,21 @@ export function HabitDialog({
             value={weeklyTarget}
           />
         ) : (
-          <fieldset className="weekday-picker">
-            <legend>固定休息日</legend>
-            {WEEKDAYS.map((day, index) => (
-              <label key={day}>
-                <input
-                  checked={restDays.includes(index)}
-                  onChange={() => toggleRest(index)}
-                  type="checkbox"
-                />
-                <span>{day}</span>
-              </label>
-            ))}
-          </fieldset>
+          <FormDisclosure summary="固定休息日（可选）">
+            <fieldset className="weekday-picker">
+              <legend className="sr-only">固定休息日</legend>
+              {WEEKDAYS.map((day, index) => (
+                <label key={day}>
+                  <input
+                    checked={restDays.includes(index)}
+                    onChange={() => toggleRest(index)}
+                    type="checkbox"
+                  />
+                  <span>{day}</span>
+                </label>
+              ))}
+            </fieldset>
+          </FormDisclosure>
         )}
         {save.isError ? <p className="inline-error">{save.error.message}</p> : null}
         <footer className="dialog__actions">

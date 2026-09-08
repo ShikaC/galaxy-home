@@ -6,6 +6,7 @@ import { z } from "zod"
 import { buildApp } from "../../src/server/app.js"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
 import { completeOnboarding } from "../../src/server/services/onboarding.js"
+import { seedTutorialExamples } from "../helpers/tutorialExamples.js"
 
 const directories: string[] = []
 
@@ -38,6 +39,7 @@ async function createTestApp() {
 describe("daily workflows", () => {
   it("persists dismissal of the quick-start guide", async () => {
     const { app, database } = await createTestApp()
+    database.prepare("UPDATE tutorial_state SET guide_dismissed = 0 WHERE id = 1").run()
     const before = await app.inject({ method: "GET", url: "/api/meta" })
     expect(before.json<{ tutorial: { guideDismissed: boolean } }>().tutorial.guideDismissed).toBe(
       false,
@@ -55,6 +57,7 @@ describe("daily workflows", () => {
 
   it("turns edited and copied tutorial items into real data", async () => {
     const { app, database } = await createTestApp()
+    seedTutorialExamples(database)
     const tutorial = z
       .object({ id: z.string().uuid() })
       .optional()
@@ -76,6 +79,7 @@ describe("daily workflows", () => {
 
   it("manages tutorial habits and exposes corrected history through HTTP", async () => {
     const { app, database } = await createTestApp()
+    seedTutorialExamples(database)
     const tutorial = z
       .object({ id: z.string().uuid() })
       .optional()

@@ -5,6 +5,7 @@ import type { Project } from "../../shared/projects.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { queryKeys } from "../lib/queries.js"
 import { projectSchema } from "../lib/schemas.js"
+import { FormDisclosure } from "./FormDisclosure.js"
 import { Button } from "./ui/Button.js"
 import { TextArea, TextField } from "./ui/Field.js"
 
@@ -56,7 +57,7 @@ export function ProjectEditPanel({ project }: { readonly project: Project }) {
   })
   return (
     <details className="project-editor">
-      <summary>手动维护项目</summary>
+      <summary>调整名称、任务和进度</summary>
       <form
         className="form-stack"
         onSubmit={(event) => {
@@ -64,80 +65,17 @@ export function ProjectEditPanel({ project }: { readonly project: Project }) {
           save.mutate()
         }}
       >
-        <div className="form-grid">
-          <TextField
-            label="项目名称"
-            onChange={(event) => setName(event.target.value)}
-            value={name}
-          />
-          <TextField
-            label="截止日期"
-            onChange={(event) => setDeadlineDate(event.target.value)}
-            type="date"
-            value={deadlineDate}
-          />
-        </div>
+        <TextField
+          label="项目名称"
+          onChange={(event) => setName(event.target.value)}
+          value={name}
+        />
         <TextArea
           label="最终目标"
           onChange={(event) => setDesiredOutcome(event.target.value)}
           rows={2}
           value={desiredOutcome}
         />
-        <div className="form-grid">
-          <TextArea
-            label="开始原因"
-            onChange={(event) => setReason(event.target.value)}
-            rows={2}
-            value={reason}
-          />
-          <TextArea
-            label="补充说明"
-            onChange={(event) => setNotes(event.target.value)}
-            rows={2}
-            value={notes}
-          />
-        </div>
-        <div className="form-grid form-grid--three">
-          <label className="field">
-            <span className="field__label">项目状态</span>
-            <select
-              className="field__control"
-              onChange={(event) =>
-                setStatus(
-                  event.target.value === "paused"
-                    ? "paused"
-                    : event.target.value === "completed"
-                      ? "completed"
-                      : event.target.value === "archived"
-                        ? "archived"
-                        : "active",
-                )
-              }
-              value={status}
-            >
-              <option value="active">进行中</option>
-              <option value="paused">暂停</option>
-              <option value="completed">已完成</option>
-              <option value="archived">已归档</option>
-            </select>
-          </label>
-          <TextField
-            label="手动进度"
-            max={100}
-            min={0}
-            onChange={(event) => setProgress(Number(event.target.value))}
-            type="number"
-            value={progress}
-          />
-          <label className="check-line">
-            <input
-              checked={pinned}
-              onChange={(event) => setPinned(event.target.checked)}
-              type="checkbox"
-            />
-            置顶到首页
-          </label>
-        </div>
         <TextField
           label="当前阶段"
           onChange={(event) => setStageTitle(event.target.value)}
@@ -155,6 +93,71 @@ export function ProjectEditPanel({ project }: { readonly project: Project }) {
             value={nextTask}
           />
         </div>
+        <FormDisclosure summary="进度与资料">
+          <div className="form-stack">
+            <div className="form-grid">
+              <TextField
+                label="截止日期"
+                onChange={(event) => setDeadlineDate(event.target.value)}
+                type="date"
+                value={deadlineDate}
+              />
+              <TextField
+                label="手动进度"
+                max={100}
+                min={0}
+                onChange={(event) => setProgress(Number(event.target.value))}
+                type="number"
+                value={progress}
+              />
+            </div>
+            <TextArea
+              label="开始原因"
+              onChange={(event) => setReason(event.target.value)}
+              rows={2}
+              value={reason}
+            />
+            <TextArea
+              label="补充说明"
+              onChange={(event) => setNotes(event.target.value)}
+              rows={2}
+              value={notes}
+            />
+            <div className="form-grid">
+              <label className="field">
+                <span className="field__label">项目状态</span>
+                <select
+                  className="field__control"
+                  onChange={(event) =>
+                    setStatus(
+                      event.target.value === "paused"
+                        ? "paused"
+                        : event.target.value === "completed"
+                          ? "completed"
+                          : event.target.value === "archived"
+                            ? "archived"
+                            : "active",
+                    )
+                  }
+                  value={status}
+                >
+                  <option value="active">进行中</option>
+                  <option value="paused">暂停</option>
+                  <option value="completed">已完成</option>
+                  <option value="archived">已归档</option>
+                </select>
+              </label>
+              <label className="check-line">
+                <input
+                  checked={pinned}
+                  onChange={(event) => setPinned(event.target.checked)}
+                  type="checkbox"
+                />
+                置顶到首页
+              </label>
+            </div>
+          </div>
+        </FormDisclosure>
         {save.isError ? <p className="inline-error">{save.error.message}</p> : null}
         <Button
           disabled={!name.trim() || !desiredOutcome.trim() || !stageTitle.trim()}

@@ -150,7 +150,9 @@ export function completeProjectStageRows(
     now,
     now,
   )
-  insertTask.run(crypto.randomUUID(), projectId, nextStageId, input.nextTask, "next", now, now)
+  if (input.nextTask !== "") {
+    insertTask.run(crypto.randomUUID(), projectId, nextStageId, input.nextTask, "next", now, now)
+  }
   database
     .prepare(
       `UPDATE projects SET progress = MIN(progress + 15, 95), progress_source = 'manual',

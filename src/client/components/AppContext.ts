@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react"
+import type { ThemeName } from "../lib/theme.js"
 
 export type OpenAiOptions = {
   readonly conversationId?: string
@@ -17,8 +18,15 @@ type AppTime = {
   readonly today: string
 }
 
+type AppAppearance = {
+  readonly theme: ThemeName
+  readonly setTheme: (theme: ThemeName) => void
+  readonly toggleTheme: () => void
+}
+
 export const AppActionsContext = createContext<AppActions | null>(null)
 export const AppTimeContext = createContext<AppTime | null>(null)
+export const AppAppearanceContext = createContext<AppAppearance | null>(null)
 
 export function useAppActions(): AppActions {
   const value = useContext(AppActionsContext)
@@ -29,5 +37,11 @@ export function useAppActions(): AppActions {
 export function useAppTime(): AppTime {
   const value = useContext(AppTimeContext)
   if (value === null) throw new Error("Workspace time is unavailable")
+  return value
+}
+
+export function useAppAppearance(): AppAppearance {
+  const value = useContext(AppAppearanceContext)
+  if (value === null) throw new Error("App appearance is unavailable")
   return value
 }

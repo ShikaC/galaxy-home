@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
+import { morningReminderCopy } from "../../shared/morningReminder.js"
 import {
   type Notification,
   notificationKindSchema,
@@ -258,12 +259,6 @@ function notificationCopy(
         )
         .get(localDate),
     )
-  if (focus !== undefined) {
-    return {
-      title: "今日重点已就位",
-      detail: `专注推进「${focus.title}」即可，不必再另找一件。`,
-    }
-  }
   const primaryCount = z.object({ count: z.number().int() }).parse(
     database
       .prepare(
@@ -274,13 +269,32 @@ function notificationCopy(
       )
       .get(localDate),
   ).count
-  if (primaryCount > 0) {
-    return {
-      title: "今天的主要待办已安排",
-      detail: "从首页挑一件推进即可；想换重点时可在待办里重新设置。",
-    }
-  }
-  return { title: "今天最想推进什么？", detail: "从收集箱选择一件，或保留一个足够小的今日重点。" }
+  const inboxCount = z.object({ count: z.number().int() }).parse(
+    database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM items
+         WHERE status = 'active' AND deleted_at IS NULL
+           AND NOT EXISTS (SELECT 1 FROM item_categories WHERE item_id = items.id)
+           AND NOT EXISTS (SELECT 1 FROM item_projects WHERE item_id = items.id)`,
+      )
+      .get(),
+  ).count
+  const completedTodayCount = z.object({ count: z.number().int() }).parse(
+    database
+      .prepare(
+        `SELECT COUNT(*) AS count FROM today_items
+           JOIN items ON items.id = today_items.item_id
+           WHERE today_items.local_date = ? AND items.status = 'completed'
+             AND items.deleted_at IS NULL`,
+      )
+      .get(localDate),
+  ).count
+  return morningReminderCopy({
+    completedTodayCount,
+    focusTitle: focus?.title ?? null,
+    inboxCount,
+    primaryCount,
+  })
 }
 
 export function listDueNotifications(

@@ -124,10 +124,10 @@ export function HabitsPage() {
                 }}
                 size="compact"
               >
-                创建习惯
+                新习惯
               </Button>
             }
-            description="从一个愿意重复的小动作开始。"
+            description="从一件很小的事开始。"
             icon={Target}
             title="还没有习惯"
           />

@@ -51,7 +51,13 @@ export const metaSchema = z.object({
   backup: z.object({ latestAt: z.string().nullable(), sizeBytes: z.number() }),
   conversations: z.array(conversationSchema).readonly(),
   memories: z.array(aiMemorySchema).readonly(),
-  tutorial: z.object({ guideDismissed: z.boolean() }),
+  tutorial: z.object({ exampleCount: z.number().int().nonnegative(), guideDismissed: z.boolean() }),
+  paths: z.object({
+    backupDirectory: z.string().min(1),
+    dataDirectory: z.string().min(1),
+    databaseFile: z.string().min(1),
+    source: z.enum(["env", "default"]),
+  }),
 })
 
 export const searchResultsSchema = z

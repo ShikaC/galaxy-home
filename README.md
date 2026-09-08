@@ -56,7 +56,14 @@ npm run desktop:build    # 打包：构建前端/服务资源后产出安装包
 
 ## 数据目录
 
-浏览器开发默认 `./data/`；**桌面壳**默认用户数据目录（macOS：`~/Library/Application Support/app.galaxyhome.desktop`）。均可用环境变量 `GALAXY_DATA_DIR` 覆盖：
+重启不会清空数据。浏览器开发和桌面壳默认落在**两套不同的目录**，看起来像丢数据，其实是连到了另一份库。两端都可以用环境变量 `GALAXY_DATA_DIR` 指向同一目录。
+
+| 怎么启动 | 默认数据目录 |
+|------|------|
+| `npm run dev`（浏览器） | 项目下的 `./data/` |
+| `npm run desktop`（桌面壳） | macOS：`~/Library/Application Support/app.galaxyhome.desktop`；Windows：`%APPDATA%\app.galaxyhome.desktop` |
+
+设置 → 数据与回收站会显示当前进程正在使用的绝对路径，可复制。
 
 | 路径 | 内容 |
 |------|------|

@@ -52,6 +52,13 @@ export function ProjectAiPlanner({
     },
   })
   const current = session.data
+  if (!configured) {
+    return (
+      <p className="project-ai-quiet">
+        需要拆解时再 <Link to="/settings">配置 AI</Link>。
+      </p>
+    )
+  }
   return (
     <section className="project-ai-panel">
       <header>
@@ -59,13 +66,9 @@ export function ProjectAiPlanner({
           <Bot size={18} />
           <strong>AI 渐进拆解</strong>
         </span>
-        <Badge tone={configured ? "positive" : "waiting"}>{configured ? "可用" : "未配置"}</Badge>
+        <Badge tone="positive">可用</Badge>
       </header>
-      {!configured ? (
-        <p>
-          当前保留手动方案。<Link to="/settings">配置 AI</Link>
-        </p>
-      ) : session.isPending ? (
+      {session.isPending ? (
         <p>正在读取拆解进度...</p>
       ) : current === null || current === undefined ? (
         <Button loading={start.isPending} onClick={() => start.mutate()} variant="secondary">

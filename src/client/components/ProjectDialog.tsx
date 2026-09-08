@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { queryKeys } from "../lib/queries.js"
 import { projectSchema } from "../lib/schemas.js"
+import { FormDisclosure } from "./FormDisclosure.js"
 import { Button } from "./ui/Button.js"
 import { TextArea, TextField } from "./ui/Field.js"
 import { IconButton } from "./ui/IconButton.js"
@@ -87,48 +88,46 @@ export function ProjectDialog({
           rows={2}
           value={outcome}
         />
-        <div className="form-grid">
-          <TextField
-            label="开始原因（可选）"
-            onChange={(event) => setReason(event.target.value)}
-            value={reason}
-          />
-          <TextField
-            label="截止日期（可选）"
-            onChange={(event) => setDeadline(event.target.value)}
-            type="date"
-            value={deadline}
-          />
-        </div>
-        <TextArea
-          label="补充说明（可选）"
-          onChange={(event) => setNotes(event.target.value)}
-          rows={2}
-          value={notes}
+        <TextField
+          label="当前任务（可选）"
+          onChange={(event) => setCurrent(event.target.value)}
+          placeholder="一个可以直接开始的动作"
+          value={current}
         />
-        <div className="manual-plan">
-          <p>
-            <strong>手动拆解</strong>
-            <span className="manual-plan__note">AI 未配置也能继续，之后会以人工现状为准。</span>
-          </p>
-          <TextField
-            label="当前阶段"
-            onChange={(event) => setStage(event.target.value)}
-            value={stage}
-          />
-          <TextField
-            label="当前任务（可选）"
-            onChange={(event) => setCurrent(event.target.value)}
-            placeholder="一个可以直接开始的动作"
-            value={current}
-          />
-          <TextField
-            label="下一任务（可选）"
-            onChange={(event) => setNext(event.target.value)}
-            placeholder="只写紧接着的一步"
-            value={next}
-          />
-        </div>
+        <FormDisclosure summary="更多规划（可选）">
+          <div className="form-stack">
+            <div className="form-grid">
+              <TextField
+                label="开始原因（可选）"
+                onChange={(event) => setReason(event.target.value)}
+                value={reason}
+              />
+              <TextField
+                label="截止日期（可选）"
+                onChange={(event) => setDeadline(event.target.value)}
+                type="date"
+                value={deadline}
+              />
+            </div>
+            <TextArea
+              label="补充说明（可选）"
+              onChange={(event) => setNotes(event.target.value)}
+              rows={2}
+              value={notes}
+            />
+            <TextField
+              label="当前阶段"
+              onChange={(event) => setStage(event.target.value)}
+              value={stage}
+            />
+            <TextField
+              label="下一任务（可选）"
+              onChange={(event) => setNext(event.target.value)}
+              placeholder="只写紧接着的一步"
+              value={next}
+            />
+          </div>
+        </FormDisclosure>
         {create.isError ? <p className="inline-error">{create.error.message}</p> : null}
         <footer className="dialog__actions">
           <Button onClick={onClose} variant="ghost">

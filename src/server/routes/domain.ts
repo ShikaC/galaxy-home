@@ -28,7 +28,7 @@ import {
 } from "../repositories/habits.js"
 import { applyProjectAiPlan, getProjectAiSession } from "../repositories/projectAi.js"
 import { completeProjectStage, updateProject } from "../repositories/projectLifecycle.js"
-import { addAiProjectTaskToToday } from "../repositories/projectRecommendations.js"
+import { addCurrentProjectTaskToToday } from "../repositories/projectRecommendations.js"
 import {
   advanceProject,
   createProject,
@@ -166,7 +166,7 @@ export function registerDomainRoutes(app: FastifyInstance, context: AppContext):
     reply
       .code(201)
       .send(
-        addAiProjectTaskToToday(
+        addCurrentProjectTaskToToday(
           context.database,
           idSchema.parse(request.params).id,
           localDateInputSchema.parse(request.body).localDate,

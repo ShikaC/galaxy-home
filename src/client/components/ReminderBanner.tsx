@@ -1,23 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Bell, Clock3, X } from "lucide-react"
 import { useEffect, useRef } from "react"
+import { MORNING_FOCUS_CLAUSE } from "../../shared/morningReminder.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 import { mirrorDueReminderToSystem } from "../lib/desktopNotify.js"
 import { notificationsSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
-const MORNING_REMINDER_CLAUSE = "或保留一个足够小的今日重点。"
-
 function ReminderDetail({ detail }: { readonly detail: string }) {
-  const clauseStart = detail.indexOf(MORNING_REMINDER_CLAUSE)
+  const clauseStart = detail.indexOf(MORNING_FOCUS_CLAUSE)
   if (clauseStart === -1) return detail
   const before = detail.slice(0, clauseStart)
-  const after = detail.slice(clauseStart + MORNING_REMINDER_CLAUSE.length)
+  const after = detail.slice(clauseStart + MORNING_FOCUS_CLAUSE.length)
   return (
     <>
       {before}
-      <span className="reminder-banner__clause">{MORNING_REMINDER_CLAUSE}</span>
+      <span className="reminder-banner__clause">{MORNING_FOCUS_CLAUSE}</span>
       {after}
     </>
   )

@@ -5,6 +5,7 @@ import type { Project } from "../../shared/projects.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
 import { queryKeys } from "../lib/queries.js"
 import { projectSchema } from "../lib/schemas.js"
+import { FormDisclosure } from "./FormDisclosure.js"
 import { Button } from "./ui/Button.js"
 import { TextArea, TextField } from "./ui/Field.js"
 
@@ -22,9 +23,10 @@ export function NextProjectStageForm({ project }: { readonly project: Project })
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.projects }),
   })
+  const canStart = stageTitle.trim().length > 0 && currentTask.trim().length > 0
   return (
     <section className="next-stage-panel">
-      <h2>完成阶段</h2>
+      <h2>开始下一阶段</h2>
       <form
         className="form-stack"
         onSubmit={(event) => {
@@ -32,12 +34,6 @@ export function NextProjectStageForm({ project }: { readonly project: Project })
           advance.mutate()
         }}
       >
-        <TextArea
-          label="本阶段成果"
-          onChange={(event) => setOutcome(event.target.value)}
-          rows={2}
-          value={outcome}
-        />
         <TextField
           label="下一阶段"
           onChange={(event) => setStageTitle(event.target.value)}
@@ -48,22 +44,29 @@ export function NextProjectStageForm({ project }: { readonly project: Project })
           onChange={(event) => setCurrentTask(event.target.value)}
           value={currentTask}
         />
-        <TextField
-          label="新的下一任务"
-          onChange={(event) => setNextTask(event.target.value)}
-          value={nextTask}
-        />
+        <div className="form-actions">
+          <Button disabled={!canStart} loading={advance.isPending} type="submit">
+            <ArrowRight size={16} />
+            开始下一阶段
+          </Button>
+        </div>
+        <FormDisclosure summary="记下成果和下一任务（可选）">
+          <div className="form-stack">
+            <TextArea
+              label="本阶段成果"
+              onChange={(event) => setOutcome(event.target.value)}
+              rows={2}
+              value={outcome}
+            />
+            <TextField
+              label="新的下一任务"
+              onChange={(event) => setNextTask(event.target.value)}
+              placeholder="可以先空着"
+              value={nextTask}
+            />
+          </div>
+        </FormDisclosure>
         {advance.isError ? <p className="inline-error">{advance.error.message}</p> : null}
-        <Button
-          disabled={
-            !outcome.trim() || !stageTitle.trim() || !currentTask.trim() || !nextTask.trim()
-          }
-          loading={advance.isPending}
-          type="submit"
-        >
-          <ArrowRight size={16} />
-          开始下一阶段
-        </Button>
       </form>
     </section>
   )

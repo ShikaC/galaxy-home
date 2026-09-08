@@ -192,6 +192,73 @@
 .backup-status label {
   cursor: pointer;
 }
+.workspace-path {
+  display: grid;
+  gap: var(--space-4);
+  max-inline-size: 720px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-rim);
+}
+.workspace-path__header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-3);
+}
+.workspace-path__header svg {
+  color: var(--color-action);
+  margin-block-start: 2px;
+}
+.workspace-path__lede {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.workspace-path__row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+.workspace-path__row > span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.workspace-path code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-micro);
+}
+.workspace-path__meta {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+.workspace-path__meta > div {
+  display: grid;
+  gap: 2px;
+}
+.workspace-path__meta dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-micro);
+}
+.workspace-path__meta dd {
+  margin: 0;
+}
+.workspace-path__examples {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  border-block-start: 1px solid var(--color-border);
+  padding-block-start: var(--space-4);
+}
+.workspace-path__note {
+  margin: 0;
+  color: var(--color-text-muted);
+}
 .subsection {
   border-block-start: 1px solid var(--color-border);
   padding-block-start: var(--space-5);
@@ -274,10 +341,26 @@ kbd {
   gap: var(--space-6);
   margin-block: auto;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-panel);
   padding: var(--space-8);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-popover);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-overlay), var(--shadow-rim);
+}
+.onboarding__panel .brand-mark {
+  display: grid;
+  inline-size: 44px;
+  block-size: 44px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--color-action) 55%, var(--color-border));
+  border-radius: 50%;
+  color: var(--color-action);
+  background:
+    radial-gradient(circle at 30% 25%, var(--color-action-soft), transparent 62%),
+    var(--color-surface);
+  box-shadow: 0 0 24px var(--color-star-trail);
+}
+.onboarding__panel h1 {
+  font-family: var(--font-family-display);
 }
 .onboarding__panel > div > .muted {
   margin-block-start: var(--space-2);
@@ -332,6 +415,7 @@ kbd {
     white-space: nowrap;
   }
   .backup-status,
+  .workspace-path__row,
   .reminder-list > label {
     grid-template-columns: minmax(0, 1fr);
   }

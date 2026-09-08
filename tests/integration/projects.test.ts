@@ -192,4 +192,43 @@ describe("project repository", () => {
       "挑选作品",
     ])
   })
+
+  it("starts the next stage without an outcome or next task", () => {
+    const project = createProject(database, {
+      name: "搭建个人站",
+      desiredOutcome: "发布可访问的首页",
+      reason: null,
+      notes: null,
+      deadlineDate: null,
+      stageTitle: "准备内容",
+      currentTask: "写自我介绍",
+      nextTask: "挑选作品",
+    })
+    advanceProject(database, project.id, {
+      outcome: "介绍已完成",
+      obstacle: null,
+      nextTask: null,
+    })
+    advanceProject(database, project.id, {
+      outcome: "已选好三个作品",
+      obstacle: null,
+      nextTask: null,
+    })
+
+    completeProjectStage(database, project.id, {
+      outcome: "",
+      stageTitle: "制作首页",
+      currentTask: "建立页面结构",
+      nextTask: "",
+    })
+
+    const advanced = getProject(database, project.id)
+    expect(advanced.stageTitle).toBe("制作首页")
+    expect(advanced.currentTask?.title).toBe("建立页面结构")
+    expect(advanced.nextTask).toBeNull()
+    expect(advanced.completedStages[0]).toMatchObject({
+      outcome: "",
+      title: "准备内容",
+    })
+  })
 })

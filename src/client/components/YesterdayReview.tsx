@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Archive, ArrowRight, Inbox, ListPlus, Sparkles } from "lucide-react"
+import { Archive, ArrowRight, Check, Inbox, ListPlus, Sparkles } from "lucide-react"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { previousCalendarDate } from "../lib/date.js"
 import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
+import { useItems } from "../lib/queries.js"
 import { itemsSchema } from "../lib/schemas.js"
+import { leftoverYesterdayItems } from "../lib/yesterday.js"
 import { useAppActions, useAppTime } from "./AppContext.js"
+import { type TaskAction, TaskActionsMenu } from "./TaskActionsMenu.js"
 import { Button } from "./ui/Button.js"
 
 export function YesterdayReview() {
@@ -13,6 +16,7 @@ export function YesterdayReview() {
   const { today: localToday } = useAppTime()
   const today = useTodayMutation()
   const status = useItemStatusMutation()
+  const todayItems = useItems("today")
   const yesterday = previousCalendarDate(localToday)
   const items = useQuery({
     queryKey: ["items", "yesterday", yesterday],
@@ -23,8 +27,8 @@ export function YesterdayReview() {
       apiVoid(`/api/items/${id}/today?localDate=${yesterday}`, { method: "DELETE" }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
   })
-  const pending = items.data?.filter((item) => item.status === "active") ?? []
-  if (pending.length === 0) return null
+  const pending = leftoverYesterdayItems(items.data ?? [], todayItems.data ?? [])
+  if (items.isPending || todayItems.isPending || pending.length === 0) return null
   return (
     <section aria-labelledby="yesterday-review-title" className="yesterday-review">
       <header>
@@ -34,49 +38,46 @@ export function YesterdayReview() {
         </div>
         <span>{pending.length} 项</span>
       </header>
-      {pending.map((item) => (
-        <article key={item.id}>
-          <strong>{item.title}</strong>
-          <div>
-            <Button onClick={() => today.mutate({ id: item.id, focus: false })} size="compact">
-              <ArrowRight size={14} /> 加入今天
-            </Button>
-            <Button
-              onClick={() => today.mutate({ id: item.id, focus: false, secondary: true })}
-              size="compact"
-              variant="secondary"
-            >
-              <ListPlus size={14} /> 加入临时小事
-            </Button>
-            <Button
-              onClick={() => removeFromDay.mutate(item.id)}
-              size="compact"
-              variant="secondary"
-            >
-              <Inbox size={14} /> 移回收集箱
-            </Button>
-            <Button
-              onClick={() =>
-                actions.openAi({
-                  draft: `请帮我把「${item.title}」缩小成今天能完成的一小步，并更新这条待办的标题`,
-                  focusItemId: item.id,
-                })
-              }
-              size="compact"
-              variant="ghost"
-            >
-              <Sparkles size={14} /> 请 AI 缩小
-            </Button>
-            <Button
-              onClick={() => status.mutate({ id: item.id, status: "archived" })}
-              size="compact"
-              variant="ghost"
-            >
-              <Archive size={14} /> 放弃并归档
-            </Button>
-          </div>
-        </article>
-      ))}
+      {pending.map((item) => {
+        const overflow: readonly TaskAction[] = [
+          {
+            icon: ListPlus,
+            label: "加入临时小事",
+            onSelect: () => today.mutate({ id: item.id, focus: false, secondary: true }),
+          },
+          {
+            icon: Check,
+            label: "完成",
+            onSelect: () => status.mutate({ id: item.id, status: "completed" }),
+          },
+          { icon: Inbox, label: "移回收集箱", onSelect: () => removeFromDay.mutate(item.id) },
+          {
+            icon: Sparkles,
+            label: "请 AI 缩小",
+            onSelect: () =>
+              actions.openAi({
+                draft: `请帮我把「${item.title}」缩小成今天能完成的一小步，并更新这条待办的标题`,
+                focusItemId: item.id,
+              }),
+          },
+          {
+            icon: Archive,
+            label: "放弃并归档",
+            onSelect: () => status.mutate({ id: item.id, status: "archived" }),
+          },
+        ]
+        return (
+          <article key={item.id}>
+            <strong>{item.title}</strong>
+            <div>
+              <Button onClick={() => today.mutate({ id: item.id, focus: false })} size="compact">
+                <ArrowRight size={14} /> 加入今天
+              </Button>
+              <TaskActionsMenu actions={overflow} />
+            </div>
+          </article>
+        )
+      })}
       {today.isError ? <p className="inline-error">{today.error.message}</p> : null}
     </section>
   )

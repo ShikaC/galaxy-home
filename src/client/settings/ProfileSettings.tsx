@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { workspaceSettingsSchema } from "../../shared/settings.js"
+import { useAppAppearance } from "../components/AppContext.js"
 import { Button } from "../components/ui/Button.js"
 import { TextField } from "../components/ui/Field.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
@@ -9,6 +10,7 @@ import { queryKeys, useMeta } from "../lib/queries.js"
 export function ProfileSettings() {
   const meta = useMeta()
   const client = useQueryClient()
+  const appearance = useAppAppearance()
   const [workspaceName, setWorkspaceName] = useState("")
   const [aiNickname, setAiNickname] = useState("")
   const [userName, setUserName] = useState("")
@@ -42,7 +44,7 @@ export function ProfileSettings() {
     <section className="settings-section">
       <header>
         <h2>个人空间</h2>
-        <p>空间名称、AI 昵称与你的称呼都可随时修改，不限于首次引导。</p>
+        <p>空间名称、AI 昵称、你的称呼与外观都可以随时修改。</p>
       </header>
       <form
         className="form-stack settings-form"
@@ -84,6 +86,28 @@ export function ProfileSettings() {
             切换时区后，「今日」与习惯日界会按新区计算；历史日期键不会自动迁移。
           </span>
         </label>
+        <fieldset className="field">
+          <legend className="field__label">外观</legend>
+          <div className="segmented">
+            <button
+              aria-pressed={appearance.theme === "night"}
+              onClick={() => appearance.setTheme("night")}
+              type="button"
+            >
+              夜间
+            </button>
+            <button
+              aria-pressed={appearance.theme === "dawn"}
+              onClick={() => appearance.setTheme("dawn")}
+              type="button"
+            >
+              拂晓
+            </button>
+          </div>
+          <span className="field__hint">
+            夜间是默认。拂晓是同一套语言的纸面版本，不是简单反相。
+          </span>
+        </fieldset>
         <div>
           <Button disabled={!workspaceName.trim()} loading={save.isPending} type="submit">
             保存个人设置

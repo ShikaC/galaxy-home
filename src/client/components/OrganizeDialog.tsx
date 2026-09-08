@@ -8,8 +8,10 @@ import { instantForLocalDateTimeInput, localDateTimeInputFor } from "../lib/date
 import { useTodayMutation } from "../lib/mutations.js"
 import { useMeta, useProjects } from "../lib/queries.js"
 import { itemSchema } from "../lib/schemas.js"
+import { OrganizeProjectPicker } from "./OrganizeProjectPicker.js"
+import { OrganizeScheduleFields } from "./OrganizeScheduleFields.js"
 import { Button } from "./ui/Button.js"
-import { TextArea, TextField } from "./ui/Field.js"
+import { TextField } from "./ui/Field.js"
 import { IconButton } from "./ui/IconButton.js"
 import { DialogSurface } from "./ui/ModalSurface.js"
 
@@ -160,34 +162,14 @@ export function OrganizeDialog({
         }}
       >
         <TextField label="标题" onChange={(event) => setTitle(event.target.value)} value={title} />
-        <TextArea
-          label="备注"
-          onChange={(event) => setNotes(event.target.value)}
-          rows={3}
-          value={notes}
+        <OrganizeScheduleFields
+          draft={{ dueAt, notes, reminder }}
+          onChange={(next) => {
+            setDueAt(next.dueAt)
+            setNotes(next.notes)
+            setReminder(next.reminder)
+          }}
         />
-        <div className="form-grid">
-          <TextField
-            label="截止时间"
-            onChange={(event) => setDueAt(event.target.value)}
-            type="datetime-local"
-            value={dueAt}
-          />
-          <label className="field">
-            <span className="field__label">提醒</span>
-            <select
-              className="field__control"
-              disabled={!dueAt}
-              onChange={(event) => setReminder(event.target.value)}
-              value={reminder}
-            >
-              <option value="">不提醒</option>
-              <option value="0">截止时</option>
-              <option value="30">提前 30 分钟</option>
-              <option value="1440">提前 1 天</option>
-            </select>
-          </label>
-        </div>
         <fieldset className="choice-group">
           <legend>分类（可多选）</legend>
           {meta.data?.ai.configured ? (
@@ -249,20 +231,11 @@ export function OrganizeDialog({
             ))
           )}
         </fieldset>
-        <fieldset className="choice-group">
-          <legend>关联项目（可多选）</legend>
-          {projects.data?.map((project) => (
-            <label key={project.id}>
-              <input
-                checked={projectIds.includes(project.id)}
-                name={`organize-project-${project.id}`}
-                onChange={() => setProjectIds(toggle(projectIds, project.id))}
-                type="checkbox"
-              />
-              {project.name}
-            </label>
-          ))}
-        </fieldset>
+        <OrganizeProjectPicker
+          onToggle={(id) => setProjectIds(toggle(projectIds, id))}
+          projects={projects.data ?? []}
+          selectedIds={projectIds}
+        />
         {save.isError ? <p className="inline-error">{save.error.message}</p> : null}
         <footer className="dialog__actions">
           <Button onClick={onClose} variant="ghost">

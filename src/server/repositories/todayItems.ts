@@ -54,6 +54,29 @@ export function setTodayItem(database: DatabaseSync, input: TodayItemInput) {
   }
 }
 
+export function addToTodayOrSecondary(
+  database: DatabaseSync,
+  itemId: TodayItemInput["itemId"],
+  localDate: string,
+): void {
+  try {
+    setTodayItem(database, {
+      itemId,
+      localDate,
+      isFocus: false,
+      isSecondary: false,
+    })
+  } catch (error) {
+    if (!(error instanceof TodayLimitError)) throw error
+    setTodayItem(database, {
+      itemId,
+      localDate,
+      isFocus: false,
+      isSecondary: true,
+    })
+  }
+}
+
 export function clearTodayItem(database: DatabaseSync, itemId: string, localDate: string): void {
   database
     .prepare("DELETE FROM today_items WHERE item_id = ? AND local_date = ?")

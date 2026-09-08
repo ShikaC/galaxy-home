@@ -1,5 +1,6 @@
-import { Bell, Bot, Inbox, Plus, Sparkles, X } from "lucide-react"
+import { Bell, Bot, Inbox, Plus, X } from "lucide-react"
 import { useState } from "react"
+import { BrandMark } from "../components/BrandMark.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { Skeleton, Toast } from "../components/ui/Feedback.js"
@@ -29,13 +30,13 @@ export function DesignShowcasePage() {
   return (
     <main className="showcase">
       <header className="showcase__header">
-        <div className="brand-mark" aria-hidden="true">
-          <Sparkles size={18} />
+        <div aria-hidden="true" className="brand-mark">
+          <BrandMark size={22} />
         </div>
         <div>
           <p className="showcase__kicker">银河居所设计系统</p>
-          <h1>安静，但每一步都清楚。</h1>
-          <p>组件保持稳定尺寸、完整状态和自然中文换行。</p>
+          <h1>夜里还亮着的房间。</h1>
+          <p>墨绒画布，星辉文字，极光鼠尾草只出现在真正要行动的地方。</p>
         </div>
       </header>
 

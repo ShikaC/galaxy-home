@@ -132,6 +132,13 @@ export function advanceProjectRows(
     .run(now, now, project.currentTask.id)
   database
     .prepare(
+      `UPDATE items SET status = 'completed', completed_at = ?, updated_at = ?
+       WHERE deleted_at IS NULL AND status = 'active' AND title = ?
+         AND id IN (SELECT item_id FROM item_projects WHERE project_id = ?)`,
+    )
+    .run(now, now, project.currentTask.title, project.id)
+  database
+    .prepare(
       "UPDATE project_tasks SET position = 'current', updated_at = ? WHERE project_id = ? AND position = 'next'",
     )
     .run(now, project.id)
@@ -155,13 +162,30 @@ export function advanceProjectRows(
           .prepare("SELECT id FROM project_stages WHERE project_id = ? AND status = 'current'")
           .get(project.id),
       )
+    const hasCurrent = z
+      .object({ count: z.number().int() })
+      .parse(
+        database
+          .prepare(
+            "SELECT COUNT(*) AS count FROM project_tasks WHERE project_id = ? AND position = 'current'",
+          )
+          .get(project.id),
+      ).count
     database
       .prepare(
         `INSERT INTO project_tasks
          (id, project_id, stage_id, title, position, source, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'next', 'manual', ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, 'manual', ?, ?)`,
       )
-      .run(crypto.randomUUID(), project.id, stage.id, input.nextTask, now, now)
+      .run(
+        crypto.randomUUID(),
+        project.id,
+        stage.id,
+        input.nextTask,
+        hasCurrent === 0 ? "current" : "next",
+        now,
+        now,
+      )
   }
   database
     .prepare("UPDATE projects SET progress = MIN(progress + 10, 95), updated_at = ? WHERE id = ?")

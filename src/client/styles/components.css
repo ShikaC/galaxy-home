@@ -30,7 +30,8 @@
 
 .button--primary {
   background: var(--color-action);
-  color: var(--color-surface);
+  color: var(--color-on-action);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-action) 35%, transparent);
 }
 
 .button--primary:hover:not(:disabled) {
@@ -38,9 +39,9 @@
 }
 
 .button--secondary {
-  border-color: var(--color-border);
-  background: var(--color-surface);
-  color: var(--color-action-hover);
+  border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+  color: var(--color-text);
   text-decoration: none;
 }
 
@@ -55,7 +56,7 @@
 
 .button--danger {
   background: var(--color-attention);
-  color: var(--color-surface);
+  color: var(--color-on-action);
 }
 
 .button--status-success {
@@ -106,22 +107,26 @@
 
 .field {
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-inline-size: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
 }
 
 .field__label {
-  font-size: var(--font-size-action);
+  font-size: var(--font-size-meta);
   font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
 }
 
 .field__control {
   inline-size: 100%;
-  min-block-size: 40px;
+  min-block-size: 36px;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-control);
   padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
+  background: var(--color-surface-subtle);
   color: var(--color-text);
   outline: none;
 }
@@ -212,7 +217,7 @@
 
 .empty-state {
   display: grid;
-  min-block-size: 190px;
+  min-block-size: 168px;
   place-items: center;
   align-content: center;
   gap: var(--space-3);

@@ -14,8 +14,7 @@ afterEach(() => {
 })
 
 describe("completeOnboarding", () => {
-  it("creates tutorial examples once and excludes them from real data", () => {
-    // Given
+  it("names the workspace and seeds phrases without tutorial examples", () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-onboarding-"))
     temporaryDirectories.push(directory)
     const database = openDatabase(join(directory, "app.sqlite"))
@@ -27,17 +26,18 @@ describe("completeOnboarding", () => {
       timezone: "Asia/Shanghai",
     } as const
 
-    // When
     completeOnboarding(database, input)
     completeOnboarding(database, input)
 
-    // Then
     const settings = database.prepare("SELECT * FROM workspace_settings WHERE id = 1").get()
     const tutorialItemCount = database
       .prepare("SELECT COUNT(*) AS count FROM items WHERE is_tutorial = 1")
       .get()
     const tutorialHabitCount = database
       .prepare("SELECT COUNT(*) AS count FROM habits WHERE is_tutorial = 1")
+      .get()
+    const quoteCount = database
+      .prepare("SELECT COUNT(*) AS count FROM quotes WHERE is_system = 1")
       .get()
     expect((settings as { workspace_name?: string } | undefined)?.workspace_name).toBe("岛屿实验室")
     expect((settings as { onboarding_completed?: number } | undefined)?.onboarding_completed).toBe(
@@ -46,8 +46,9 @@ describe("completeOnboarding", () => {
     expect(
       (settings as { onboarding_completed_at?: string } | undefined)?.onboarding_completed_at,
     ).toEqual(expect.any(String))
-    expect((tutorialItemCount as { count?: number } | undefined)?.count).toBe(1)
-    expect((tutorialHabitCount as { count?: number } | undefined)?.count).toBe(1)
+    expect((tutorialItemCount as { count?: number } | undefined)?.count).toBe(0)
+    expect((tutorialHabitCount as { count?: number } | undefined)?.count).toBe(0)
+    expect((quoteCount as { count?: number } | undefined)?.count).toBe(5)
     database.close()
   })
 })

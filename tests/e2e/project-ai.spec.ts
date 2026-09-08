@@ -1,5 +1,6 @@
 import { createServer, type Server } from "node:http"
 import { expect, test } from "@playwright/test"
+import { expandFormDisclosure } from "../helpers/formDisclosure.js"
 
 let aiServer: Server | undefined
 let aiPort = 0
@@ -74,8 +75,9 @@ test("project AI clarifies, applies one stage, and advances from feedback", asyn
   await page.getByRole("button", { name: "新项目" }).click()
   await page.getByLabel("项目名称").fill(projectName)
   await page.getByLabel("最终希望达到的结果").fill("形成每周三次的稳定阅读节奏")
-  await page.getByLabel("当前阶段").fill("等待 AI 澄清")
   await page.getByLabel("当前任务").fill("说清楚目标")
+  await expandFormDisclosure(page, "更多规划（可选）")
+  await page.getByLabel("当前阶段").fill("等待 AI 澄清")
   await page.getByLabel("下一任务").fill("等待建议")
   await page.getByRole("button", { name: "创建项目" }).click()
   await page.getByRole("link", { name: new RegExp(projectName) }).click()
@@ -90,6 +92,7 @@ test("project AI clarifies, applies one stage, and advances from feedback", asyn
   await page.getByRole("button", { name: "采用此拆解" }).click()
 
   await expect(page.getByText("AI 估算")).toBeVisible()
+  await expandFormDisclosure(page, "记下成果（可选）")
   await page.getByLabel("实际成果（可选）").fill("材料已经选好")
   await page.getByLabel("遇到的阻碍（可选）").fill("一次安排太长")
   await page.getByRole("button", { name: "AI 调整并完成" }).click()

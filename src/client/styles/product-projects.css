@@ -17,11 +17,14 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-card);
   padding: var(--space-5);
+  background: var(--color-surface-raised);
   color: inherit;
   text-decoration: none;
+  box-shadow: var(--shadow-rim);
   transition:
     border-color var(--motion-fast),
-    transform var(--motion-fast);
+    transform var(--motion-fast),
+    background-color var(--motion-fast);
 }
 .project-card a {
   color: inherit;
@@ -105,9 +108,27 @@
   border-block: 1px solid var(--color-border);
   padding-block: var(--space-4);
 }
-.feedback-panel {
-  border-inline-start: 1px solid var(--color-border);
-  padding-inline-start: var(--space-6);
+.feedback-panel,
+.next-stage-panel {
+  gap: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-5);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-rim);
+}
+.feedback-panel > h2,
+.next-stage-panel > h2 {
+  margin: 0;
+  font-size: var(--font-size-title);
+}
+.feedback-panel .form-actions,
+.next-stage-panel .form-actions {
+  justify-content: flex-start;
+}
+.feedback-panel .form-actions .button,
+.next-stage-panel .form-actions .button {
+  flex: none;
 }
 .project-facts {
   display: grid;
@@ -178,13 +199,19 @@
   color: var(--color-text);
 }
 .project-editor {
-  margin-block-start: var(--space-8);
+  margin-block-start: var(--space-6);
   border-block: 1px solid var(--color-border);
-  padding-block: var(--space-5);
+  padding-block: var(--space-4);
 }
 .project-editor > summary {
   cursor: pointer;
+  color: var(--color-text-muted);
   font-weight: var(--font-weight-semibold);
+}
+.project-ai-quiet {
+  margin-block-start: var(--space-8);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
 }
 .project-editor > .form-stack {
   margin-block-start: var(--space-5);
@@ -287,4 +314,13 @@
 .stage-timeline ul {
   margin-block-start: var(--space-2);
   padding-inline-start: var(--space-5);
+}
+.stage-timeline .form-disclosure {
+  margin-block-start: var(--space-2);
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+.stage-timeline .form-disclosure[open] > summary {
+  margin-block-end: var(--space-2);
 }

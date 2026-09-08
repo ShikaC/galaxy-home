@@ -4,13 +4,18 @@ import { createAiMemoryInputSchema } from "../../shared/ai.js"
 import { aiConfigInputSchema, updateSettingsInputSchema } from "../../shared/app.js"
 import { onboardingInputSchema } from "../../shared/settings.js"
 import { type AppContext, getAppClock } from "../context.js"
+import { describeWorkspacePaths, workspacePathEnvOverride } from "../lib/workspacePaths.js"
 import { listAiActions, undoAiAction } from "../repositories/aiActions.js"
 import { listCategories } from "../repositories/categories.js"
 import { listConversations } from "../repositories/conversations.js"
 import { createMemory, listMemories, updateMemory } from "../repositories/memories.js"
 import { getSettings, updateSettings } from "../repositories/settings.js"
 import { listTrash, moveToTrash, purgeTrash, restoreTrash } from "../repositories/trash.js"
-import { dismissTutorialGuide, getTutorialState } from "../repositories/tutorial.js"
+import {
+  clearTutorialExamples,
+  dismissTutorialGuide,
+  getTutorialState,
+} from "../repositories/tutorial.js"
 import { createManualExport, getBackupStatus, restoreManualExport } from "../services/backup.js"
 import { completeOnboarding } from "../services/onboarding.js"
 import {
@@ -42,9 +47,18 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     conversations: listConversations(context.database),
     memories: listMemories(context.database),
     tutorial: getTutorialState(context.database),
+    paths: describeWorkspacePaths({
+      backupDirectory: context.backupDirectory,
+      dataDirectory: context.dataDirectory,
+      envOverride: workspacePathEnvOverride(process.env as { readonly GALAXY_DATA_DIR?: string }),
+    }),
   }))
   app.post("/api/tutorial/dismiss", (_request, reply) => {
     dismissTutorialGuide(context.database)
+    return reply.code(204).send()
+  })
+  app.post("/api/tutorial/examples/clear", (_request, reply) => {
+    clearTutorialExamples(context.database, clock.now())
     return reply.code(204).send()
   })
   app.get("/api/notifications", () => listDueNotifications(context.database, clock.now()))

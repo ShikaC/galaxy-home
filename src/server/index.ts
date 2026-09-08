@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { buildApp } from "./app.js"
 import { migrateDatabase, openDatabase } from "./database.js"
+import { WORKSPACE_DATABASE_FILE } from "./lib/workspacePaths.js"
 import { watchParentLifetime } from "./parentLifetime.js"
 import { getSettings } from "./repositories/settings.js"
 import { purgeExpiredTrash } from "./repositories/trash.js"
@@ -35,7 +36,8 @@ const apiCapability =
 const dataDirectory = resolve(environment.GALAXY_DATA_DIR ?? resolve(process.cwd(), "data"))
 const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
-const database = openDatabase(resolve(dataDirectory, "galaxy-home.sqlite"))
+process.stdout.write(`数据目录：${dataDirectory}\n`)
+const database = openDatabase(resolve(dataDirectory, WORKSPACE_DATABASE_FILE))
 migrateDatabase(database)
 const settings = getSettings(database)
 const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone }).format(

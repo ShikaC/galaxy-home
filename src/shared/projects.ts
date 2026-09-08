@@ -104,10 +104,10 @@ export type UpdateProjectInput = z.infer<typeof updateProjectInputSchema>
 
 export const completeProjectStageInputSchema = z
   .object({
-    outcome: z.string().trim().min(1).max(2_000),
+    outcome: z.string().trim().max(2_000).default(""),
     stageTitle: z.string().trim().min(1).max(160),
     currentTask: z.string().trim().min(1).max(240),
-    nextTask: z.string().trim().min(1).max(240),
+    nextTask: z.string().trim().max(240).default(""),
   })
   .readonly()
 
