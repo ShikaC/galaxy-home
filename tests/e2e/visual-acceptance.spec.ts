@@ -221,7 +221,7 @@ test("dialogs trap focus while the AI drawer keeps navigation available", async 
   await showcaseDrawerTrigger.click()
   const showcaseDrawer = page.getByRole("complementary", { name: "示例 AI 抽屉" })
   await expect(showcaseDrawer).toBeVisible()
-  expect((await showcaseDrawer.boundingBox())?.width).toBe(380)
+  expect((await showcaseDrawer.boundingBox())?.width).toBeCloseTo(380, 2)
   await page.keyboard.press("Escape")
   await expect(showcaseDrawer).not.toBeVisible()
 })

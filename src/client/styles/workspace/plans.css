@@ -384,7 +384,7 @@
   .plan-composer__intro .ai-emblem {
     display: none;
   }
-  .plan-composer footer .button {
+  .plan-composer :where(footer) .button {
     width: 100%;
   }
   .plan-method {
@@ -393,5 +393,82 @@
   .plan-task-title {
     flex-wrap: wrap;
     gap: var(--space-1);
+  }
+}
+.plan-original-goal {
+  margin: var(--space-3) 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-action);
+  line-height: 1.8;
+}
+.plan-original-goal summary {
+  cursor: pointer;
+}
+.plan-original-goal p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.plan-edit-notice {
+  color: var(--color-action);
+  font-size: var(--font-size-meta);
+  line-height: 1.8;
+}
+.plan-draft-editor {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+.plan-draft-editor h3 {
+  font-size: var(--font-size-heading);
+  margin: 0;
+}
+.plan-draft-editor p {
+  text-wrap: pretty;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-action);
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.plan-draft-editor fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.plan-draft-task {
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-5) 0;
+}
+.plan-edit-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) auto;
+  align-items: end;
+  gap: var(--space-3);
+}
+.plan-edit-controls .field__control {
+  width: 100%;
+  min-width: 0;
+}
+.plan-edit-totals {
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+  padding: var(--space-3) var(--space-4);
+}
+.plan-edit-totals p {
+  margin: var(--space-1) 0;
+}
+.plan-edit-totals .inline-error {
+  color: var(--color-attention);
+}
+.plan-question .button-row {
+  margin-top: var(--space-4);
+}
+@media (max-width: 480px) {
+  .plan-edit-controls {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  }
+  .plan-edit-controls > .button {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 }

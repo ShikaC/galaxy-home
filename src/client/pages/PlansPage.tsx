@@ -15,6 +15,7 @@ import { PlanRunDetail, planStatusLabel } from "../components/planning/PlanRunDe
 import { Button } from "../components/ui/Button.js"
 import { TextArea, TextField } from "../components/ui/Field.js"
 import { apiRequest, jsonBody } from "../lib/api.js"
+import { planRequest } from "../lib/planRequest.js"
 import { useMeta } from "../lib/queries.js"
 
 export function PlansPage() {
@@ -30,6 +31,7 @@ export function PlansPage() {
   const [includeKnowledge, setIncludeKnowledge] = useState(true)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const requestRef = useRef<PlanInput | null>(null)
+  const answerRunRef = useRef<string | null>(null)
   const canReadWorkspace = meta.data?.settings.aiPermission === "open"
   const history = useQuery({
     queryKey: ["plans"],
@@ -50,12 +52,29 @@ export function PlansPage() {
   }
   const generate = useMutation({
     mutationFn: (input: PlanInput) =>
-      apiRequest("/api/plans", planRunSchema, { method: "POST", body: jsonBody(input) }),
+      apiRequest("/api/plans", planRunSchema, {
+        method: "POST",
+        headers: { Prefer: "respond-async" },
+        body: jsonBody(input),
+      }),
     onSuccess: receiveRun,
   })
   const act = useMutation({
-    mutationFn: ({ id, action }: { readonly id: string; readonly action: "confirm" | "cancel" }) =>
-      apiRequest(`/api/plans/${id}/${action}`, planRunSchema, { method: "POST" }),
+    mutationFn: ({
+      id,
+      action,
+      expectedRevision,
+    }: {
+      readonly id: string
+      readonly action: "confirm" | "cancel"
+      readonly expectedRevision?: number
+    }) =>
+      apiRequest(`/api/plans/${id}/${action}`, planRunSchema, {
+        method: "POST",
+        ...(action === "confirm"
+          ? { body: jsonBody({ expectedRevision: expectedRevision ?? 0 }) }
+          : {}),
+      }),
     onSuccess: async (run) => {
       await receiveRun(run)
       await cache.invalidateQueries({ queryKey: ["items"] })
@@ -142,13 +161,7 @@ export function PlansPage() {
               onSubmit={(event) => {
                 event.preventDefault()
                 if (!input.success) return
-                const previous = requestRef.current
-                const request =
-                  previous &&
-                  JSON.stringify({ ...previous, requestId: "" }) ===
-                    JSON.stringify({ ...input.data, requestId: "" })
-                    ? previous
-                    : { ...input.data, requestId: crypto.randomUUID() }
+                const request = planRequest(requestRef.current, input.data)
                 requestRef.current = request
                 generate.mutate(request)
               }}
@@ -237,11 +250,28 @@ export function PlansPage() {
             </form>
           ) : detail.data ? (
             <PlanRunDetail
+              key={detail.data.id}
               run={detail.data}
-              pending={act.isPending}
-              onConfirm={() => act.mutate({ id: detail.data.id, action: "confirm" })}
+              pending={act.isPending || generate.isPending}
+              onConfirm={() =>
+                act.mutate({
+                  id: detail.data.id,
+                  action: "confirm",
+                  expectedRevision: detail.data.proposalRevision ?? 0,
+                })
+              }
               onCancel={() => act.mutate({ id: detail.data.id, action: "cancel" })}
               onRevise={() => revise(detail.data)}
+              onAnswer={(answeredGoal) => {
+                const request = planRequest(
+                  requestRef.current,
+                  { ...detail.data.input, goal: answeredGoal },
+                  answerRunRef.current === detail.data.id,
+                )
+                answerRunRef.current = detail.data.id
+                requestRef.current = request
+                generate.mutate(request)
+              }}
             />
           ) : detail.isLoading ? (
             <p role="status">正在打开计划…</p>

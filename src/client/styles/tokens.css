@@ -91,6 +91,7 @@
   --color-border: rgb(238 230 214 / 8%);
   --color-border-strong: rgb(238 230 214 / 14%);
   --color-action: #8ec9ad;
+  --color-success: var(--color-action);
   --color-action-hover: #a6d9c0;
   --color-action-soft: rgb(142 201 173 / 16%);
   --color-on-action: #0b1210;
