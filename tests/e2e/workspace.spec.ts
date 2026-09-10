@@ -61,7 +61,7 @@ test.describe
       await expect(page.getByText("已保存到本地", { exact: true })).toBeVisible()
       await page.getByRole("button", { name: "置顶笔记", exact: true }).click()
       await expect(page.getByRole("button", { name: "取消置顶笔记", exact: true })).toBeVisible()
-      await page.screenshot({ path: `${evidence}/notes-editor.png` })
+      await page.screenshot({ animations: "disabled", path: `${evidence}/notes-editor.png` })
       const download = page.waitForEvent("download")
       await page.getByRole("button", { name: "导出 Markdown", exact: true }).click()
       expect((await download).suggestedFilename()).toBe("工作空间的下一章.md")
@@ -99,7 +99,7 @@ test.describe
       await page.getByRole("button", { name: "暂停专注", exact: true }).click()
       await page.getByRole("button", { name: "放大专注计时", exact: true }).click()
       await expect(page.getByRole("dialog", { name: "专注模式" })).toBeVisible()
-      await page.screenshot({ path: `${evidence}/focus-expanded.png` })
+      await page.screenshot({ animations: "disabled", path: `${evidence}/focus-expanded.png` })
       await page.keyboard.press("Escape")
       await expect(page.getByRole("dialog", { name: "专注模式" })).toBeHidden()
       await page.getByRole("button", { name: "重置专注计时", exact: true }).click()
@@ -142,7 +142,7 @@ test.describe
       await page.getByRole("button", { name: "规划今天", exact: true }).click()
       await expect(page.getByLabel("给 AI 发送消息")).toHaveValue(/请结合整个工作空间/)
       await expect(page.getByText("AI 尚未配置", { exact: true })).toBeVisible()
-      await page.screenshot({ path: `${evidence}/ai-unconfigured.png` })
+      await page.screenshot({ animations: "disabled", path: `${evidence}/ai-unconfigured.png` })
       await page.getByRole("button", { name: "收起 星伴", exact: true }).click()
       await page.getByRole("link", { name: "连接 AI 服务", exact: true }).click()
       await expect(page.getByRole("heading", { name: "AI 服务与权限", exact: true })).toBeVisible()
@@ -209,7 +209,10 @@ test.describe
           await page.setViewportSize({ width, height: 960 })
           await page.goto(path)
           await expect(page.locator("h1").first()).toBeVisible()
-          await page.screenshot({ path: `${evidence}/${name}-${width}.png` })
+          await page.screenshot({
+            animations: "disabled",
+            path: `${evidence}/${name}-${width}.png`,
+          })
           const overflow = await page.evaluate(() => {
             const main = document.querySelector(".main-scroll")
             return {
@@ -239,7 +242,10 @@ test.describe
           await page.setViewportSize({ width, height: 960 })
           await page.goto(path)
           await expect(page.locator("h1").first()).toBeVisible()
-          await page.screenshot({ path: `${evidence}/${name}-night-${width}.png` })
+          await page.screenshot({
+            animations: "disabled",
+            path: `${evidence}/${name}-night-${width}.png`,
+          })
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1),
           ).toBe(true)

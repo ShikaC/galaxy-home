@@ -133,7 +133,11 @@ test("knowledge plan cites notes, reuses existing work, confirms once, persists 
   await expect(
     detail.getByRole("link", { name: "作品集案例研究 E2E", exact: true }).last(),
   ).toBeVisible()
-  await page.screenshot({ path: info.outputPath("plan-confirmation.png"), fullPage: true })
+  await page.screenshot({
+    animations: "disabled",
+    path: info.outputPath("plan-confirmation.png"),
+    fullPage: true,
+  })
   await detail.getByRole("button", { name: "确认并安排任务" }).click()
   await expect(detail.getByText("已安排并核验", { exact: true })).toBeVisible()
   const id = new URL(page.url()).searchParams.get("run")
@@ -179,11 +183,17 @@ test("shows clarification, cancellation and provider errors with responsive ligh
         await page.locator(".main-scroll").evaluate((element) => {
           element.scrollTop = 0
         })
-        await page.screenshot({ path: `${evidence}/${state}-${theme}-${width}.png` })
+        await page.screenshot({
+          animations: "disabled",
+          path: `${evidence}/${state}-${theme}-${width}.png`,
+        })
         await page.locator(".main-scroll").evaluate((element) => {
           element.scrollTop = element.scrollHeight
         })
-        await page.screenshot({ path: `${evidence}/${state}-${theme}-${width}-bottom.png` })
+        await page.screenshot({
+          animations: "disabled",
+          path: `${evidence}/${state}-${theme}-${width}-bottom.png`,
+        })
       }
   }
   await page.goto("/plans")
