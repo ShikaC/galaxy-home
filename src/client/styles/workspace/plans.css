@@ -40,6 +40,7 @@
   border-color: var(--color-border);
 }
 .plan-history :where(button) strong {
+  text-wrap: pretty;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -81,6 +82,7 @@
 }
 .plan-composer__intro p,
 .plan-summary {
+  text-wrap: pretty;
   margin: 0;
   color: var(--color-text-muted);
   line-height: 1.8;

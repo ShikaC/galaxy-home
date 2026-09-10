@@ -44,7 +44,7 @@ export function ProfileSettings() {
     <section className="settings-section">
       <header>
         <h2>个人空间</h2>
-        <p>空间名称、AI 昵称、你的称呼与外观都可以随时修改。</p>
+        <p>随时调整空间名称、称呼和外观。</p>
       </header>
       <form
         className="form-stack settings-form"
@@ -104,9 +104,7 @@ export function ProfileSettings() {
               拂晓
             </button>
           </div>
-          <span className="field__hint">
-            默认使用拂晓外观，也可以切换夜间。选择会保存在当前浏览器中。
-          </span>
+          <span className="field__hint">外观选择保存在当前浏览器中。</span>
         </fieldset>
         <div>
           <Button disabled={!workspaceName.trim()} loading={save.isPending} type="submit">

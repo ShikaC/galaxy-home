@@ -112,9 +112,20 @@ export function HabitsPage() {
         }
         title="习惯"
       />
-      <section className="section-band">
+      <section className="section-band" aria-busy={habits.isPending}>
         <SectionHeader title="当前习惯" />
-        {habits.data?.length === 0 ? (
+        {habits.isPending ? (
+          <p className="muted" role="status">
+            正在读取习惯…
+          </p>
+        ) : habits.isError ? (
+          <div role="alert">
+            <p className="inline-error">{habits.error.message}</p>
+            <Button variant="secondary" onClick={() => void habits.refetch()}>
+              重新读取
+            </Button>
+          </div>
+        ) : habits.data.length === 0 ? (
           <EmptyState
             action={
               <Button

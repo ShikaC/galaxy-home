@@ -213,6 +213,13 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
 }
+.project-ai-quiet a {
+  color: var(--color-action);
+  text-underline-offset: 3px;
+}
+.project-ai-quiet a:hover {
+  color: var(--color-action-hover);
+}
 .project-editor > .form-stack {
   margin-block-start: var(--space-5);
 }

@@ -209,6 +209,11 @@ test.describe
           await page.setViewportSize({ width, height: 960 })
           await page.goto(path)
           await expect(page.locator("h1").first()).toBeVisible()
+          if (name === "habits")
+            await expect(page.locator(".section-band").first()).toHaveAttribute(
+              "aria-busy",
+              "false",
+            )
           await page.screenshot({
             animations: "disabled",
             path: `${evidence}/${name}-${width}.png`,
@@ -242,6 +247,11 @@ test.describe
           await page.setViewportSize({ width, height: 960 })
           await page.goto(path)
           await expect(page.locator("h1").first()).toBeVisible()
+          if (name === "habits")
+            await expect(page.locator(".section-band").first()).toHaveAttribute(
+              "aria-busy",
+              "false",
+            )
           await page.screenshot({
             animations: "disabled",
             path: `${evidence}/${name}-night-${width}.png`,

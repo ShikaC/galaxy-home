@@ -420,3 +420,7 @@ kbd {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.settings-section > header p,
+.settings-section .field__hint {
+  text-wrap: pretty;
+}
