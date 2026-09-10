@@ -1,5 +1,7 @@
 # Galaxy · Personal Workspace
 
+Status, 2026-09-10: sections 0–9 document the current implemented visual foundation. Section 10 describes the next product direction; it is not a claim of completed UI. Current requirements: [product-requirements.md](docs/product-requirements.md). Execution handoff: [handoff.md](docs/handoff.md).
+
 ## 0. Research and direction
 
 2026-09-08: a product redesign authorized without the previous feature or visual boundaries. The implementation keeps proven local persistence and AI actions, and connects them through a daily workspace and a searchable notebook. Existing runtime and source are the reference, not the previous specification. The frontend design/layout/perfection rules and designpowers critique informed the implementation; the installed brand/style reference bundle is incomplete, so no external screen fidelity is claimed.
@@ -38,10 +40,25 @@ Sidebar and focus tool are matte dark. Paper sections rely on spacing and separa
 
 ## 8. Accessibility and verification
 
-One main, explicit labels on all controls, semantic tabs or pressed buttons, keyboard shortcuts ignored during IME composition, keyboard reachable mobile navigation. Verify 375/768/1440 widths, long text, empty workspaces, populated workspaces, AI unconfigured/error, notebook persistence and focus reload. Existing React dev instrumentation remains development-only. AI requires the user's configured provider; no external AI request is made during QA.
+One main, explicit labels on all controls, semantic tabs or pressed buttons, keyboard shortcuts ignored during IME composition, keyboard reachable mobile navigation. Verify 375/768/1440 widths, long text, empty workspaces, populated workspaces, AI unconfigured/error, notebook persistence and focus reload. Existing React dev instrumentation remains development-only. Automated AI regression uses fixture providers. Authorized real-model QA uses an isolated synthetic workspace and records calls separately from fixtures.
 
 ## 9. Action planning workspace
 
 A dedicated /plans route connects knowledge and scheduled tasks. A quiet history rail frames a single composer or durable plan. Day sections show allocated minutes, concrete outcomes and source chips; one explicit confirmation precedes writes. Source snapshots and technical run details use progressive disclosure. Empty, generating, confirmation, clarification, unavailable, cancelled and verified states are first-class. At 800px the history follows the workbench; at 480px date controls wrap. All colors, spacing, type and surfaces inherit existing light/night tokens. No fabricated model response, costs or metrics.
 
 2026-09-10 live usage refinement: generated plans open immediately as durable runs, with honest waiting/cancel states. Clarification retains the question and original goal while accepting a focused answer. Draft editing reuses Field/Button primitives, with task title, minutes, day selection, removal and visible daily totals; saving returns to a separate confirmation step. Existing-task titles stay fixed to preserve identity. Revision conflicts show a recoverable message. Long original goals use body typography under disclosure rather than oversized repeated headings. Citation chips open the associated source snapshot. QA uses the user's explicitly authorized real provider with synthetic data in an isolated workspace; automated regression tests use fixtures.
+
+
+## 10. Next product direction: tasks, time and integrated AI
+
+The next design centers on capture, organization, scheduling, execution, replanning and review. Keep the current token system and accessible primitives where they support this flow. Navigation, the home surface and task details may change; previous dimensions and page composition are the current baseline, not a fixed layout for the next product.
+
+- Primary surfaces: inbox, today, upcoming work, lists / saved filters and a day / week calendar. Exact navigation is a design proposal to validate during implementation.
+- Task rows expose completion, priority and time clearly. Details handle subtasks, recurrence and reminders. Batch actions, keyboard operation and quick edits reduce repetitive navigation.
+- Calendar views distinguish deadlines, scheduled blocks, fixed events and unscheduled work; conflicts and capacity are visible without requiring an AI conversation.
+- AI actions appear where the work happens. Capture previews extracted fields; replanning previews the exact changes and reasons before confirmation. The existing drawer and /plans route can support migration while these flows are tested.
+- Notes, projects, habits and review support the task flow. Their existing data remains accessible during the transition.
+- Desktop density, mobile capture and touch targets need separate usability validation. A narrow screenshot does not demonstrate cross-device synchronization.
+- Preserve current failure recovery, unsaved-input protection and accessible focus behavior. Add empty / loading / error / offline / conflict / recurring-instance states as their features arrive.
+
+The first design acceptance scenario is defined in the product requirements. Validate actual task and calendar interactions, with long Chinese text, keyboard / IME input, 375 / 768 / 1440 widths and both themes. Visual completion alone does not establish task semantics, notification reliability or successful migration.

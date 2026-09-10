@@ -1,6 +1,18 @@
 # Galaxy · 个人工作空间
 
-AI 驱动、本地优先的个人工作空间。把想法收集、每日任务、长期项目和知识笔记放在同一张工作台上，通过带上下文的 AI 对话推进实际工作。仅监听本机，无账号与云同步。
+新版产品方向是“类滴答清单 + AI 智能集成”：以任务和时间管理为中心，让 AI 参与记录、整理、安排、执行和重排。
+
+**当前可运行版本**仍是 AI 驱动、本地优先的个人工作空间，包含任务、项目、知识笔记、习惯、回顾和可确认执行的 AI 计划。服务仅监听本机，尚无账号与跨设备同步。**新版需求已整理，任务 / 时间核心重构尚未开始。**
+
+## 新版重构与交接
+
+- [新版产品需求](docs/product-requirements.md)：目标、优先级、核心语义与首个完整验收场景。
+- [Handoff](docs/handoff.md)：接手入口、功能基线、代码导航、实施起点与验证注意事项。
+- [当前任务](docs/current-task.md)：本轮状态与下一项工作。
+
+实施路线是在现有仓库重构任务与时间核心，复用存储、迁移、备份和 AI 执行保障。先完成任务 / 重复 / 提醒与日历容量，再接入 AI 重排、跨端同步和交付体验。阶段细节以新版需求为准。
+
+历史说明书及早期“仅电脑端、无同步、今日主要最多三项”等规定只说明旧版行为，不限制新版产品设计。以下功能和启动说明描述当前实现。
 
 现有本地数据可直接升级，启动时自动执行增量数据库迁移。
 
@@ -105,7 +117,7 @@ AI 请求优先使用 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY` 环境变量（�
 | `npm run desktop` | Tauri 桌面开发 |
 | `npm run desktop:build` | Tauri 桌面打包 |
 
-新版设计见 [DESIGN.md](DESIGN.md)。历史需求归档见 [docs/项目说明书.md](docs/项目说明书.md)。验收勾选见 [docs/acceptance-21.md](docs/acceptance-21.md)。自用摩擦记录见 [docs/dogfood-friction.md](docs/dogfood-friction.md)。侧栏 AI 口语剧本见 [docs/ai-oral-script.md](docs/ai-oral-script.md)。桌面形态：Tauri 轻壳第一刀已落地（[docs/decisions/desktop-packaging.md](docs/decisions/desktop-packaging.md)）。本地模型暂不接入（[docs/decisions/local-model.md](docs/decisions/local-model.md)）。
+当前设计基础及新版方向见 [DESIGN.md](DESIGN.md)。历史需求归档见 [docs/项目说明书.md](docs/项目说明书.md)。验收勾选见 [docs/acceptance-21.md](docs/acceptance-21.md)。自用摩擦记录见 [docs/dogfood-friction.md](docs/dogfood-friction.md)。侧栏 AI 口语剧本见 [docs/ai-oral-script.md](docs/ai-oral-script.md)。桌面形态：Tauri 轻壳第一刀已落地（[docs/decisions/desktop-packaging.md](docs/decisions/desktop-packaging.md)）。本地模型尚无正式实测支持，历史决策见 [docs/decisions/local-model.md](docs/decisions/local-model.md)；后续支持范围按新版需求评估。
 
 ## 工作空间验收
 
