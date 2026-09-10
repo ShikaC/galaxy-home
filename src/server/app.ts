@@ -161,8 +161,10 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: "导入文件字段无效" })
     if (error instanceof AiInvalidEndpointError)
       return reply.code(400).send({ code: error.code, message: error.message })
-    if (error instanceof AiServiceError)
+    if (error instanceof AiServiceError) {
+      _request.log.error({ code: error.code, message: error.message }, "ai.request.failed")
       return reply.code(503).send({ code: error.code, message: error.message })
+    }
     app.log.error(error)
     return reply.code(500).send({ code: "INTERNAL_ERROR", message: "服务暂时不可用" })
   })

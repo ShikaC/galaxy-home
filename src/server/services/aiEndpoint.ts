@@ -1,6 +1,13 @@
 import { lookup as defaultLookup } from "node:dns/promises"
 import { isIP, isIPv4, isIPv6 } from "node:net"
 
+export function aiApiUrl(baseUrl: string, resource: "chat/completions" | "audio/transcriptions") {
+  const url = new URL(baseUrl)
+  const path = url.pathname.replace(/\/+$/, "")
+  url.pathname = `${path || "/v1"}/${resource}`
+  return url.toString()
+}
+
 export class AiInvalidEndpointError extends Error {
   readonly name = "AiInvalidEndpointError"
   readonly code = "AI_INVALID_ENDPOINT"

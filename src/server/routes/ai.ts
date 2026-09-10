@@ -79,6 +79,7 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
         error instanceof AiServiceError
           ? error
           : new AiServiceError("AI_UNAVAILABLE", "AI 流式响应中断")
+      request.log.error({ code: serviceError.code }, "ai.stream.failed")
       writeEvent({ type: "error", code: serviceError.code, message: serviceError.message })
     } finally {
       reply.raw.end()

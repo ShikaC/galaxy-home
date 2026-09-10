@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { buildApp } from "../../src/server/app.js"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
 import {
+  aiApiUrl,
   assertSafeAiEndpoint,
   isBlockedAddress,
   isLoopbackAddress,
@@ -18,6 +19,19 @@ afterEach(() => {
 })
 
 describe("AI endpoint policy", () => {
+  it.each([
+    ["https://gateway.example", "https://gateway.example/v1/chat/completions"],
+    ["https://gateway.example/", "https://gateway.example/v1/chat/completions"],
+    ["https://gateway.example/v1/", "https://gateway.example/v1/chat/completions"],
+    ["https://gateway.example/openai/v1", "https://gateway.example/openai/v1/chat/completions"],
+    [
+      "https://gateway.example/api?version=1",
+      "https://gateway.example/api/chat/completions?version=1",
+    ],
+  ])("joins the API path for %s without losing explicit paths or queries", (base, expected) => {
+    expect(aiApiUrl(base, "chat/completions")).toBe(expected)
+  })
+
   it("classifies loopback and blocked addresses", () => {
     expect(isLoopbackAddress("127.0.0.1")).toBe(true)
     expect(isLoopbackAddress("::1")).toBe(true)

@@ -1,5 +1,7 @@
+import { FormData, fetch, type RequestInit, type Response } from "undici"
 import { z } from "zod"
-import { AiInvalidEndpointError, assertSafeAiEndpoint } from "./aiEndpoint.js"
+import { AiInvalidEndpointError, aiApiUrl, assertSafeAiEndpoint } from "./aiEndpoint.js"
+import { getAiDispatcher } from "./aiProxy.js"
 import { readSecretConfig } from "./secrets.js"
 
 const completionSchema = z.object({
@@ -36,18 +38,27 @@ async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
   await assertSafeAiEndpoint(url)
   let response: Response
   try {
-    response = await fetch(url, {
+    const dispatcher = await getAiDispatcher(url)
+    const options = {
       ...init,
-      redirect: "error",
+      ...(dispatcher === undefined ? {} : { dispatcher }),
+      redirect: "error" as const,
       signal: AbortSignal.timeout(25_000),
-    })
+    }
+    response = await fetch(url, options)
   } catch (error) {
     if (error instanceof AiInvalidEndpointError) throw error
     if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError"))
       throw new AiServiceError("AI_UNAVAILABLE", "AI 服务请求超时，请稍后重试")
+    const cause = error instanceof Error ? error.cause : undefined
+    if (cause instanceof Error && "code" in cause && cause.code === "UND_ERR_CONNECT_TIMEOUT")
+      throw new AiServiceError(
+        "AI_UNAVAILABLE",
+        "无法连接 AI 服务：网络连接超时，请检查网络或代理是否可用",
+      )
     throw new AiServiceError(
       "AI_UNAVAILABLE",
-      error instanceof Error ? error.message : "AI 服务暂时不可用",
+      "无法连接 AI 服务，请检查服务地址、网络和代理是否可用",
     )
   }
   if (response.status === 401 || response.status === 403)
@@ -55,6 +66,13 @@ async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
   if (response.status === 429)
     throw new AiServiceError("AI_RATE_LIMIT", "AI 服务请求过于频繁，请稍后再试")
   if (!response.ok) throw new AiServiceError("AI_UNAVAILABLE", `AI 服务返回 ${response.status}`)
+  if (response.headers.get("content-type")?.includes("text/html")) {
+    await response.body?.cancel()
+    throw new AiServiceError(
+      "AI_INVALID_RESPONSE",
+      "该地址返回了网页，请检查 AI 服务的 API 路径（通常为 /v1）",
+    )
+  }
   return response
 }
 
@@ -65,7 +83,7 @@ export async function requestCompletionWithUsage(
 ) {
   const started = performance.now()
   const config = chatConfig(secretPath)
-  const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+  const response = await checkedFetch(aiApiUrl(config.chatBaseUrl, "chat/completions"), {
     method: "POST",
     headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -115,7 +133,7 @@ export async function streamChat(
   onDelta: (content: string) => void,
 ): Promise<string> {
   const config = chatConfig(secretPath)
-  const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+  const response = await checkedFetch(aiApiUrl(config.chatBaseUrl, "chat/completions"), {
     method: "POST",
     headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({ model: config.chatModel, messages, stream: true }),
@@ -204,7 +222,7 @@ export async function transcribe(
   const form = new FormData()
   form.set("model", model)
   form.set("file", new File([Uint8Array.from(file).buffer], filename, { type: mimeType }))
-  const response = await checkedFetch(`${baseUrl.replace(/\/$/, "")}/audio/transcriptions`, {
+  const response = await checkedFetch(aiApiUrl(baseUrl, "audio/transcriptions"), {
     method: "POST",
     headers: { Authorization: `Bearer ${config.apiKey}` },
     body: form,
