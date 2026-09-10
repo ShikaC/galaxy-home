@@ -6,7 +6,7 @@ import { migrateDatabase } from "../database.js"
 import { executePlan } from "../services/planning/execute.js"
 import { generatePlan } from "../services/planning/generate.js"
 import { type EvaluationCase, fixtureProposal } from "./cases.js"
-import { gradePlan, gradesPass } from "./graders.js"
+import { gradePlan, gradesPass, separateQualitySignals } from "./graders.js"
 import { productSnapshot } from "./snapshot.js"
 
 const idRow = z.object({ id: z.string(), title: z.string() })
@@ -76,7 +76,7 @@ export async function evaluateCase(
       executePlan(context, final.id)
       idempotent = beforeReplay === productSnapshot(database, true)
     }
-    const checks = gradePlan(scenario, final, {
+    const grades = gradePlan(scenario, final, {
       noteId,
       existingItemId: itemId,
       itemCount: rows.length,
@@ -90,12 +90,15 @@ export async function evaluateCase(
             .get(result.localDate, result.itemId) !== undefined,
       ),
     })
+    const { checks, qualitySignals } = separateQualitySignals(grades)
     return {
       id: scenario.id,
       repetition,
       passed: gradesPass(checks),
       status: final.status,
       checks,
+      qualitySignals,
+      proposal: final.proposal,
       durationMs: Math.round(performance.now() - started),
       model: final.attempts.at(-1)?.model ?? null,
       attempts: final.attempts,

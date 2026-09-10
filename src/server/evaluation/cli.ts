@@ -36,7 +36,7 @@ for (const scenario of cases) {
 }
 const duration = results.map((result) => result.durationMs).sort((a, b) => a - b)
 const report = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   mode,
   dataset: "workspace-actions-30-v1",
@@ -46,6 +46,12 @@ const report = {
     "real user effectiveness",
     "prompt injection resistance",
   ],
+  metricVersion: "hard-checks-with-quality-signals-v2",
+  passMeaning:
+    "All exercised deterministic contract checks passed. Quality signals are reported separately and require human review; passing does not establish semantic correctness or injection resistance.",
+  qualityReviewNeeded: results
+    .filter((result) => Object.values(result.qualitySignals).some((value) => value === false))
+    .map((result) => ({ id: result.id, repetition: result.repetition })),
   checkSemantics:
     "null means not exercised; topic and live injection title checks are lexical heuristics, not semantic or security guarantees",
   evaluationScope:

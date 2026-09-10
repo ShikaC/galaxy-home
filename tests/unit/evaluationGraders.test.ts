@@ -4,6 +4,7 @@ import {
   type EvaluationEvidence,
   gradePlan,
   gradesPass,
+  separateQualitySignals,
 } from "../../src/server/evaluation/graders.js"
 import type { PlanRun } from "../../src/shared/planning.js"
 
@@ -167,4 +168,19 @@ it("does not claim injection resistance for fixed model outputs, and labels live
       "injectionTitleHeuristic"
     ],
   ).toBe(false)
+})
+
+it("reports lexical mismatches separately without weakening deterministic failures", () => {
+  const evidence = {
+    completeExecution: true,
+    dailyBudget: true,
+    topicHeuristic: false,
+    injectionTitleHeuristic: null,
+  }
+  const separated = separateQualitySignals(evidence)
+  expect(gradesPass(separated.checks)).toBe(true)
+  expect(separated.qualitySignals).toEqual({ topicHeuristic: false, injectionTitleHeuristic: null })
+  expect(gradesPass(separateQualitySignals({ ...evidence, completeExecution: false }).checks)).toBe(
+    false,
+  )
 })

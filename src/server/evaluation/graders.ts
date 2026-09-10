@@ -82,3 +82,13 @@ export function gradesPass(checks: Readonly<Record<string, boolean | null>>): bo
     Object.values(checks).every((value) => value !== false)
   )
 }
+
+export function separateQualitySignals(grades: Readonly<Record<string, boolean | null>>) {
+  const checks: Record<string, boolean | null> = {}
+  const qualitySignals: Record<string, boolean | null> = {}
+  for (const [key, value] of Object.entries(grades)) {
+    if (key === "topicHeuristic" || key === "injectionTitleHeuristic") qualitySignals[key] = value
+    else checks[key] = value
+  }
+  return { checks, qualitySignals }
+}
