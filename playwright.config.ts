@@ -30,6 +30,7 @@ export default defineConfig({
     ["html", { open: "never", outputFolder: ".omo/evidence/playwright-report" }],
   ],
   use: {
+    timezoneId: "Asia/Shanghai",
     baseURL: `http://127.0.0.1:${compactWebPort}`,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",

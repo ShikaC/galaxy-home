@@ -33,7 +33,9 @@ function ensureReminder(
     .optional()
     .parse(
       database
-        .prepare("SELECT id FROM reminders WHERE kind = ? AND entity_id = ? AND scheduled_at = ?")
+        .prepare(
+          "SELECT id FROM reminders WHERE kind = ? AND entity_id = ? AND (kind IN ('morning', 'evening') OR scheduled_at = ?)",
+        )
         .get(kind, entityId, scheduledAt),
     )
   if (existing !== undefined) return existing.id
