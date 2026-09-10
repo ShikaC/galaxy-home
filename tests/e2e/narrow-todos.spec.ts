@@ -1,10 +1,10 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 
 test("narrow viewport keeps the category heading visible", async ({ page }) => {
   await page.setViewportSize({ width: 520, height: 900 })
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -13,7 +13,7 @@ test("narrow viewport keeps the category heading visible", async ({ page }) => {
     await page.getByRole("button", { name: "进入我的空间" }).click()
   }
 
-  await page.getByRole("link", { name: "待办", exact: true }).click()
+  await page.getByRole("link", { name: "任务", exact: true }).click()
   await expect(page.getByRole("heading", { name: "待办" })).toBeVisible()
   const categoryHeading = page.locator(".filter-nav__heading strong")
   await expect(categoryHeading).toHaveText("分类")
@@ -23,8 +23,8 @@ test("narrow viewport keeps the category heading visible", async ({ page }) => {
 test("tablet viewport keeps route content inside the main surface", async ({ page }) => {
   await page.setViewportSize({ width: 768, height: 720 })
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -35,12 +35,15 @@ test("tablet viewport keeps route content inside the main surface", async ({ pag
   await expect(home).toBeVisible()
   expect(
     await page
-      .locator(".quick-start-guide")
+      .locator(".workspace-grid")
       .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length),
-  ).toBe(2)
+  ).toBe(1)
 
   const routes = [
-    { path: "/", heading: "今日空间" },
+    { path: "/", heading: /上午好|下午好|晚上好|夜深了/ },
+    { path: "/plans", heading: "AI 行动计划" },
+    { path: "/notes", heading: "知识笔记" },
+    { path: "/projects", heading: "项目空间" },
     { path: "/todos", heading: "待办" },
     { path: "/habits", heading: "习惯" },
     { path: "/review", heading: "回顾" },

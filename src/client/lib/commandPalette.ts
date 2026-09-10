@@ -1,5 +1,21 @@
 export const PALETTE_COMMANDS = [
   {
+    id: "plans",
+    hint: "从知识到行动",
+    keywords: ["计划", "规划", "plan", "agent"],
+    kind: "navigate",
+    label: "打开 AI 行动计划",
+    path: "/plans",
+  },
+  {
+    id: "notes",
+    hint: "知识",
+    keywords: ["笔记", "知识", "notes"],
+    kind: "navigate",
+    label: "打开知识笔记",
+    path: "/notes",
+  },
+  {
     id: "capture",
     hint: "⌘N",
     keywords: ["记", "随手", "捕捉", "inbox", "capture"],

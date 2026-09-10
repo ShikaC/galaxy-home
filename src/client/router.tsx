@@ -21,6 +21,10 @@ export const router = createBrowserRouter([
     HydrateFallback: RouteLoading,
     children: [
       {
+        path: "plans",
+        lazy: async () => ({ Component: (await import("./pages/PlansPage.js")).PlansPage }),
+      },
+      {
         index: true,
         lazy: async () => ({ Component: (await import("./pages/HomePage.js")).HomePage }),
       },

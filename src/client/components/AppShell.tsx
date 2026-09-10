@@ -42,6 +42,7 @@ const NAV_ITEMS = [
   { to: "/", label: "工作台", icon: Home, end: true },
   { to: "/todos", label: "任务", icon: CheckSquare2, end: false },
   { to: "/projects", label: "项目", icon: FolderKanban, end: false },
+  { to: "/plans", label: "AI 计划", icon: Sparkles, end: false },
   { to: "/notes", label: "知识笔记", icon: BookOpen, end: false },
   { to: "/habits", label: "习惯", icon: Target, end: false },
   { to: "/review", label: "回顾", icon: Archive, end: false },

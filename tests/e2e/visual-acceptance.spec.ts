@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page, test } from "@playwright/test"
+import { expect, type Locator, type Page, test } from "../helpers/e2e.js"
 
 const onboarding = {
   workspaceName: "银河居所",
@@ -29,8 +29,8 @@ async function expectAnimationsSettled(locator: Locator) {
 
 async function ensureOnboarding(page: Page) {
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill(onboarding.workspaceName)
@@ -50,11 +50,7 @@ test("primary views remain readable with long content and rendered analytics", a
   const longHabitName = `长习惯验收 ${suffix}：分次补充饮水并在每次专注结束后记录完成情况`
 
   await ensureOnboarding(page)
-  const quickStart = page.getByRole("complementary", { name: "开始使用" })
-  await expect(quickStart.locator(".text-phrase", { hasText: "分类或项目" })).toHaveCSS(
-    "white-space",
-    "nowrap",
-  )
+  await expect(page.getByRole("region", { name: "AI 工作入口" })).toBeVisible()
   const itemResponse = await request.post("/api/items", {
     data: {
       title: longItemTitle,
@@ -77,9 +73,9 @@ test("primary views remain readable with long content and rendered analytics", a
   expect(habitResponse.ok()).toBe(true)
 
   const routes = [
-    { path: "/", heading: "今日空间" },
+    { path: "/", heading: /上午好|下午好|晚上好|夜深了/ },
     { path: "/todos", heading: "待办" },
-    { path: "/projects", heading: "周期项目" },
+    { path: "/projects", heading: "项目空间" },
     { path: "/habits", heading: "习惯" },
     { path: "/review", heading: "回顾" },
     { path: "/settings", heading: "设置" },
@@ -151,7 +147,7 @@ test("dialogs trap focus while the AI drawer keeps navigation available", async 
 }, testInfo) => {
   await ensureOnboarding(page)
 
-  const captureTrigger = page.getByRole("button", { name: "随手记" }).first()
+  const captureTrigger = page.getByRole("button", { name: "随手记", exact: true }).first()
   await captureTrigger.click()
   const captureDialog = page.getByRole("dialog", { name: "先把这件事放下来" })
   await expect(captureDialog).toBeVisible()
@@ -169,17 +165,28 @@ test("dialogs trap focus while the AI drawer keeps navigation available", async 
   await page.keyboard.press("Escape")
   await expect(captureTrigger).toBeFocused()
 
-  const drawerTrigger = page.getByRole("button", { name: "打开 星伴" })
+  const drawerTrigger = page.getByRole("button", { name: "打开 AI 助手", exact: true })
   await drawerTrigger.click()
   const drawer = page.getByRole("complementary", { name: "星伴 AI 助手" })
   await expect(drawer).toBeVisible()
   await expect(page.locator("main.main-scroll")).not.toHaveAttribute("inert")
-  await page.getByRole("link", { name: "待办", exact: true }).click()
+  await page.getByRole("link", { name: "任务", exact: true }).click()
   await expect(page.getByRole("heading", { level: 1, name: "待办" })).toBeVisible()
   expect((await drawer.boundingBox())?.width).toBeLessThan(361)
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
-  await expect(page.getByText("配置服务", { exact: false })).toBeVisible()
-  await expect(page.getByRole("link", { name: "前往设置" })).toHaveCSS("color", "rgb(28, 92, 60)")
+  await expect(page.getByText("需要时再去设置里配置。", { exact: false })).toBeVisible()
+  const actionColor = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--color-text").trim(),
+  )
+  const expectedColor = await page.evaluate((color) => {
+    const element = document.createElement("span")
+    element.style.color = color
+    document.body.append(element)
+    const computed = getComputedStyle(element).color
+    element.remove()
+    return computed
+  }, actionColor)
+  await expect(page.getByRole("link", { name: "前往设置" })).toHaveCSS("color", expectedColor)
   await expectAnimationsSettled(drawer)
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("ai-drawer.png") })
   await page.keyboard.press("Escape")
@@ -214,7 +221,7 @@ test("dialogs trap focus while the AI drawer keeps navigation available", async 
   await showcaseDrawerTrigger.click()
   const showcaseDrawer = page.getByRole("complementary", { name: "示例 AI 抽屉" })
   await expect(showcaseDrawer).toBeVisible()
-  expect((await showcaseDrawer.boundingBox())?.width).toBeLessThan(361)
+  expect((await showcaseDrawer.boundingBox())?.width).toBe(380)
   await page.keyboard.press("Escape")
   await expect(showcaseDrawer).not.toBeVisible()
 })

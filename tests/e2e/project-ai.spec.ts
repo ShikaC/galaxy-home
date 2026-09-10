@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 import { expandFormDisclosure } from "../helpers/formDisclosure.js"
 
 let aiServer: Server | undefined
@@ -80,7 +80,10 @@ test("project AI clarifies, applies one stage, and advances from feedback", asyn
   await page.getByLabel("当前阶段").fill("等待 AI 澄清")
   await page.getByLabel("下一任务").fill("等待建议")
   await page.getByRole("button", { name: "创建项目" }).click()
-  await page.getByRole("link", { name: new RegExp(projectName) }).click()
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: new RegExp(projectName) })
+    .click()
 
   await page.getByRole("button", { name: "开始澄清" }).click()
   await expect(page.getByText("什么结果算真正完成？")).toBeVisible()

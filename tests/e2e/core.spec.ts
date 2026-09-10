@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 import { expandFormDisclosure } from "../helpers/formDisclosure.js"
 
 test("manual work remains complete without an AI key", async ({ page }, testInfo) => {
@@ -7,8 +7,8 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   const projectName = `端到端阅读节奏 ${suffix}`
 
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -17,12 +17,12 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
     await page.getByRole("button", { name: "进入我的空间" }).click()
   }
 
-  await page.getByRole("button", { name: "随手记" }).first().click()
+  await page.getByRole("button", { name: "随手记", exact: true }).first().click()
   await page.getByLabel("标题").fill(itemTitle)
   await page.getByLabel("备注（可选）").fill("选择三本书并安排第一次阅读")
   await page.getByRole("button", { name: "保存到收集箱" }).click()
 
-  await page.getByRole("link", { name: "待办", exact: true }).click()
+  await page.getByRole("link", { name: "任务", exact: true }).click()
   let item = page.getByRole("article").filter({ hasText: itemTitle })
   await expect(item).toBeVisible()
   await item.getByRole("button", { name: "更多操作" }).click()
@@ -41,17 +41,19 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await item.getByRole("button", { name: "更多操作" }).click()
   await item.getByRole("menuitem", { name: "设为今日重点" }).click()
 
-  await page.getByRole("link", { name: "首页", exact: true }).click()
+  await page.getByRole("link", { name: "工作台", exact: true }).click()
   item = page.getByRole("article").filter({ hasText: itemTitle })
   await expect(item.getByText("今日重点")).toBeVisible()
   await item.getByRole("button", { name: `完成 ${itemTitle}` }).click()
-  await expect(page.getByText(/今日已完成 \d+ 项/)).toBeVisible()
-  await expect(page.getByRole("status").filter({ hasText: itemTitle })).toBeVisible()
-  await page.getByRole("link", { name: "查看已完成" }).click()
-  await expect(page.getByRole("heading", { level: 2, name: "已完成" })).toBeVisible()
+  await expect(item).toHaveCount(0)
+  await page.getByRole("button", { name: /^已完成/ }).click()
+  await expect(page.getByRole("button", { name: /^已完成/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  )
   await expect(page.getByRole("button", { name: `重新打开 ${itemTitle}` })).toBeVisible()
 
-  await page.getByRole("button", { name: /打开 星伴/ }).click()
+  await page.getByRole("button", { name: "打开 AI 助手", exact: true }).click()
   await expect(page.getByRole("heading", { name: "AI 尚未配置" })).toBeVisible()
   await expect(page.getByText("待办、习惯、项目手动推进和回顾仍可正常使用。")).toBeVisible()
   await page.getByRole("button", { name: /收起 星伴/ }).click()
@@ -65,7 +67,10 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   await page.getByLabel("当前阶段").fill("准备第一周")
   await page.getByLabel("下一任务").fill("安排第一次阅读")
   await page.getByRole("button", { name: "创建项目" }).click()
-  await page.getByRole("link", { name: new RegExp(projectName) }).click()
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: new RegExp(projectName) })
+    .click()
 
   await expandFormDisclosure(page, "记下成果（可选）")
   await page.getByLabel("实际成果（可选）").fill("已经选好书")

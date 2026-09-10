@@ -1,9 +1,10 @@
-import { expect, type Page, test } from "@playwright/test"
+import { notificationsSchema } from "../../src/shared/reminders.js"
+import { expect, type Page, test } from "../helpers/e2e.js"
 
 async function ensureOnboarding(page: Page) {
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -22,14 +23,16 @@ test.describe("reminder banner", () => {
     await ensureOnboarding(page)
     const notifications = await request.get("/api/notifications")
     expect(notifications.ok()).toBe(true)
-    const due = (await notifications.json()) as readonly { id: string; kind: string }[]
+    const due = notificationsSchema.parse(await notifications.json())
+    const morning = due.find((notification) => notification.kind === "morning")
+    if (morning === undefined) throw new Error("Expected a due morning reminder")
     for (const notification of due) {
       if (notification.kind !== "weekly_review") continue
       expect((await request.post(`/api/notifications/${notification.id}/dismiss`)).ok()).toBe(true)
     }
     await page.reload()
     const banner = page.locator(".reminder-banner")
-    await expect(banner.getByText("今天最想推进什么？")).toBeVisible()
+    await expect(banner.getByText(morning.title, { exact: true })).toBeVisible()
     await banner.getByRole("button", { name: /30 分钟后/ }).click()
     await expect(banner.getByText("今天有什么值得留下？")).toBeVisible()
     await banner.getByRole("button", { name: "今天不再提醒" }).click()

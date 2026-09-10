@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 
 let aiServer: Server | undefined
 let aiPort = 0
@@ -36,21 +36,23 @@ test.afterEach(async ({ request }) => {
 test("optional AI setup is tested in settings after onboarding", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1024, height: 640 })
   await page.goto("/")
-  await expect(page.getByRole("heading", { name: "欢迎来到银河居所" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "布置你的工作空间" })).toBeVisible()
   const onboarding = page.locator("main.onboarding")
   await expect(onboarding).toHaveCSS("overflow-y", "auto")
-  await expect(page.getByLabel("聊天服务地址")).toHaveCount(0)
+  await expect(page.getByLabel("聊天服务地址")).not.toBeVisible()
   const enter = page.getByRole("button", { name: "进入我的空间" })
   await enter.scrollIntoViewIfNeeded()
   await expect(enter).toBeVisible()
   await page.screenshot({ fullPage: true, path: testInfo.outputPath("onboarding.png") })
   await enter.click()
-  await expect(page.getByRole("heading", { name: "今日空间" })).toBeVisible()
-  await expect(page.getByRole("heading", { name: "今天还很轻" })).toBeVisible()
+  await expect(
+    page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ }),
+  ).toBeVisible()
+  await expect(page.getByRole("heading", { name: "留白，是一个很好的开始" })).toBeVisible()
   await expect(page.getByText("试着完成一个小待办")).toHaveCount(0)
   await expect(page.getByText("喝一杯水")).toHaveCount(0)
 
-  await page.getByRole("link", { name: "设置" }).click()
+  await page.getByRole("link", { name: "设置", exact: true }).first().click()
   await page.getByRole("button", { name: "AI 服务" }).click()
   await page.getByLabel("聊天服务地址").fill(`http://127.0.0.1:${aiPort}/v1`)
   await page.getByLabel("聊天模型").fill("onboarding-model")

@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs"
-import { expect, test } from "@playwright/test"
 import { z } from "zod"
+import { E2E_LOCAL_DATE, expect, test } from "../helpers/e2e.js"
 
 const evidence = ".omo/evidence/workspace"
 
@@ -20,9 +20,26 @@ test.describe
 
     test("note editing survives new-note creation and provides save, search, archive and restore", async ({
       page,
+      request,
     }) => {
+      await request.post("/api/notes", {
+        data: { title: "新建前已有笔记", content: "保留这篇笔记的原始内容。" },
+      })
       await page.goto("/notes")
+      await expect(page.getByLabel("笔记标题", { exact: true })).toBeVisible()
+      let releaseCreate: (() => void) | undefined
+      const createBarrier = new Promise<void>((resolve) => {
+        releaseCreate = resolve
+      })
+      await page.route("**/api/notes", async (route) => {
+        if (route.request().method() === "POST") await createBarrier
+        await route.continue()
+      })
       await page.getByRole("button", { name: "新建笔记", exact: true }).click()
+      await expect(page.getByLabel("笔记标题", { exact: true })).toBeDisabled()
+      await expect(page.getByLabel("笔记正文", { exact: true })).toBeDisabled()
+      releaseCreate?.()
+      await expect(page.getByLabel("笔记标题", { exact: true })).toHaveValue("未命名笔记")
       await page.getByLabel("笔记标题", { exact: true }).fill("  工作空间的下一章  ")
       await page
         .getByLabel("笔记正文", { exact: true })
@@ -101,12 +118,19 @@ test.describe
       await expect(page.getByText("完成新的作品集首页", { exact: true })).toBeVisible()
       const items = z
         .array(z.object({ id: z.string(), title: z.string() }))
-        .parse(await (await request.get("/api/items?view=inbox&localDate=2026-09-08")).json())
+        .parse(
+          await (await request.get(`/api/items?view=inbox&localDate=${E2E_LOCAL_DATE}`)).json(),
+        )
       const item = items.find((entry) => entry.title === "完成新的作品集首页")
       if (!item) throw new Error("Captured item missing")
-      const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai" }).format(
-        new Date(),
-      )
+      const localDate = E2E_LOCAL_DATE
+      const scheduled = z
+        .array(z.object({ id: z.string() }))
+        .parse(await (await request.get(`/api/items?view=today&localDate=${localDate}`)).json())
+      for (const previous of scheduled)
+        expect(
+          (await request.delete(`/api/items/${previous.id}/today?localDate=${localDate}`)).ok(),
+        ).toBe(true)
       const todayResponse = await request.put(`/api/items/${item.id}/today`, {
         data: { localDate, isFocus: true, isSecondary: false },
       })

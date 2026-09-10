@@ -4,6 +4,8 @@ import { matchingCommands } from "../../src/client/lib/commandPalette.js"
 describe("matchingCommands", () => {
   it("returns every command when the query is empty", () => {
     expect(matchingCommands("").map((command) => command.id)).toEqual([
+      "plans",
+      "notes",
       "capture",
       "todos",
       "projects",

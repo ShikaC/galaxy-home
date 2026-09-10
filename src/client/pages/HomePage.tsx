@@ -86,7 +86,7 @@ export function HomePage() {
               : "清空脑海，安放想法。从一件重要的小事开始。"}
           </p>
         </div>
-        <Button variant="secondary" onClick={actions.openCapture}>
+        <Button aria-label="随手记" variant="secondary" onClick={actions.openCapture}>
           <Plus size={16} />
           随手记<kbd>⌘ K</kbd>
         </Button>
@@ -123,6 +123,11 @@ export function HomePage() {
           </button>
         </form>
         <div className="ai-launchpad__suggestions">
+          <Link className="plan-next-link" to="/plans">
+            <Sparkles size={13} />
+            生成行动计划
+            <ArrowUpRight size={12} />
+          </Link>
           <span>试着问</span>
           {[
             {

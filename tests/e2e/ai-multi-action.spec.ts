@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:http"
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 
 let aiServer: Server | undefined
 let aiPort = 0
@@ -45,8 +45,8 @@ test.afterEach(async ({ request }) => {
 
 test("open-mode multi-action batch creates project and today item", async ({ page, request }) => {
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -82,7 +82,7 @@ test("open-mode multi-action batch creates project and today item", async ({ pag
   expect(body.message.content).toContain("已实际创建待办「E2E起步任务」")
 
   await page.goto("/projects")
-  await expect(page.getByText("E2E多操作", { exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "E2E多操作", exact: true })).toBeVisible()
   await page.goto("/")
   await expect(page.getByText("E2E起步任务", { exact: true })).toBeVisible()
 })

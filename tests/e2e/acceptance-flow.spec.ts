@@ -1,9 +1,9 @@
-import { expect, type Page, test } from "@playwright/test"
+import { expect, type Page, test } from "../helpers/e2e.js"
 
 async function ensureOnboarding(page: Page) {
   await page.goto("/")
-  const welcome = page.getByRole("heading", { name: "欢迎来到银河居所" })
-  const home = page.getByRole("heading", { name: "今日空间" })
+  const welcome = page.getByRole("heading", { name: "布置你的工作空间" })
+  const home = page.getByRole("heading", { level: 1, name: /上午好|下午好|晚上好|夜深了/ })
   await expect(welcome.or(home)).toBeVisible()
   if (await welcome.isVisible()) {
     await page.getByLabel("个人空间名称").fill("银河居所")
@@ -26,8 +26,8 @@ test("capture, organize, complete, and review one real item", async ({ page }) =
   await page.getByLabel("分类名称").press("Enter")
   await expect(page.getByText(categoryName, { exact: true })).toBeVisible()
 
-  await page.getByRole("link", { name: "待办", exact: true }).click()
-  await page.getByRole("button", { name: "随手记" }).click()
+  await page.getByRole("link", { name: "任务", exact: true }).click()
+  await page.getByRole("button", { name: "随手记", exact: true }).click()
   await page.getByLabel("标题").fill(itemTitle)
   await page.getByLabel("备注（可选）").fill("从捕捉一路走到回顾")
   await page.getByRole("button", { name: "保存到收集箱" }).click()
@@ -53,7 +53,7 @@ test("capture, organize, complete, and review one real item", async ({ page }) =
   await updatedActions.click()
   await item.getByRole("menuitem", { name: "设为今日重点" }).click()
 
-  await page.getByRole("link", { name: "首页", exact: true }).click()
+  await page.getByRole("link", { name: "工作台", exact: true }).click()
   item = page.getByRole("article").filter({ hasText: itemTitle })
   await expect(item.getByText("今日重点")).toBeVisible()
   await item.getByRole("button", { name: `完成 ${itemTitle}` }).click()

@@ -39,3 +39,7 @@ Sidebar and focus tool are matte dark. Paper sections rely on spacing and separa
 ## 8. Accessibility and verification
 
 One main, explicit labels on all controls, semantic tabs or pressed buttons, keyboard shortcuts ignored during IME composition, keyboard reachable mobile navigation. Verify 375/768/1440 widths, long text, empty workspaces, populated workspaces, AI unconfigured/error, notebook persistence and focus reload. Existing React dev instrumentation remains development-only. AI requires the user's configured provider; no external AI request is made during QA.
+
+## 9. Action planning workspace
+
+A dedicated /plans route connects knowledge and scheduled tasks. A quiet history rail frames a single composer or durable plan. Day sections show allocated minutes, concrete outcomes and source chips; one explicit confirmation precedes writes. Source snapshots and technical run details use progressive disclosure. Empty, generating, confirmation, clarification, unavailable, cancelled and verified states are first-class. At 800px the history follows the workbench; at 480px date controls wrap. All colors, spacing, type and surfaces inherit existing light/night tokens. No fabricated model response, costs or metrics.

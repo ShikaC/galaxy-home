@@ -27,11 +27,13 @@ function NoteEditor({
   onSaved,
   onDirtyChange,
   discarding,
+  creating,
 }: {
   readonly note: Note
   readonly onSaved: () => Promise<void>
   readonly onDirtyChange: (dirty: boolean) => void
   readonly discarding: boolean
+  readonly creating: boolean
 }) {
   const actions = useAppActions()
   const [title, setTitle] = useState(note.title)
@@ -80,17 +82,17 @@ function NoteEditor({
         <div className="button-row">
           <IconButton
             label={note.pinned ? "取消置顶笔记" : "置顶笔记"}
-            disabled={save.isPending}
+            disabled={save.isPending || creating}
             onClick={() => save.mutate({ pinned: !note.pinned })}
           >
             <Pin size={16} fill={note.pinned ? "currentColor" : "none"} />
           </IconButton>
-          <IconButton label="导出 Markdown" onClick={exportNote}>
+          <IconButton label="导出 Markdown" disabled={creating} onClick={exportNote}>
             <ArrowDownToLine size={16} />
           </IconButton>
           <IconButton
             label={note.archived ? "恢复笔记" : "归档笔记"}
-            disabled={save.isPending || !title.trim()}
+            disabled={save.isPending || creating || !title.trim()}
             onClick={() => save.mutate({ archived: !note.archived })}
           >
             {note.archived ? <ArrowLeft size={16} /> : <Archive size={16} />}
@@ -98,7 +100,7 @@ function NoteEditor({
           <Button
             size="compact"
             loading={save.isPending}
-            disabled={!title.trim() || !dirty}
+            disabled={creating || !title.trim() || !dirty}
             onClick={() => save.mutate({})}
           >
             保存笔记
@@ -112,6 +114,7 @@ function NoteEditor({
         <input
           className="note-title-input"
           aria-label="笔记标题"
+          disabled={creating}
           maxLength={240}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -124,6 +127,7 @@ function NoteEditor({
         <textarea
           className="note-content-input"
           aria-label="笔记正文"
+          disabled={creating}
           maxLength={50_000}
           value={content}
           onChange={(event) => setContent(event.target.value)}
@@ -141,7 +145,7 @@ function NoteEditor({
             <button
               type="button"
               key={label}
-              disabled={!content.trim()}
+              disabled={creating || !content.trim()}
               onClick={() =>
                 actions.openAi({
                   draft: `请根据下面这篇笔记${label}。\n\n标题：${title}\n\n${content.slice(0, 18_000)}`,
@@ -292,6 +296,7 @@ export function NotesPage() {
             onSaved={invalidate}
             onDirtyChange={setDirty}
             discarding={discarding}
+            creating={create.isPending}
           />
         ) : (
           <div className="notebook-empty">

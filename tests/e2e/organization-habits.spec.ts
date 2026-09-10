@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test"
+import { expect, test } from "../helpers/e2e.js"
 
 test("an item stays synchronized across two categories", async ({ page, request }) => {
   const suffix = Date.now().toString().slice(-7)
@@ -23,8 +23,8 @@ test("an item stays synchronized across two categories", async ({ page, request 
   await page.getByLabel("分类名称").press("Enter")
   await expect(page.getByText(secondCategory, { exact: true })).toBeVisible()
 
-  await page.getByRole("link", { name: "待办", exact: true }).click()
-  await page.getByRole("button", { name: "随手记" }).click()
+  await page.getByRole("link", { name: "任务", exact: true }).click()
+  await page.getByRole("button", { name: "随手记", exact: true }).click()
   await page.getByLabel("标题").fill(itemTitle)
   await page.getByRole("button", { name: "保存到收集箱" }).click()
   let item = page.getByRole("article").filter({ hasText: itemTitle })
