@@ -3,6 +3,12 @@ import { AiInvalidEndpointError, assertSafeAiEndpoint } from "./aiEndpoint.js"
 import { readSecretConfig } from "./secrets.js"
 
 const completionSchema = z.object({
+  usage: z
+    .object({
+      prompt_tokens: z.number().int().nonnegative().optional(),
+      completion_tokens: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
   choices: z.array(z.object({ message: z.object({ content: z.string().trim().min(1) }) })).min(1),
 })
 const streamChunkSchema = z.object({
@@ -52,11 +58,12 @@ async function checkedFetch(url: string, init: RequestInit): Promise<Response> {
   return response
 }
 
-async function requestCompletion(
+export async function requestCompletionWithUsage(
   secretPath: string,
   messages: readonly ChatMessage[],
   structured: boolean,
-): Promise<string> {
+) {
+  const started = performance.now()
   const config = chatConfig(secretPath)
   const response = await checkedFetch(`${config.chatBaseUrl.replace(/\/$/, "")}/chat/completions`, {
     method: "POST",
@@ -78,7 +85,13 @@ async function requestCompletion(
     const completion = completionSchema.parse(JSON.parse(body))
     const choice = completion.choices[0]
     if (choice === undefined) throw new Error("Missing completion choice")
-    return choice.message.content
+    return {
+      content: choice.message.content,
+      model: config.chatModel,
+      durationMs: Math.round(performance.now() - started),
+      inputTokens: completion.usage?.prompt_tokens ?? null,
+      outputTokens: completion.usage?.completion_tokens ?? null,
+    }
   } catch {
     throw new AiServiceError("AI_INVALID_RESPONSE", "AI 返回了无法识别的内容，未写入任何数据")
   }
@@ -93,7 +106,7 @@ function chatConfig(secretPath: string) {
 }
 
 export function chat(secretPath: string, messages: readonly ChatMessage[]) {
-  return requestCompletion(secretPath, messages, false)
+  return requestCompletionWithUsage(secretPath, messages, false).then((result) => result.content)
 }
 
 export async function streamChat(
@@ -168,7 +181,7 @@ export async function chatStructured<Schema extends z.ZodType>(
   messages: readonly ChatMessage[],
   schema: Schema,
 ): Promise<z.output<Schema>> {
-  const content = await requestCompletion(secretPath, messages, true)
+  const { content } = await requestCompletionWithUsage(secretPath, messages, true)
   try {
     return schema.parse(JSON.parse(content))
   } catch {

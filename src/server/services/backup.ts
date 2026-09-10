@@ -4,6 +4,7 @@ import { backup, type DatabaseSync, type SQLOutputValue } from "node:sqlite"
 import { format, parseISO, subDays } from "date-fns"
 import { strFromU8, strToU8, Unzip, UnzipInflate, zipSync } from "fflate"
 import { z } from "zod"
+import { planRunSchema } from "../../shared/planning.js"
 
 export const MAX_IMPORT_UNCOMPRESSED_BYTES = 32 * 1024 * 1024
 
@@ -41,6 +42,7 @@ export class ImportArchiveMalformedError extends Error {
 const DATA_TABLES = [
   "workspace_settings",
   "workspace_notes",
+  "plan_runs",
   "quotes",
   "daily_quote_selections",
   "categories",
@@ -210,7 +212,7 @@ export async function restoreManualExport(
     throw new ImportArchiveMalformedError(error)
   }
   for (const table of DATA_TABLES)
-    if (data.tables[table] === undefined && table !== "workspace_notes")
+    if (data.tables[table] === undefined && table !== "workspace_notes" && table !== "plan_runs")
       throw new ImportArchiveMalformedError(new Error(`导入文件缺少 ${table}`))
   for (const table of Object.keys(data.tables)) {
     if (!DATA_TABLE_SET.has(table)) throw new ImportArchiveInvalidError(table)
@@ -221,6 +223,28 @@ export async function restoreManualExport(
         .map((row) => z.object({ name: z.string() }).parse(row).name),
     )
     for (const row of data.tables[table] ?? []) {
+      if (table === "plan_runs") {
+        try {
+          const stored = z
+            .object({
+              id: z.uuid(),
+              state_json: z.string(),
+              created_at: z.string(),
+              updated_at: z.string(),
+            })
+            .parse(row)
+          const run = planRunSchema.parse(JSON.parse(stored.state_json))
+          if (
+            run.id !== stored.id ||
+            run.input.requestId !== run.id ||
+            run.createdAt !== stored.created_at ||
+            run.updatedAt !== stored.updated_at
+          )
+            throw new Error("Mismatched run metadata")
+        } catch (error) {
+          throw new ImportArchiveMalformedError(error)
+        }
+      }
       const rowColumns = Object.keys(row)
       if (rowColumns.length === 0) throw new ImportArchiveInvalidError(table)
       const unknownColumn = rowColumns.find((column) => !columns.has(column))
@@ -235,6 +259,10 @@ export async function restoreManualExport(
     for (const table of DATA_TABLES) {
       const rows = data.tables[table] ?? []
       for (const row of rows) {
+        if (table === "plan_runs") {
+          row["owner_pid"] = 0
+          row["lease_until_ms"] = 0
+        }
         const columns = Object.keys(row)
         const identifiers = columns.map((column) => `"${column}"`).join(",")
         database
