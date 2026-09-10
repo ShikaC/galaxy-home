@@ -10,20 +10,19 @@ import { claimPlan, findPlan, finishPlan, PlanError, readPlan, renewPlanLease } 
 export type PlanningModel = (
   messages: readonly ChatMessage[],
 ) => ReturnType<typeof requestCompletionWithUsage>
-export async function generatePlan(
+export function preparePlan(
   context: AppContext,
   input: PlanInput,
-  model?: PlanningModel,
-): Promise<PlanRun> {
+): { readonly run: PlanRun; readonly claimed: boolean } {
   const existing = findPlan(context.database, input.requestId)
   if (existing !== null) {
     if (fingerprint(existing.input) !== fingerprint(input))
       throw new PlanError("PLAN_REQUEST_CONFLICT", "同一请求标识不能用于不同的计划内容。")
-    return existing
+    return { run: existing, claimed: false }
   }
   const retrieved = retrieveContext(context.database, input)
   const now = getAppClock(context).now().toISOString()
-  let run: PlanRun = {
+  const run: PlanRun = {
     id: input.requestId,
     input,
     status: "planning",
@@ -42,8 +41,24 @@ export async function generatePlan(
     const claimed = readPlan(context.database, input.requestId)
     if (fingerprint(claimed.input) !== fingerprint(input))
       throw new PlanError("PLAN_REQUEST_CONFLICT", "同一请求标识不能用于不同的计划内容。")
-    return claimed
+    return { run: claimed, claimed: false }
   }
+  return { run, claimed: true }
+}
+export async function generatePlan(
+  context: AppContext,
+  input: PlanInput,
+  model?: PlanningModel,
+): Promise<PlanRun> {
+  const prepared = preparePlan(context, input)
+  return prepared.claimed ? completePlan(context, prepared.run, model) : prepared.run
+}
+export async function completePlan(
+  context: AppContext,
+  initial: PlanRun,
+  model?: PlanningModel,
+): Promise<PlanRun> {
+  let run = initial
   const messages = [...planningMessages(run)]
   const requestModel =
     model ?? ((messages) => requestCompletionWithUsage(context.secretPath, messages, true))
@@ -59,10 +74,14 @@ export async function generatePlan(
   heartbeat.unref()
   try {
     for (let attempt = 1; attempt <= 2; attempt++) {
+      const current = readPlan(context.database, run.id)
+      if (current.status !== "planning") return current
       const started = performance.now()
       let completion: Awaited<ReturnType<PlanningModel>> | undefined
       try {
         completion = await requestModel(messages)
+        const current = readPlan(context.database, run.id)
+        if (current.status !== "planning") return current
         const proposal = parseProposal(completion.content, run)
         run = {
           ...run,

@@ -9,7 +9,7 @@ import { PlanError, readPlan, savePlan, savePlanFailure } from "./store.js"
 
 const taskRow = z.object({ id: z.string(), title: z.string() })
 const countRow = z.object({ count: z.number() })
-export function executePlan(context: AppContext, id: string): PlanRun {
+export function executePlan(context: AppContext, id: string, expectedRevision = 0): PlanRun {
   const { database } = context
   const started = performance.now()
   database.exec("BEGIN IMMEDIATE")
@@ -26,6 +26,8 @@ export function executePlan(context: AppContext, id: string): PlanRun {
     )
       throw new PlanError("PLAN_NOT_CONFIRMABLE", "此计划当前不能执行，请重新生成。")
     if (run.proposal === null) throw new PlanError("PLAN_NOT_CONFIRMABLE", "计划内容缺失。")
+    if ((run.proposalRevision ?? 0) !== expectedRevision)
+      throw new PlanError("PLAN_REVISION_CONFLICT", "计划已更新，请查看最新安排后再确认。")
     const executingRun = run
     assertFreshContext(database, executingRun)
     const proposal = validateProposal(run.proposal, run)
@@ -101,7 +103,11 @@ export function executePlan(context: AppContext, id: string): PlanRun {
     return completed
   } catch (error) {
     database.exec("ROLLBACK")
-    if (run === undefined || (error instanceof PlanError && error.code === "PLAN_NOT_CONFIRMABLE"))
+    if (
+      run === undefined ||
+      (error instanceof PlanError &&
+        ["PLAN_NOT_CONFIRMABLE", "PLAN_REVISION_CONFLICT"].includes(error.code))
+    )
       throw error
     if (error instanceof PlanError) {
       savePlanFailure(database, run, {

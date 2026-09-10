@@ -30,6 +30,13 @@ export const proposalSchema = z
   })
   .readonly()
 export type Proposal = z.infer<typeof proposalSchema>
+export const planEditSchema = z
+  .strictObject({
+    expectedRevision: z.number().int().nonnegative(),
+    tasks: z.array(proposedTaskSchema).min(1).max(12),
+  })
+  .readonly()
+export type PlanEdit = z.infer<typeof planEditSchema>
 export const planSourceSchema = z
   .object({
     id: z.uuid(),
@@ -81,6 +88,7 @@ export const planRunSchema = z
     sources: z.array(planSourceSchema),
     existingItems: z.array(planItemSchema),
     proposal: proposalSchema.nullable(),
+    proposalRevision: z.number().int().nonnegative().optional(),
     attempts: z.array(planAttemptSchema),
     results: z.array(planResultSchema),
     error: z.object({ code: z.string(), message: z.string(), retryable: z.boolean() }).nullable(),
