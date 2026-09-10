@@ -4,6 +4,19 @@ AI 驱动、本地优先的个人工作空间。把想法收集、每日任务�
 
 现有本地数据可直接升级，启动时自动执行增量数据库迁移。
 
+
+## AI 行动计划与工程验证
+
+从侧栏「AI 计划」把目标和相关笔记变成 1–7 天的限时行动。模型只提出建议，服务器检查时间、引用和重复任务；你确认后才执行。执行结果和运行记录保存在本地，支持刷新恢复、重复请求去重、失败回滚、过期资料保护和 JSON 导出。
+
+- `npm run eval -- --repetitions 3`：30 个合成场景的确定性状态评测，同时比较笔记检索方法；不调用外部服务。
+- [验收记录](docs/agent-validation.md)：可复现的检查命令、通过结果、失败场景与指标边界。
+- `npm run eval -- --live --secrets /absolute/path/to/secrets.json --repetitions 3`：使用已配置模型测量合成场景；与固定输出回归分开报告。
+- CI 检查 lint、类型、单元/集成测试、生产构建、评测和全部 Playwright 流程，并保留评测及浏览器验证产物。
+
+[架构、状态机、评测方法和五分钟演示](docs/agent-engineering.md)说明了已经实现的能力及尚未测量的边界。真实模型指标和用户收益不使用模拟数据代替。
+
+
 ## 这个版本能做什么
 
 - **每日工作台**：今日计划／收集箱／已完成、项目概览、近期笔记、习惯与 AI 工作入口。所有内容来自实际本地数据。
@@ -81,6 +94,7 @@ npm run desktop:build    # 打包：构建前端/服务资源后产出安装包
 | `npm test` | 单元与集成测试 |
 | `npm run test:e2e` | Playwright 端到端 |
 | `npm run typecheck` | TypeScript 检查 |
+| `npm run eval -- --repetitions 3` | 计划流程与检索的合成评测，默认不调用模型 |
 | `npm run desktop` | Tauri 桌面开发 |
 | `npm run desktop:build` | Tauri 桌面打包 |
 

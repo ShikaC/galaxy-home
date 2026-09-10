@@ -18,13 +18,21 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - run: npm run build
+      - run: npm run eval -- --repetitions 3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: .omo/evidence/evaluation/latest.json
+          include-hidden-files: true
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
-      - if: failure()
+      - if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-artifacts
           path: |
             test-results/
             .omo/evidence/playwright-report/
+          include-hidden-files: true
           if-no-files-found: ignore
