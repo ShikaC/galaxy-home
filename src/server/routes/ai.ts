@@ -49,7 +49,7 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
   app.post("/api/ai/chat", async (request) => {
     const prepared = prepareAiChat(context.database, aiChatInputSchema.parse(request.body))
     const answer = await completeAiChat(context.secretPath, prepared)
-    return persistAiChat(context.database, prepared, answer)
+    return persistAiChat(context.database, prepared, answer, clock.now())
   })
   app.post("/api/ai/chat/stream", async (request, reply) => {
     const prepared = prepareAiChat(context.database, aiChatInputSchema.parse(request.body))
@@ -70,7 +70,10 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
       const answer = await streamChat(context.secretPath, prepared.messages, (content) => {
         writeEvent({ type: "delta", content })
       })
-      writeEvent({ type: "done", ...persistAiChat(context.database, prepared, answer) })
+      writeEvent({
+        type: "done",
+        ...persistAiChat(context.database, prepared, answer, clock.now()),
+      })
     } catch (error) {
       const serviceError =
         error instanceof AiServiceError
@@ -98,6 +101,7 @@ export function registerAiRoutes(app: FastifyInstance, context: AppContext): voi
       context.database,
       settings,
       message.pendingAction.actions,
+      clock.now(),
     )
     const next = pendingChatActionSchema.parse({
       ...message.pendingAction,

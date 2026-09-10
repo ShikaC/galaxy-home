@@ -36,7 +36,7 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     updateSettings(context.database, updateSettingsInputSchema.parse(request.body)),
   )
   app.post("/api/onboarding", (request) => {
-    completeOnboarding(context.database, onboardingInputSchema.parse(request.body))
+    completeOnboarding(context.database, onboardingInputSchema.parse(request.body), clock.now())
     return getSettings(context.database)
   })
   app.get("/api/meta", () => ({

@@ -610,8 +610,9 @@ function fitTodayActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
   actions: readonly ChatAction[],
+  instant = new Date(),
 ): readonly ChatAction[] {
-  const localDate = localClock(new Date(), settings.timezone).date
+  const localDate = localClock(instant, settings.timezone).date
   let remaining = Math.max(0, 3 - countPrimaryTodayItems(database, localDate))
   return actions.map((action) => {
     if (action.action === "create_item") {
@@ -711,11 +712,12 @@ export function executeChatAction(
   settings: WorkspaceSettings,
   action: ChatAction,
   refs: Map<string, string> = new Map(),
+  instant = new Date(),
 ): string {
   if (action.action === "propose_memory") {
     throw new Error("propose_memory 不能直接执行")
   }
-  const localDate = localClock(new Date(), settings.timezone).date
+  const localDate = localClock(instant, settings.timezone).date
   switch (action.action) {
     case "create_habit": {
       const habit = createHabit(
@@ -851,6 +853,7 @@ export function executeChatAction(
           ...(action.notes === undefined ? {} : { notes: action.notes }),
         },
         localDate,
+        instant,
       )
       rememberAlias(refs, action.as, item.id)
       recordAction(database, "create_item", `创建待办「${item.title}」`, "item", item.id, {
@@ -882,6 +885,7 @@ export function executeChatAction(
           ...(action.notes === undefined ? {} : { notes: action.notes }),
         },
         localDate,
+        instant,
       )
       recordAction(database, "update_item", summarizeAction(action), "item", item.id, {
         kind: "update_item",
@@ -950,7 +954,7 @@ export function executeChatAction(
       const itemId = resolveItemRef(database, action.itemId, refs)
       const before = getItem(database, itemId, localDate)
       const status = action.action === "complete_item" ? "completed" : "archived"
-      const item = updateItem(database, itemId, { status }, localDate)
+      const item = updateItem(database, itemId, { status }, localDate, instant)
       recordAction(database, action.action, summarizeAction(action), "item", item.id, {
         kind: "item_status",
         itemId: item.id,
@@ -1048,6 +1052,7 @@ export function executeChatActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
   actions: readonly ChatAction[],
+  instant = new Date(),
 ): string {
   const executable = actions.filter((action) => action.action !== "propose_memory")
   if (executable.length === 0) throw new Error("没有可执行的操作")
@@ -1057,12 +1062,12 @@ export function executeChatActions(
       throw new Error("保守模式不支持删除或归档，请切换到开放模式后再试")
     }
   }
-  const fitted = fitTodayActions(database, settings, executable)
+  const fitted = fitTodayActions(database, settings, executable, instant)
   const refs = new Map<string, string>()
   const confirmations: string[] = []
   for (const [index, action] of fitted.entries()) {
     try {
-      confirmations.push(executeChatAction(database, settings, action, refs))
+      confirmations.push(executeChatAction(database, settings, action, refs, instant))
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败"
       const head = confirmations.length === 0 ? "" : `${confirmations.join("\n")}\n\n`
@@ -1082,6 +1087,7 @@ export function applyAiChatActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
   answer: string,
+  instant = new Date(),
 ): ApplyChatActionsResult {
   const extracted = extractChatActions(answer)
   if (extracted.actions.length === 0) {
@@ -1159,7 +1165,7 @@ export function applyAiChatActions(
   let executedText = ""
   if (immediate.length > 0) {
     try {
-      executedText = executeChatActions(database, settings, immediate)
+      executedText = executeChatActions(database, settings, immediate, instant)
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败"
       return {

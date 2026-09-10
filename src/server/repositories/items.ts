@@ -34,9 +34,10 @@ export function createItem(
   database: DatabaseSync,
   input: CreateItemInput,
   localDate = new Date().toISOString().slice(0, 10),
+  instant = new Date(),
 ): Item {
   const id = itemIdSchema.parse(crypto.randomUUID())
-  const now = new Date().toISOString()
+  const now = instant.toISOString()
   database.exec("BEGIN IMMEDIATE")
   try {
     database
@@ -172,13 +173,14 @@ export function updateItem(
   itemId: string,
   input: UpdateItemInput,
   localDate = new Date().toISOString().slice(0, 10),
+  instant = new Date(),
 ): Item {
   const existing = getItem(database, itemId, localDate)
   const status = input.status ?? existing.status
   const dueAt = input.dueAt === undefined ? existing.dueAt : input.dueAt
   const reminder =
     input.reminderMinutes === undefined ? existing.reminderMinutes : input.reminderMinutes
-  const now = new Date().toISOString()
+  const now = instant.toISOString()
   const convertsTutorial =
     input.title !== undefined ||
     input.notes !== undefined ||

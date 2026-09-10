@@ -9,8 +9,12 @@ const DEFAULT_QUOTES = [
   ["bb39dff9-2a88-4b19-9aa1-f8e3f7ec6d23", "今天能完成的，已经足够。"],
 ] as const
 
-export function completeOnboarding(database: DatabaseSync, input: OnboardingInput) {
-  const now = new Date().toISOString()
+export function completeOnboarding(
+  database: DatabaseSync,
+  input: OnboardingInput,
+  instant = new Date(),
+) {
+  const now = instant.toISOString()
   database.exec("BEGIN IMMEDIATE")
   try {
     database

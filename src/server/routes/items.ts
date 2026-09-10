@@ -59,7 +59,12 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   })
   app.post("/api/items", (request, reply) => {
     const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
-    const item = createItem(context.database, createItemInputSchema.parse(request.body), localDate)
+    const item = createItem(
+      context.database,
+      createItemInputSchema.parse(request.body),
+      localDate,
+      clock.now(),
+    )
     queueCaptureAnalysis(context.database, context.secretPath, item.id)
     return reply.code(201).send(item)
   })
@@ -70,7 +75,13 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   app.patch("/api/items/:id", (request) => {
     const { id } = idSchema.parse(request.params)
     const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
-    return updateItem(context.database, id, updateItemInputSchema.parse(request.body), localDate)
+    return updateItem(
+      context.database,
+      id,
+      updateItemInputSchema.parse(request.body),
+      localDate,
+      clock.now(),
+    )
   })
   app.post("/api/items/:id/copy", (request, reply) =>
     reply

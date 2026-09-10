@@ -76,9 +76,14 @@ export async function completeAiChat(
   ])
 }
 
-export function persistAiChat(database: DatabaseSync, prepared: PreparedAiChat, answer: string) {
+export function persistAiChat(
+  database: DatabaseSync,
+  prepared: PreparedAiChat,
+  answer: string,
+  instant = new Date(),
+) {
   const settings = getSettings(database)
-  const finalized = applyAiChatActions(database, settings, answer)
+  const finalized = applyAiChatActions(database, settings, answer, instant)
   const conversationId =
     prepared.conversationId ?? createConversation(database, prepared.content.slice(0, 24)).id
   addMessage(database, conversationId, "user", prepared.content)
