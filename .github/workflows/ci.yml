@@ -27,6 +27,7 @@ jobs:
           include-hidden-files: true
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - run: npm run test:e2e:task-core
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -34,5 +35,6 @@ jobs:
           path: |
             test-results/
             .omo/evidence/playwright-report/
+            .omo/evidence/task-core/scenario/
           include-hidden-files: true
           if-no-files-found: ignore

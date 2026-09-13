@@ -50,10 +50,15 @@ function SortableTask({
         onComplete={() => {
           status.mutate({
             id: item.id,
+            expectedVersion: item.version,
             status: item.status === "completed" ? "active" : "completed",
           })
         }}
-        onFocus={item.isSecondary ? undefined : () => today.mutate({ id: item.id, focus: true })}
+        onFocus={
+          item.isSecondary
+            ? undefined
+            : () => today.mutate({ id: item.id, expectedVersion: item.version, focus: true })
+        }
         onEdit={onEdit === undefined ? undefined : () => onEdit(item)}
       />
     </div>

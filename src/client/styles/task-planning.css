@@ -1,0 +1,426 @@
+.task-planning-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+.task-plan-history {
+  min-width: 0;
+}
+.task-plan-history h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-action);
+}
+.task-plan-history > p {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-action);
+  line-height: 1.8;
+}
+.task-plan-history__list {
+  display: grid;
+  gap: var(--space-1);
+}
+.task-plan-history button {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+.task-plan-history button:hover {
+  background: var(--color-surface-hover);
+}
+.task-plan-history button[aria-current="true"] {
+  border-color: var(--color-border);
+  background: var(--color-action-soft);
+}
+.task-plan-history strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--font-size-action);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.task-plan-history span,
+.task-plan-history time {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.task-planning-workbench {
+  min-width: 0;
+}
+.task-planning-composer,
+.task-planning-run,
+.task-plan-draft-editor {
+  display: grid;
+  gap: var(--space-6);
+  padding: var(--space-8);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+}
+.task-planning-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-subtle);
+}
+.task-planning-mode button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.task-planning-mode button[aria-selected="true"] {
+  background: var(--color-surface);
+  color: var(--color-action);
+  box-shadow: var(--shadow-quote-band);
+}
+.task-planning-intro {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+.task-planning-intro h2,
+.task-planning-run h2,
+.task-plan-draft-editor h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-title);
+  line-height: 1.5;
+}
+.task-planning-intro p,
+.task-planning-run p {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: 1.8;
+}
+.task-planning-controls,
+.task-plan-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.task-planning-composer footer,
+.task-planning-run__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.task-planning-composer :where(footer) p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.task-planning-run__header,
+.task-plan-draft-editor > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+.task-plan-status,
+.task-plan-snapshot,
+.task-plan-action {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-small);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
+.task-plan-status--awaiting_confirmation,
+.task-plan-status--needs_input {
+  background: var(--color-action-soft);
+  color: var(--color-action);
+}
+.task-plan-status--succeeded {
+  color: var(--color-success);
+}
+.task-plan-status--failed,
+.task-plan-status--cancelled {
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+.task-plan-original {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+}
+.task-plan-original summary {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-action);
+  cursor: pointer;
+}
+.task-plan-original p {
+  margin-top: var(--space-3);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.task-plan-waiting,
+.task-plan-run-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-action-soft);
+}
+.task-plan-waiting svg {
+  flex-shrink: 0;
+  color: var(--color-action);
+  animation: task-plan-spin var(--motion-slow) linear infinite;
+}
+.task-plan-run-error {
+  display: block;
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+.task-plan-proposal {
+  display: grid;
+  gap: var(--space-6);
+}
+.task-plan-proposal h3,
+.task-plan-ambiguity h3,
+.task-plan-results h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-heading);
+}
+.task-plan-card-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.task-plan-change-card {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.task-plan-change-card > svg {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+.task-plan-change-card--move > svg,
+.task-plan-change-card--create > svg {
+  color: var(--color-action);
+}
+.task-plan-change-card strong {
+  display: block;
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+.task-plan-change-card p {
+  overflow-wrap: anywhere;
+}
+.task-plan-change-card .task-plan-time-label {
+  display: block;
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+.task-plan-token {
+  display: inline-block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+.task-planning-run .task-plan-schedule + .task-plan-schedule {
+  margin-top: var(--space-2);
+}
+.task-planning-run .task-plan-reason {
+  margin-top: var(--space-2);
+}
+.task-plan-conflicts {
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-subtle);
+}
+.task-plan-conflicts ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}
+.task-plan-conflicts .is-blocking {
+  color: var(--color-attention);
+}
+.task-planning-run .task-plan-blocked {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+.task-plan-ambiguity,
+.task-plan-results {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.task-plan-ambiguity .button {
+  justify-self: start;
+}
+.task-plan-results ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.task-plan-results li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-meta);
+}
+.task-plan-results li span {
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+}
+.task-plan-editor-root {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.task-plan-editor-groups {
+  display: grid;
+  gap: var(--space-4);
+}
+.task-plan-edit-card {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+.task-plan-edit-card legend {
+  padding: 0 var(--space-2);
+  color: var(--color-action);
+  font-size: var(--font-size-action);
+  font-weight: var(--font-weight-semibold);
+}
+.task-plan-edit-card > .button {
+  justify-self: start;
+}
+.task-plan-item-id {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-meta);
+  overflow-wrap: anywhere;
+}
+.task-plan-before {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  font-size: var(--font-size-meta);
+}
+.task-plan-save-error {
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  background: var(--color-attention-soft);
+  color: var(--color-attention);
+}
+.task-plan-save-error p {
+  margin: var(--space-1) 0 var(--space-3);
+}
+@keyframes task-plan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 800px) {
+  .task-planning-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .task-plan-history {
+    order: 2;
+  }
+}
+@media (max-width: 480px) {
+  .task-planning-composer,
+  .task-planning-run,
+  .task-plan-draft-editor {
+    padding: var(--space-4);
+  }
+  .task-planning-mode,
+  .task-planning-controls,
+  .task-plan-edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .task-planning-mode button {
+    min-height: 44px;
+  }
+  .task-plan-results li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .task-plan-waiting svg {
+    animation: none;
+  }
+}
+.task-plan-manual {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-4);
+}
+.task-plan-manual summary {
+  cursor: pointer;
+  color: var(--color-action);
+  font-size: var(--font-size-action);
+}
+.task-plan-manual p,
+.task-plan-manual form {
+  margin-top: var(--space-3);
+}
+.task-plan-weekdays {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  border: 0;
+  padding: 0;
+}
+.task-plan-weekdays legend {
+  padding: 0 0 var(--space-2);
+}
+.task-plan-weekdays label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+}
+.task-plan-conflicts label {
+  display: block;
+  margin-top: var(--space-3);
+  line-height: 1.8;
+}

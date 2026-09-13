@@ -41,6 +41,21 @@
   }
 }
 @media (max-width: 640px) {
+  .task-detail-dialog {
+    padding: var(--space-4);
+  }
+  .subtask-create,
+  .series-origin {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .list-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .task-list-tools {
+    justify-content: flex-start;
+  }
   .task-row {
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: start;
@@ -83,6 +98,41 @@
   .form-grid,
   .form-grid--three {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .task-detail-dialog .form-disclosure .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .task-detail-dialog .form-disclosure .field__control {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  .task-detail-dialog .task-repeat-fields .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .task-detail-dialog .task-repeat-fields .field__control {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+  }
+  .reminder-banner[role="status"] {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+  }
+  .reminder-banner[role="status"] > div > span {
+    display: block;
+    inline-size: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    text-wrap: wrap;
+  }
+  .reminder-banner[role="status"] > .button {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    margin-block-start: var(--space-1);
+  }
+  .reminder-banner[role="status"] > .icon-button {
+    grid-column: 3;
+    grid-row: 1;
   }
   .project-card header {
     flex-direction: column;

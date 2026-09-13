@@ -16,3 +16,11 @@ export const notificationSchema = z
 
 export const notificationsSchema = z.array(notificationSchema).readonly()
 export type Notification = z.infer<typeof notificationSchema>
+
+export const snoozeNotificationInputSchema = z
+  .object({ minutes: z.number().int().min(5).max(1440), requestId: z.uuid().optional() })
+  .readonly()
+export type SnoozeNotificationInput = z.infer<typeof snoozeNotificationInputSchema>
+export const snoozeNotificationResultSchema = z
+  .object({ eventId: z.uuid(), scheduledAt: z.iso.datetime() })
+  .readonly()

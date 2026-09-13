@@ -22,19 +22,24 @@ export function CaptureDialog({
   const { today } = useAppTime()
   const [title, setTitle] = useState("")
   const [notes, setNotes] = useState("")
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID())
+  const [uncertainAttempt, setUncertainAttempt] = useState(false)
   useEffect(() => {
     if (!open) {
       setTitle("")
       setNotes("")
+      setRequestId(crypto.randomUUID())
+      setUncertainAttempt(false)
     }
   }, [open])
   const capture = useMutation({
     mutationFn: (placeOnToday: boolean) =>
-      submitCapture({ localDate: today, notes, placeOnToday, title }),
+      submitCapture({ localDate: today, notes, placeOnToday, requestId, title }),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["items"] })
       onClose()
     },
+    onError: () => setUncertainAttempt(true),
   })
   if (!open) return null
   const busy = capture.isPending
@@ -52,6 +57,10 @@ export function CaptureDialog({
       <form
         className="form-stack"
         onKeyDown={(event) => {
+          if ((event.nativeEvent.isComposing || event.keyCode === 229) && event.key === "Enter") {
+            event.preventDefault()
+            return
+          }
           if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return
           event.preventDefault()
           if (title.trim()) capture.mutate(true)
@@ -65,23 +74,37 @@ export function CaptureDialog({
           autoFocus
           label="标题"
           maxLength={240}
-          onChange={(event) => setTitle(event.target.value)}
+          onChange={(event) => {
+            if (uncertainAttempt) setRequestId(crypto.randomUUID())
+            setTitle(event.target.value)
+          }}
           placeholder="此刻不想忘记什么？"
           value={title}
         />
         <TextArea
           label="备注（可选）"
           maxLength={10_000}
-          onChange={(event) => setNotes(event.target.value)}
+          onChange={(event) => {
+            if (uncertainAttempt) setRequestId(crypto.randomUUID())
+            setNotes(event.target.value)
+          }}
           rows={2}
           value={notes}
         />
         <VoiceCapture
           configured={meta.data?.ai.configured ?? false}
-          onText={(text) => setTitle(text)}
+          onText={(text) => {
+            if (uncertainAttempt) setRequestId(crypto.randomUUID())
+            setTitle(text)
+          }}
         />
         <p className="capture-hint">回车进收集箱，⌘回车放进今天。</p>
         {capture.isError ? <p className="inline-error">{capture.error.message}</p> : null}
+        {uncertainAttempt ? (
+          <p className="setting-note">
+            直接重试会安全复用同一次保存；若修改内容，将按新任务保存，请先在列表确认上次是否已成功。
+          </p>
+        ) : null}
         <footer className="dialog__actions">
           <Button onClick={onClose} variant="ghost">
             取消

@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query"
 import type { Item } from "../../shared/items.js"
 import { useAppTime } from "../components/AppContext.js"
 import { apiRequest, apiVoid, jsonBody } from "./api.js"
@@ -6,19 +6,35 @@ import { itemSchema } from "./schemas.js"
 
 type ItemStatusChange = Readonly<{
   readonly id: string
+  readonly expectedVersion: number
   readonly status: "active" | "completed" | "archived"
 }>
+
+const TASK_QUERY_PREFIXES = [
+  ["items"],
+  ["item-detail"],
+  ["calendar"],
+  ["task-series"],
+  ["projects"],
+] as const
+
+export async function invalidateTaskQueries(client: QueryClient): Promise<void> {
+  await Promise.all(TASK_QUERY_PREFIXES.map((queryKey) => client.invalidateQueries({ queryKey })))
+}
 
 export function useItemStatusMutation(
   onStatusChanged?: (item: Item, change: ItemStatusChange) => void,
 ) {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, status }: ItemStatusChange) =>
-      apiRequest(`/api/items/${id}`, itemSchema, { method: "PATCH", body: jsonBody({ status }) }),
+    mutationFn: ({ id, expectedVersion, status }: ItemStatusChange) =>
+      apiRequest(`/api/items/${id}`, itemSchema, {
+        method: "PATCH",
+        body: jsonBody({ expectedVersion, status }),
+      }),
     onSuccess: (item, change) => {
       onStatusChanged?.(item, change)
-      return client.invalidateQueries({ queryKey: ["items"] })
+      return invalidateTaskQueries(client)
     },
   })
 }
@@ -29,18 +45,25 @@ export function useTodayMutation() {
   return useMutation({
     mutationFn: ({
       id,
+      expectedVersion,
       focus,
       secondary = false,
     }: {
       readonly id: string
+      readonly expectedVersion: number
       readonly focus: boolean
       readonly secondary?: boolean
     }) =>
       apiVoid(`/api/items/${id}/today`, {
         method: "PUT",
-        body: jsonBody({ localDate: today, isFocus: focus, isSecondary: secondary }),
+        body: jsonBody({
+          localDate: today,
+          expectedVersion,
+          isFocus: focus,
+          isSecondary: secondary,
+        }),
       }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["items"] }),
+    onSuccess: () => invalidateTaskQueries(client),
   })
 }
 

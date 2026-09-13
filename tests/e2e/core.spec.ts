@@ -18,7 +18,7 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   }
 
   await page.getByRole("button", { name: "随手记", exact: true }).first().click()
-  await page.getByLabel("标题").fill(itemTitle)
+  await page.getByLabel("标题", { exact: true }).fill(itemTitle)
   await page.getByLabel("备注（可选）").fill("选择三本书并安排第一次阅读")
   await page.getByRole("button", { name: "保存到收集箱" }).click()
 
@@ -30,7 +30,7 @@ test("manual work remains complete without an AI key", async ({ page }, testInfo
   const editDialog = page.getByRole("dialog", { name: "把内容改成现在准确的样子" })
   await expect(editDialog).toBeVisible()
   itemTitle = `${itemTitle}（已修改）`
-  await editDialog.getByLabel("标题").fill(itemTitle)
+  await editDialog.getByLabel("标题", { exact: true }).fill(itemTitle)
   await editDialog.getByRole("button", { name: "保存修改" }).click()
   await expect(editDialog).not.toBeVisible()
   item = page.getByRole("article").filter({ hasText: itemTitle })

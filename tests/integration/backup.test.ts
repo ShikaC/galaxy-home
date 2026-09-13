@@ -92,7 +92,10 @@ describe("manual backup", () => {
     })
     const bytes = createManualExport(database)
     const content = strFromU8(unzipSync(bytes)["galaxy-home.json"] ?? new Uint8Array())
-    expect(content).toContain('"schemaVersion":1')
+    expect(content).toContain('"schemaVersion":2')
+    expect(content).toContain('"task_series"')
+    expect(content).toContain('"task_occurrences"')
+    expect(content).toContain('"task_reminder_rules"')
     expect(content).not.toContain("must-not-export")
     await expect(
       restoreManualExport(database, new Uint8Array([1, 2, 3]), directory),

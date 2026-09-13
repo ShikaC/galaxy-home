@@ -43,12 +43,23 @@ export function YesterdayReview() {
           {
             icon: ListPlus,
             label: "加入临时小事",
-            onSelect: () => today.mutate({ id: item.id, focus: false, secondary: true }),
+            onSelect: () =>
+              today.mutate({
+                id: item.id,
+                expectedVersion: item.version,
+                focus: false,
+                secondary: true,
+              }),
           },
           {
             icon: Check,
             label: "完成",
-            onSelect: () => status.mutate({ id: item.id, status: "completed" }),
+            onSelect: () =>
+              status.mutate({
+                id: item.id,
+                expectedVersion: item.version,
+                status: "completed",
+              }),
           },
           { icon: Inbox, label: "移回收集箱", onSelect: () => removeFromDay.mutate(item.id) },
           {
@@ -63,14 +74,20 @@ export function YesterdayReview() {
           {
             icon: Archive,
             label: "放弃并归档",
-            onSelect: () => status.mutate({ id: item.id, status: "archived" }),
+            onSelect: () =>
+              status.mutate({ id: item.id, expectedVersion: item.version, status: "archived" }),
           },
         ]
         return (
           <article key={item.id}>
             <strong>{item.title}</strong>
             <div>
-              <Button onClick={() => today.mutate({ id: item.id, focus: false })} size="compact">
+              <Button
+                onClick={() =>
+                  today.mutate({ id: item.id, expectedVersion: item.version, focus: false })
+                }
+                size="compact"
+              >
                 <ArrowRight size={14} /> 加入今天
               </Button>
               <TaskActionsMenu actions={overflow} />

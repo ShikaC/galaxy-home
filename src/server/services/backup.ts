@@ -1,89 +1,11 @@
+import { randomUUID } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs"
 import { join } from "node:path"
 import { backup, type DatabaseSync, type SQLOutputValue } from "node:sqlite"
 import { format, parseISO, subDays } from "date-fns"
-import { strFromU8, strToU8, Unzip, UnzipInflate, zipSync } from "fflate"
-import { z } from "zod"
-import { planRunSchema } from "../../shared/planning.js"
-
-export const MAX_IMPORT_UNCOMPRESSED_BYTES = 32 * 1024 * 1024
-
-export class ImportArchiveTooLargeError extends Error {
-  readonly name = "ImportArchiveTooLargeError"
-
-  constructor(readonly limitBytes: number) {
-    super(`导入文件解压后超过 ${limitBytes} 字节上限`)
-  }
-}
-
-export class ImportArchiveInvalidError extends Error {
-  readonly name = "ImportArchiveInvalidError"
-
-  constructor(
-    readonly table: string,
-    readonly column?: string,
-  ) {
-    super(
-      column === undefined
-        ? `导入表 ${table} 的行字段为空`
-        : `导入表 ${table} 含未知字段 ${column}`,
-    )
-  }
-}
-
-export class ImportArchiveMalformedError extends Error {
-  readonly name = "ImportArchiveMalformedError"
-
-  constructor(cause: unknown) {
-    super("恢复包格式错误或版本不兼容，现有数据未更改", { cause })
-  }
-}
-
-const DATA_TABLES = [
-  "workspace_settings",
-  "workspace_notes",
-  "plan_runs",
-  "quotes",
-  "daily_quote_selections",
-  "categories",
-  "items",
-  "projects",
-  "item_categories",
-  "item_projects",
-  "today_items",
-  "project_stages",
-  "project_tasks",
-  "project_feedback",
-  "project_ai_sessions",
-  "habits",
-  "habit_schedules",
-  "habit_logs",
-  "habit_exceptions",
-  "daily_gains",
-  "weekly_reviews",
-  "review_suggestion_conversions",
-  "ai_conversations",
-  "ai_messages",
-  "ai_memories",
-  "ai_action_log",
-  "item_ai_suggestions",
-  "reminders",
-  "notification_events",
-  "scheduler_state",
-  "trash_entries",
-  "tutorial_state",
-] as const
-
-const DATA_TABLE_SET = new Set<string>(DATA_TABLES)
-
-const exportSchema = z.object({
-  schemaVersion: z.literal(1),
-  exportedAt: z.string(),
-  tables: z.record(
-    z.string(),
-    z.array(z.record(z.string(), z.union([z.string(), z.number(), z.bigint(), z.null()]))),
-  ),
-})
+import { strToU8, zipSync } from "fflate"
+import type { MigrationState } from "../database.js"
+import { DATA_TABLES } from "./backupSchema.js"
 
 export async function ensureDailyBackup(
   database: DatabaseSync,
@@ -104,6 +26,22 @@ export async function ensureDailyBackup(
   return path
 }
 
+export async function ensurePreMigrationBackup(
+  database: DatabaseSync,
+  directory: string,
+  state: MigrationState,
+): Promise<string | null> {
+  if (!state.pending || state.currentVersion === 0) return null
+  mkdirSync(directory, { recursive: true })
+  const timestamp = new Date().toISOString().replaceAll(/[-:]/g, "").slice(0, 15)
+  const path = join(
+    directory,
+    `upgrade-v${state.currentVersion}-to-v${state.supportedVersion}-${timestamp}-${randomUUID()}.sqlite`,
+  )
+  await backup(database, path)
+  return path
+}
+
 export function getBackupStatus(directory: string) {
   if (!existsSync(directory)) return { latestAt: null, sizeBytes: 0 }
   const files = readdirSync(directory).filter((file) => /^\d{4}-\d{2}-\d{2}\.sqlite$/.test(file))
@@ -121,7 +59,7 @@ export function createManualExport(database: DatabaseSync): Uint8Array {
   const tables: Record<string, readonly Record<string, SQLOutputValue>[]> = {}
   for (const table of DATA_TABLES) tables[table] = database.prepare(`SELECT * FROM ${table}`).all()
   const payload = JSON.stringify(
-    { schemaVersion: 1, exportedAt: new Date().toISOString(), tables },
+    { schemaVersion: 2, exportedAt: new Date().toISOString(), tables },
     (_key, value: unknown) => {
       if (value instanceof Uint8Array) throw new Error("导出暂不支持二进制字段")
       return typeof value === "bigint" ? Number(value) : value
@@ -130,151 +68,10 @@ export function createManualExport(database: DatabaseSync): Uint8Array {
   return zipSync({ "galaxy-home.json": strToU8(payload) }, { level: 6 })
 }
 
-async function extractImportPayload(bytes: Uint8Array): Promise<Uint8Array> {
-  return await new Promise<Uint8Array>((resolve, reject) => {
-    let settled = false
-    let seenTarget = false
-    let totalBytes = 0
-    const chunks: Uint8Array[] = []
-    const fail = (error: Error) => {
-      if (settled) return
-      settled = true
-      reject(error)
-    }
-    const succeed = (payload: Uint8Array) => {
-      if (settled) return
-      settled = true
-      resolve(payload)
-    }
-    const unzip = new Unzip()
-    unzip.register(UnzipInflate)
-    unzip.onfile = (file) => {
-      if (file.name !== "galaxy-home.json") return
-      if (seenTarget) {
-        fail(new Error("导入文件包含重复的 galaxy-home.json"))
-        return
-      }
-      seenTarget = true
-      if (file.originalSize !== undefined && file.originalSize > MAX_IMPORT_UNCOMPRESSED_BYTES) {
-        fail(new ImportArchiveTooLargeError(MAX_IMPORT_UNCOMPRESSED_BYTES))
-        return
-      }
-      file.ondata = (error, data, final) => {
-        if (error !== null) {
-          fail(error)
-          return
-        }
-        totalBytes += data.byteLength
-        if (totalBytes > MAX_IMPORT_UNCOMPRESSED_BYTES) {
-          fail(new ImportArchiveTooLargeError(MAX_IMPORT_UNCOMPRESSED_BYTES))
-          return
-        }
-        chunks.push(data)
-        if (!final) return
-        if (chunks.length === 1) {
-          const only = chunks[0]
-          if (only !== undefined) {
-            succeed(only)
-            return
-          }
-        }
-        const merged = new Uint8Array(totalBytes)
-        let offset = 0
-        for (const chunk of chunks) {
-          merged.set(chunk, offset)
-          offset += chunk.byteLength
-        }
-        succeed(merged)
-      }
-      file.start()
-    }
-    try {
-      unzip.push(bytes, true)
-    } catch (error) {
-      fail(error instanceof Error ? error : new Error("导入文件无法解压"))
-      return
-    }
-    if (!seenTarget) fail(new Error("导入文件缺少 galaxy-home.json"))
-  })
-}
-
-export async function restoreManualExport(
-  database: DatabaseSync,
-  bytes: Uint8Array,
-  backupDirectory: string,
-): Promise<void> {
-  let data: z.infer<typeof exportSchema>
-  try {
-    const file = await extractImportPayload(bytes)
-    data = exportSchema.parse(JSON.parse(strFromU8(file)))
-  } catch (error) {
-    if (error instanceof ImportArchiveTooLargeError) throw error
-    throw new ImportArchiveMalformedError(error)
-  }
-  for (const table of DATA_TABLES)
-    if (data.tables[table] === undefined && table !== "workspace_notes" && table !== "plan_runs")
-      throw new ImportArchiveMalformedError(new Error(`导入文件缺少 ${table}`))
-  for (const table of Object.keys(data.tables)) {
-    if (!DATA_TABLE_SET.has(table)) throw new ImportArchiveInvalidError(table)
-    const columns = new Set(
-      database
-        .prepare(`PRAGMA table_info(${table})`)
-        .all()
-        .map((row) => z.object({ name: z.string() }).parse(row).name),
-    )
-    for (const row of data.tables[table] ?? []) {
-      if (table === "plan_runs") {
-        try {
-          const stored = z
-            .object({
-              id: z.uuid(),
-              state_json: z.string(),
-              created_at: z.string(),
-              updated_at: z.string(),
-            })
-            .parse(row)
-          const run = planRunSchema.parse(JSON.parse(stored.state_json))
-          if (
-            run.id !== stored.id ||
-            run.input.requestId !== run.id ||
-            run.createdAt !== stored.created_at ||
-            run.updatedAt !== stored.updated_at
-          )
-            throw new Error("Mismatched run metadata")
-        } catch (error) {
-          throw new ImportArchiveMalformedError(error)
-        }
-      }
-      const rowColumns = Object.keys(row)
-      if (rowColumns.length === 0) throw new ImportArchiveInvalidError(table)
-      const unknownColumn = rowColumns.find((column) => !columns.has(column))
-      if (unknownColumn !== undefined) throw new ImportArchiveInvalidError(table, unknownColumn)
-    }
-  }
-  mkdirSync(backupDirectory, { recursive: true })
-  await backup(database, join(backupDirectory, `restore-${Date.now()}.sqlite`))
-  database.exec("BEGIN IMMEDIATE")
-  try {
-    for (const table of [...DATA_TABLES].reverse()) database.exec(`DELETE FROM ${table}`)
-    for (const table of DATA_TABLES) {
-      const rows = data.tables[table] ?? []
-      for (const row of rows) {
-        if (table === "plan_runs") {
-          row["owner_pid"] = 0
-          row["lease_until_ms"] = 0
-        }
-        const columns = Object.keys(row)
-        const identifiers = columns.map((column) => `"${column}"`).join(",")
-        database
-          .prepare(
-            `INSERT INTO ${table} (${identifiers}) VALUES (${columns.map(() => "?").join(",")})`,
-          )
-          .run(...columns.map((column) => row[column] ?? null))
-      }
-    }
-    database.exec("COMMIT")
-  } catch (error) {
-    database.exec("ROLLBACK")
-    throw error
-  }
-}
+export {
+  ImportArchiveInvalidError,
+  ImportArchiveMalformedError,
+  ImportArchiveTooLargeError,
+  MAX_IMPORT_UNCOMPRESSED_BYTES,
+} from "./backupArchive.js"
+export { restoreManualExport } from "./backupRestore.js"

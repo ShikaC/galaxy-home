@@ -147,7 +147,7 @@ describe("workspace notebook", () => {
       if (!payload) throw new Error("Missing export")
       const legacy = z
         .object({
-          schemaVersion: z.literal(1),
+          schemaVersion: z.literal(2),
           exportedAt: z.string(),
           tables: z.record(z.string(), z.unknown()),
         })

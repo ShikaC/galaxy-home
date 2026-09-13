@@ -4,6 +4,7 @@ import { aiActionSchema } from "../../shared/ai.js"
 import { habitIdSchema } from "../../shared/habits.js"
 import { categoryIdSchema, itemIdSchema, itemStatusSchema } from "../../shared/items.js"
 import { replaceItemCategories } from "./categories.js"
+import { assertCanComplete } from "./itemMutations.js"
 import {
   projectMatchesSnapshot,
   projectUndoPayloadSchema,
@@ -407,6 +408,7 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
         payload.previousCategoryIds.map((id) => categoryIdSchema.parse(id)),
       )
     } else if (payload.kind === "item_status") {
+      assertCanComplete(database, payload.itemId, payload.previousStatus)
       database
         .prepare(
           "UPDATE items SET status = ?, completed_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",

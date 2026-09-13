@@ -69,7 +69,13 @@ export function HomeTodaySection({
             <TaskRow
               item={item}
               key={item.id}
-              onComplete={() => itemStatus.mutate({ id: item.id, status: "completed" })}
+              onComplete={() =>
+                itemStatus.mutate({
+                  id: item.id,
+                  expectedVersion: item.version,
+                  status: "completed",
+                })
+              }
               onEdit={() => onEdit(item)}
             />
           ))}
@@ -82,7 +88,13 @@ export function HomeTodaySection({
             <TaskRow
               item={item}
               key={item.id}
-              onComplete={() => itemStatus.mutate({ id: item.id, status: "active" })}
+              onComplete={() =>
+                itemStatus.mutate({
+                  id: item.id,
+                  expectedVersion: item.version,
+                  status: "active",
+                })
+              }
               onEdit={() => onEdit(item)}
             />
           ))}

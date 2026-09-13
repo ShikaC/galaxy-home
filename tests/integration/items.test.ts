@@ -10,7 +10,6 @@ import {
   listItems,
   replaceItemCategories,
   setTodayItem,
-  TodayLimitError,
   updateItem,
 } from "../../src/server/repositories/items.js"
 
@@ -48,7 +47,7 @@ describe("item repository", () => {
     expect(completed[0]?.categoryIds).toEqual([category.id])
   })
 
-  it("allows only three primary today items and keeps a single focus", () => {
+  it("allows more than three primary today items and keeps a single focus", () => {
     // Given
     const first = createItem(database, { title: "第一件事", categoryIds: [], projectIds: [] })
     const second = createItem(database, { title: "第二件事", categoryIds: [], projectIds: [] })
@@ -77,24 +76,14 @@ describe("item repository", () => {
     })
 
     // Then
-    expect(() =>
-      setTodayItem(database, {
-        itemId: fourth.id,
-        localDate,
-        isFocus: false,
-        isSecondary: false,
-      }),
-    ).toThrow(TodayLimitError)
-    updateItem(database, first.id, { status: "completed" })
-    expect(() =>
-      setTodayItem(database, {
-        itemId: fourth.id,
-        localDate,
-        isFocus: false,
-        isSecondary: false,
-      }),
-    ).not.toThrow()
+    setTodayItem(database, {
+      itemId: fourth.id,
+      localDate,
+      isFocus: false,
+      isSecondary: false,
+    })
     const today = listItems(database, { view: "today", localDate })
     expect(today.filter((item) => item.isFocus).map((item) => item.id)).toEqual([second.id])
+    expect(today).toHaveLength(4)
   })
 })

@@ -3,20 +3,31 @@ import multipart from "@fastify/multipart"
 import staticPlugin from "@fastify/static"
 import Fastify from "fastify"
 import { ZodError } from "zod"
+import { RecurrenceLocalTimeError } from "../shared/recurrence.js"
 import type { AppContext } from "./context.js"
 import { AiActionUnavailableError } from "./repositories/aiActions.js"
 import { HabitRestDayError } from "./repositories/habitLogs.js"
 import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./repositories/projectAi.js"
 import { ProjectTaskNotRecommendedError } from "./repositories/projectRecommendations.js"
 import { ReviewSuggestionUnavailableError } from "./repositories/reviewSuggestions.js"
-import { TodayLimitError } from "./repositories/todayItems.js"
+import {
+  ItemCreateRequestConflictError,
+  ItemHasOpenSubtasksError,
+  ItemNotFoundError,
+  ItemParentConflictError,
+  ItemVersionConflictError,
+} from "./repositories/taskErrors.js"
+import { TaskSeriesNotFoundError } from "./repositories/taskSeries.js"
 import { registerAiRoutes } from "./routes/ai.js"
+import { registerCalendarRoutes } from "./routes/calendar.js"
 import { registerContentRoutes } from "./routes/content.js"
 import { registerDomainRoutes } from "./routes/domain.js"
 import { registerItemRoutes } from "./routes/items.js"
 import { registerNoteRoutes } from "./routes/notes.js"
 import { registerPlanningRoutes } from "./routes/planning.js"
 import { registerSystemRoutes } from "./routes/system.js"
+import { registerTaskPlanningRoutes } from "./routes/taskPlanning.js"
+import { registerTaskSeriesRoutes } from "./routes/taskSeries.js"
 import { AiServiceError } from "./services/ai.js"
 import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
 import { AiConfirmationRequiredError } from "./services/aiReview.js"
@@ -26,6 +37,14 @@ import {
   ImportArchiveTooLargeError,
 } from "./services/backup.js"
 import { PlanError } from "./services/planning/store.js"
+import {
+  OccurrenceRequiredError,
+  ItemVersionConflictError as RecurrenceItemVersionConflictError,
+  RecurrenceRequestConflictError,
+  SeriesVersionConflictError,
+  TaskSeriesRelationNotFoundError,
+} from "./services/recurrence.js"
+import { TaskPlanError } from "./services/taskPlanning/store.js"
 
 function localBrowserOrigins(production: boolean): ReadonlySet<string> {
   const defaultPort = production ? "4173" : "5173"
@@ -123,6 +142,9 @@ export async function buildApp(context: AppContext, production = false) {
   app.get("/api/health", () => ({ status: "ok" }))
   registerSystemRoutes(app, context)
   registerItemRoutes(app, context)
+  registerTaskSeriesRoutes(app, context)
+  registerCalendarRoutes(app, context)
+  registerTaskPlanningRoutes(app, context)
   registerDomainRoutes(app, context)
   registerContentRoutes(app, context)
   registerNoteRoutes(app, context)
@@ -137,8 +159,65 @@ export async function buildApp(context: AppContext, production = false) {
         .code(400)
         .send({ code: "VALIDATION_ERROR", message: error.issues[0]?.message ?? "输入内容无效" })
     }
-    if (error instanceof TodayLimitError)
-      return reply.code(409).send({ code: "TODAY_LIMIT", message: error.message })
+    if (error instanceof ItemVersionConflictError)
+      return reply.code(409).send({
+        code: "ITEM_VERSION_CONFLICT",
+        entityId: error.itemId,
+        currentVersion: error.currentVersion,
+        message: error.message,
+      })
+    if (error instanceof ItemCreateRequestConflictError)
+      return reply.code(409).send({
+        code: "ITEM_CREATE_REQUEST_CONFLICT",
+        entityId: error.requestId,
+        message: error.message,
+      })
+    if (error instanceof ItemParentConflictError)
+      return reply
+        .code(409)
+        .send({ code: "ITEM_PARENT_CONFLICT", entityId: error.itemId, message: error.message })
+    if (error instanceof ItemHasOpenSubtasksError)
+      return reply
+        .code(409)
+        .send({ code: "ITEM_HAS_OPEN_SUBTASKS", entityId: error.itemId, message: error.message })
+    if (error instanceof ItemNotFoundError)
+      return reply
+        .code(404)
+        .send({ code: "ITEM_NOT_FOUND", entityId: error.itemId, message: error.message })
+    if (error instanceof SeriesVersionConflictError)
+      return reply.code(409).send({
+        code: error.code,
+        entityId: error.entityId,
+        currentVersion: error.currentVersion,
+        message: error.message,
+      })
+    if (error instanceof RecurrenceRequestConflictError)
+      return reply
+        .code(409)
+        .send({ code: error.code, entityId: error.entityId, message: error.message })
+    if (error instanceof TaskSeriesRelationNotFoundError)
+      return reply
+        .code(409)
+        .send({ code: error.code, entityId: error.entityId, message: error.message })
+    if (error instanceof RecurrenceItemVersionConflictError)
+      return reply.code(409).send({
+        code: error.code,
+        entityId: error.entityId,
+        currentVersion: error.currentVersion,
+        message: error.message,
+      })
+    if (error instanceof OccurrenceRequiredError)
+      return reply
+        .code(409)
+        .send({ code: error.code, entityId: error.itemId, message: error.message })
+    if (error instanceof TaskSeriesNotFoundError)
+      return reply
+        .code(404)
+        .send({ code: "TASK_SERIES_NOT_FOUND", entityId: error.seriesId, message: error.message })
+    if (error instanceof RecurrenceLocalTimeError)
+      return reply.code(400).send({ code: "RECURRENCE_LOCAL_TIME_INVALID", message: error.message })
+    if (error instanceof TaskPlanError)
+      return reply.code(error.statusCode).send({ code: error.code, message: error.message })
     if (error instanceof HabitRestDayError)
       return reply.code(409).send({ code: "HABIT_REST_DAY", message: error.message })
     if (error instanceof ProjectAiPlanStaleError)

@@ -22,6 +22,7 @@ const wideWebPort = configuredPort("GALAXY_E2E_WIDE_WEB_PORT", 5184)
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  testIgnore: "task-time-*.spec.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,

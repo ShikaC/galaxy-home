@@ -13,6 +13,7 @@ vi.mock("../../src/client/lib/api.js", () => ({
 afterEach(() => {
   cleanup()
   vi.clearAllMocks()
+  localStorage.clear()
 })
 
 describe("ReminderBanner", () => {
@@ -46,7 +47,7 @@ describe("ReminderBanner", () => {
     await waitFor(() => {
       expect(apiVoid).toHaveBeenCalledWith(`/api/notifications/${id}/snooze`, {
         method: "POST",
-        body: JSON.stringify({ minutes: 30 }),
+        body: expect.any(String),
       })
     })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["notifications"] })
@@ -81,4 +82,44 @@ describe("ReminderBanner", () => {
     expect(await screen.findByText("截止时间 2026/8/12 09:00")).toBeInTheDocument()
     expect(document.querySelector(".reminder-banner__clause")).not.toBeInTheDocument()
   })
+})
+
+it("reuses the same snooze request when a response is lost and the banner remounts", async () => {
+  // Given
+  const reminder = {
+    id: crypto.randomUUID(),
+    reminderId: crypto.randomUUID(),
+    kind: "deadline",
+    title: "客户反馈",
+    detail: "截止时间",
+    scheduledAt: "2026-09-10T08:00:00.000Z",
+    entityId: crypto.randomUUID(),
+  }
+  vi.mocked(apiRequest).mockResolvedValue([reminder])
+  vi.mocked(apiVoid)
+    .mockRejectedValueOnce(new TypeError("Network lost"))
+    .mockResolvedValue(undefined)
+  const mount = () =>
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <ReminderBanner />
+      </QueryClientProvider>,
+    )
+  const first = mount()
+  fireEvent.click(await screen.findByRole("button", { name: /30 分钟后/ }))
+  await screen.findByRole("alert")
+  const firstBody = vi.mocked(apiVoid).mock.calls[0]?.[1]?.body
+  first.unmount()
+  // When
+  mount()
+  fireEvent.click(await screen.findByRole("button", { name: /30 分钟后/ }))
+  // Then
+  await waitFor(() => expect(apiVoid).toHaveBeenCalledTimes(2))
+  const retryBody = vi.mocked(apiVoid).mock.calls[1]?.[1]?.body
+  expect(typeof firstBody).toBe("string")
+  expect(retryBody).toBe(firstBody)
+  if (typeof firstBody !== "string") throw new Error("Missing body")
+  expect(JSON.parse(firstBody)).toMatchObject({ minutes: 30, requestId: expect.any(String) })
 })

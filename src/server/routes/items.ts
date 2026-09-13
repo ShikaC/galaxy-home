@@ -1,11 +1,14 @@
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
 import {
+  categoryIdSchema,
   createCategoryInputSchema,
   createItemInputSchema,
   itemViewSchema,
+  projectIdSchema,
   updateItemInputSchema,
 } from "../../shared/items.js"
+import { calendarDateSchema, ianaTimezoneSchema } from "../../shared/taskCore.js"
 import { type AppContext, getAppClock } from "../context.js"
 import {
   createCategory,
@@ -14,33 +17,46 @@ import {
   updateCategory,
 } from "../repositories/categories.js"
 import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
-import { copyItem, createItem, listItems, setTodayItem, updateItem } from "../repositories/items.js"
+import {
+  copyItem,
+  createItem,
+  getItemDetail,
+  listItems,
+  setTodayItem,
+  updateItem,
+} from "../repositories/items.js"
 import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { convertItemToProject } from "../repositories/projects.js"
 import { getSettings } from "../repositories/settings.js"
-import { reorderTodayItems } from "../repositories/todayItems.js"
+import { clearTodayItem, reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { queueCaptureAnalysis } from "../services/aiCaptureAnalysis.js"
+import { replenishRecurrenceAfterItemMutation } from "../services/recurrenceMaterializer.js"
 import { localClock } from "../services/time.js"
 
 const querySchema = z.object({
   view: itemViewSchema.default("active"),
-  localDate: z.string(),
+  localDate: calendarDateSchema,
+  timezone: ianaTimezoneSchema.optional(),
   categoryId: z.string().uuid().optional(),
   projectId: z.string().uuid().optional(),
 })
 const idSchema = z.object({ id: z.string().uuid() })
 const todaySchema = z.object({
-  localDate: z.string(),
+  localDate: calendarDateSchema,
   isFocus: z.boolean(),
   isSecondary: z.boolean(),
+  expectedVersion: z.number().int().positive().optional(),
 })
 const categoriesSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
 const projectsSchema = z.object({ projectIds: z.array(z.string().uuid()) })
 const reorderSchema = z.object({ localDate: z.string(), itemIds: z.array(z.string().uuid()) })
 const categoryReorderSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
 const itemReorderSchema = z.object({ itemIds: z.array(z.string().uuid()) })
-const localDateSchema = z.object({ localDate: z.string() })
+const localDateSchema = z.object({
+  localDate: calendarDateSchema,
+  expectedVersion: z.coerce.number().int().positive().optional(),
+})
 
 export function registerItemRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)
@@ -49,12 +65,13 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     return listItems(context.database, {
       view: query.view,
       localDate: query.localDate,
+      timezone: query.timezone ?? getSettings(context.database).timezone,
       ...(query.categoryId === undefined
         ? {}
-        : { categoryId: z.string().uuid().brand("CategoryId").parse(query.categoryId) }),
+        : { categoryId: categoryIdSchema.parse(query.categoryId) }),
       ...(query.projectId === undefined
         ? {}
-        : { projectId: z.string().uuid().brand("ProjectId").parse(query.projectId) }),
+        : { projectId: projectIdSchema.parse(query.projectId) }),
     })
   })
   app.post("/api/items", (request, reply) => {
@@ -72,16 +89,22 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     const suggestion = getItemAiSuggestion(context.database, idSchema.parse(request.params).id)
     return suggestion ?? { status: "none" }
   })
+  app.get("/api/items/:id", (request) => {
+    const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
+    return getItemDetail(context.database, idSchema.parse(request.params).id, localDate)
+  })
   app.patch("/api/items/:id", (request) => {
     const { id } = idSchema.parse(request.params)
     const localDate = localClock(clock.now(), getSettings(context.database).timezone).date
-    return updateItem(
+    const item = updateItem(
       context.database,
       id,
       updateItemInputSchema.parse(request.body),
       localDate,
       clock.now(),
     )
+    replenishRecurrenceAfterItemMutation(context.database, id, clock.now())
+    return item
   })
   app.post("/api/items/:id/copy", (request, reply) =>
     reply
@@ -126,6 +149,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
         localDate: body.localDate,
         isFocus: false,
         isSecondary: true,
+        ...(body.expectedVersion === undefined ? {} : { expectedVersion: body.expectedVersion }),
       })
     else
       setTodayItem(context.database, {
@@ -133,6 +157,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
         localDate: body.localDate,
         isFocus: body.isFocus,
         isSecondary: false,
+        ...(body.expectedVersion === undefined ? {} : { expectedVersion: body.expectedVersion }),
       })
     return reply.code(204).send()
   })
@@ -179,10 +204,8 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   })
   app.delete("/api/items/:id/today", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    const { localDate } = localDateSchema.parse(request.query)
-    context.database
-      .prepare("DELETE FROM today_items WHERE item_id = ? AND local_date = ?")
-      .run(id, localDate)
+    const { localDate, expectedVersion } = localDateSchema.parse(request.query)
+    clearTodayItem(context.database, id, localDate, expectedVersion)
     return reply.code(204).send()
   })
   app.delete("/api/items/:id", (request, reply) => {

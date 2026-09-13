@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Inbox, Plus } from "lucide-react"
+import { Inbox, Plus, Repeat2, Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
+import { z } from "zod"
 import type { Item } from "../../shared/items.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { CategoryDialog } from "../components/CategoryDialog.js"
@@ -9,12 +10,13 @@ import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { PageHeader } from "../components/PageHeader.js"
 import { SortableItemList } from "../components/SortableItemList.js"
 import { TaskRow } from "../components/TaskRow.js"
+import { TaskSeriesDialog } from "../components/TaskSeriesDialog.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { Toast } from "../components/ui/Feedback.js"
 import { IconButton } from "../components/ui/IconButton.js"
 import { apiRequest, apiVoid } from "../lib/api.js"
-import { useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
+import { invalidateTaskQueries, useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useMeta } from "../lib/queries.js"
 import { itemSchema, itemsSchema, projectSchema } from "../lib/schemas.js"
 
@@ -30,6 +32,7 @@ const VIEWS: readonly { readonly id: View; readonly label: string }[] = [
   { id: "completed", label: "已完成" },
   { id: "archived", label: "已归档" },
 ]
+const priorityFilterSchema = z.enum(["all", "none", "low", "medium", "high"])
 
 export function TodosPage() {
   const actions = useAppActions()
@@ -42,6 +45,9 @@ export function TodosPage() {
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [organizing, setOrganizing] = useState<Item | null>(null)
   const [editing, setEditing] = useState<Item | null>(null)
+  const [seriesOpen, setSeriesOpen] = useState(false)
+  const [seriesId, setSeriesId] = useState<string | null>(null)
+  const [priority, setPriority] = useState<Item["priority"] | "all">("all")
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   const [organizeNote, setOrganizeNote] = useState<string | null>(null)
   const [statusNotice, setStatusNotice] = useState<StatusNotice | null>(null)
@@ -109,17 +115,26 @@ export function TodosPage() {
       void navigate(`/projects/${project.id}`)
     },
   })
+  const skip = useMutation({
+    mutationFn: (item: Item) =>
+      apiRequest(`/api/items/${item.id}/skip`, itemSchema, {
+        method: "POST",
+        body: JSON.stringify({ expectedVersion: item.version }),
+      }),
+    onSuccess: () => invalidateTaskQueries(client),
+  })
   const renderItem = (item: Item) => (
     <TaskRow
       item={item}
       onArchive={
         item.status === "active"
-          ? () => status.mutate({ id: item.id, status: "archived" })
+          ? () => status.mutate({ id: item.id, expectedVersion: item.version, status: "archived" })
           : undefined
       }
       onComplete={() => {
         status.mutate({
           id: item.id,
+          expectedVersion: item.version,
           status: item.status === "completed" ? "active" : "completed",
         })
       }}
@@ -128,21 +143,46 @@ export function TodosPage() {
       onDelete={() => remove.mutate(item)}
       onEdit={() => setEditing(item)}
       onFocus={
-        item.status === "active" ? () => today.mutate({ id: item.id, focus: true }) : undefined
+        item.status === "active"
+          ? () => today.mutate({ id: item.id, expectedVersion: item.version, focus: true })
+          : undefined
+      }
+      onManageSeries={
+        item.recurrenceSeriesId
+          ? () => {
+              setSeriesId(item.recurrenceSeriesId)
+              setSeriesOpen(true)
+            }
+          : undefined
       }
       onOrganize={item.status === "active" ? () => setOrganizing(item) : undefined}
       onSecondary={
         item.status === "active" && !item.inToday
-          ? () => today.mutate({ id: item.id, focus: false, secondary: true })
+          ? () =>
+              today.mutate({
+                id: item.id,
+                expectedVersion: item.version,
+                focus: false,
+                secondary: true,
+              })
           : undefined
+      }
+      onSkip={
+        item.recurrenceSeriesId && item.status === "active" ? () => skip.mutate(item) : undefined
       }
       onToday={
         item.status === "active" && !item.inToday
-          ? () => today.mutate({ id: item.id, focus: false })
+          ? () => today.mutate({ id: item.id, expectedVersion: item.version, focus: false })
           : undefined
       }
     />
   )
+  const visibleItems = (items.data ?? [])
+    .filter((item) => priority === "all" || item.priority === priority)
+    .toSorted((left, right) => {
+      const rank = { none: 0, low: 1, medium: 2, high: 3 } as const
+      return rank[right.priority] - rank[left.priority]
+    })
   const reorderCategory = (itemIds: readonly string[]) => {
     if (categoryId === null) return
     void apiVoid(`/api/categories/${categoryId}/items/reorder`, {
@@ -159,15 +199,30 @@ export function TodosPage() {
     <div className="page">
       <PageHeader
         actions={
-          <Button onClick={actions.openCapture}>
-            <Plus size={16} />
-            随手记
-          </Button>
+          <div className="button-row">
+            <Button
+              onClick={() => {
+                setSeriesId(null)
+                setSeriesOpen(true)
+              }}
+              variant="secondary"
+            >
+              <Repeat2 size={16} />
+              创建重复任务
+            </Button>
+            <Button onClick={actions.openCapture}>
+              <Plus size={16} />
+              随手记
+            </Button>
+          </div>
         }
         subtitle="先捕捉，再整理；想法会慢慢找到归处。"
         title="待办"
       />
       {organizeNote === null ? null : <Toast>{organizeNote}</Toast>}
+      {status.isError || skip.isError ? (
+        <Toast tone="error">{status.error?.message ?? skip.error?.message}</Toast>
+      ) : null}
       {statusNotice === null ? null : (
         <Toast>
           <span>{statusNotice.message}</span>
@@ -224,9 +279,28 @@ export function TodosPage() {
                 ? VIEWS.find((entry) => entry.id === view)?.label
                 : meta.data?.categories.find((entry) => entry.id === categoryId)?.name}
             </h2>
-            <span>{items.data?.length ?? 0} 项</span>
+            <div className="task-list-tools">
+              <label>
+                <span>优先级</span>
+                <select
+                  value={priority}
+                  onChange={(event) => setPriority(priorityFilterSchema.parse(event.target.value))}
+                >
+                  <option value="all">全部</option>
+                  <option value="high">高</option>
+                  <option value="medium">中</option>
+                  <option value="low">低</option>
+                  <option value="none">无</option>
+                </select>
+              </label>
+              <span>{visibleItems.length} 项</span>
+              <Link className="text-action" to="/task-plans?mode=capture">
+                <Sparkles size={13} />
+                AI 拆分录入
+              </Link>
+            </div>
           </header>
-          {items.data?.length === 0 ? (
+          {visibleItems.length === 0 ? (
             <EmptyState
               action={
                 view === "inbox" && categoryId === null ? (
@@ -249,13 +323,13 @@ export function TodosPage() {
             />
           ) : categoryId === null ? (
             <div className="list-stack">
-              {items.data?.map((item) => (
+              {visibleItems.map((item) => (
                 <div key={item.id}>{renderItem(item)}</div>
               ))}
             </div>
           ) : (
             <SortableItemList
-              items={items.data ?? []}
+              items={visibleItems}
               onReorder={reorderCategory}
               renderItem={renderItem}
             />
@@ -281,11 +355,25 @@ export function TodosPage() {
           setEditing(null)
           setOrganizing(null)
         }}
+        onEditSeries={(id) => {
+          setEditing(null)
+          setOrganizing(null)
+          setSeriesId(id)
+          setSeriesOpen(true)
+        }}
         onSaved={(item, detail) => {
           if (detail.leftInbox && view === "inbox") {
             setOrganizeNote(`「${item.title}」已整理，可在「全部活跃」中找到。`)
           }
         }}
+      />
+      <TaskSeriesDialog
+        onClose={() => {
+          setSeriesOpen(false)
+          setSeriesId(null)
+        }}
+        open={seriesOpen}
+        seriesId={seriesId}
       />
     </div>
   )

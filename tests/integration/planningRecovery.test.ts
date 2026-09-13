@@ -201,7 +201,7 @@ it("rejects corrupt or mismatched imported run state before changing existing da
   if (exported === undefined) throw new Error("Missing export")
   const archive = z
     .object({
-      schemaVersion: z.literal(1),
+      schemaVersion: z.literal(2),
       exportedAt: z.string(),
       tables: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))),
     })

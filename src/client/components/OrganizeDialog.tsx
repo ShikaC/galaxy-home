@@ -1,83 +1,49 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { CalendarPlus, Sparkles, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Repeat2, X } from "lucide-react"
+import { useState } from "react"
 import { z } from "zod"
 import type { Item } from "../../shared/items.js"
-import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
-import { instantForLocalDateTimeInput, localDateTimeInputFor } from "../lib/date.js"
-import { useTodayMutation } from "../lib/mutations.js"
+import { itemSchema } from "../../shared/items.js"
+import { ApiError, apiRequest, jsonBody } from "../lib/api.js"
+import { invalidateTaskQueries } from "../lib/mutations.js"
 import { useMeta, useProjects } from "../lib/queries.js"
-import { itemSchema } from "../lib/schemas.js"
-import { OrganizeProjectPicker } from "./OrganizeProjectPicker.js"
+import { itemsSchema } from "../lib/schemas.js"
+import { useAppTime } from "./AppContext.js"
 import { OrganizeScheduleFields } from "./OrganizeScheduleFields.js"
+import { TaskOrganizationFields } from "./TaskOrganizationFields.js"
+import { TaskSubtasks } from "./TaskSubtasks.js"
 import { Button } from "./ui/Button.js"
 import { TextField } from "./ui/Field.js"
 import { IconButton } from "./ui/IconButton.js"
 import { DialogSurface } from "./ui/ModalSurface.js"
+import { strictInstantForLocalInput, useTaskEditorDraft } from "./useTaskEditorDraft.js"
 
-export function OrganizeDialog({
-  item,
-  mode = "organize",
-  onClose,
-  onSaved,
-}: {
+type OrganizeDialogProps = {
   readonly item: Item | null
   readonly mode?: "organize" | "edit"
   readonly onClose: () => void
+  readonly onEditSeries?: ((seriesId: string) => void) | undefined
   readonly onSaved?: (item: Item, detail: { readonly leftInbox: boolean }) => void
-}) {
+}
+
+function TaskEditorDialog({
+  item,
+  mode,
+  onClose,
+  onEditSeries,
+  onSaved,
+}: Omit<OrganizeDialogProps, "item"> & { readonly item: Item }) {
   const meta = useMeta()
   const projects = useProjects()
   const client = useQueryClient()
-  const today = useTodayMutation()
-  const timezone = meta.data?.settings.timezone ?? "UTC"
-  const [title, setTitle] = useState("")
-  const [notes, setNotes] = useState("")
-  const [dueAt, setDueAt] = useState("")
-  const [reminder, setReminder] = useState("")
-  const [categories, setCategories] = useState<readonly string[]>([])
-  const [projectIds, setProjectIds] = useState<readonly string[]>([])
+  const { timezone, today } = useAppTime()
+  const editor = useTaskEditorDraft(item, timezone)
+  const { draft } = editor
   const [suggestNote, setSuggestNote] = useState<string | null>(null)
-  const [suggestToday, setSuggestToday] = useState(false)
-  const [addedToday, setAddedToday] = useState(false)
-  useEffect(() => {
-    if (item === null) return
-    setTitle(item.title)
-    setNotes(item.notes ?? "")
-    setDueAt(item.dueAt === null ? "" : localDateTimeInputFor(item.dueAt, timezone))
-    setReminder(item.reminderMinutes?.toString() ?? "")
-    setCategories(item.categoryIds)
-    setProjectIds(item.projectIds)
-    setSuggestNote(null)
-    setSuggestToday(false)
-    setAddedToday(item.inToday)
-    void apiRequest(
-      `/api/items/${item.id}/ai-suggestion`,
-      z.object({
-        status: z.enum(["waiting", "ready", "failed", "none"]).optional(),
-        categoryIds: z.array(z.string().uuid()).optional(),
-        suggestToday: z.boolean().optional(),
-        note: z.string().nullable().optional(),
-      }),
-    )
-      .then((data) => {
-        if (data.status === "waiting") setSuggestNote("AI 正在分析这条随手记…")
-        else if (data.status === "ready" && data.categoryIds !== undefined) {
-          if (data.categoryIds.length > 0) setCategories(data.categoryIds)
-          setSuggestToday(Boolean(data.suggestToday) && !item.inToday)
-          setSuggestNote(
-            data.note ??
-              (data.categoryIds.length === 0
-                ? "捕获分析未给出分类，可手动选择或再请 AI 建议。"
-                : data.suggestToday
-                  ? "已预填捕获分析建议；可修改后保存。建议也考虑加入今日。"
-                  : "已预填捕获分析建议；可修改后保存。"),
-          )
-        } else if (data.status === "failed")
-          setSuggestNote(data.note ?? "上次分析未完成，可稍后重试「请 AI 建议分类」。")
-      })
-      .catch(() => undefined)
-  }, [item, timezone])
+  const activeItems = useQuery({
+    queryKey: ["items", "active", "parent-options"],
+    queryFn: () => apiRequest(`/api/items?view=active&localDate=${today}`, itemsSchema),
+  })
   const suggest = useMutation({
     mutationFn: () =>
       apiRequest(
@@ -87,62 +53,74 @@ export function OrganizeDialog({
           suggestToday: z.boolean(),
           note: z.string().nullable(),
         }),
-        { method: "POST", body: jsonBody({ itemId: item?.id }) },
+        { method: "POST", body: jsonBody({ itemId: item.id }) },
       ),
     onSuccess: (data) => {
-      if (data.categoryIds.length > 0) setCategories(data.categoryIds)
-      setSuggestToday(data.suggestToday && !(item?.inToday ?? false) && !addedToday)
+      if (data.categoryIds.length > 0) editor.update({ categoryIds: data.categoryIds })
       setSuggestNote(
         data.note ??
-          (data.categoryIds.length === 0
-            ? "AI 未建议分类，可手动选择后再保存。"
-            : data.suggestToday
-              ? "建议也考虑加入今日。"
-              : "已填入建议分类，保存后生效。"),
+          (data.suggestToday
+            ? "已填入建议分类。AI 还建议加入今日；请保存后在任务菜单中操作。"
+            : "已填入建议分类，保存后生效。"),
       )
     },
-    onError: (error) => {
-      setSuggestNote(error instanceof Error ? error.message : "建议失败，未改动当前选择")
-    },
+    onError: (error) =>
+      setSuggestNote(error instanceof Error ? error.message : "建议失败，当前输入保持不变。"),
   })
   const save = useMutation({
-    mutationFn: async () => {
-      if (item === null) return
-      const dueAtInstant = instantForLocalDateTimeInput(dueAt, timezone)
-      await apiRequest(`/api/items/${item.id}`, itemSchema, {
+    mutationFn: () => {
+      const dueAt = strictInstantForLocalInput(draft.dueAt, timezone)
+      const scheduledStartAt = strictInstantForLocalInput(draft.scheduledStartAt, timezone)
+      const scheduledEndAt = strictInstantForLocalInput(draft.scheduledEndAt, timezone)
+      if ((scheduledStartAt === null) !== (scheduledEndAt === null)) {
+        throw new RangeError("安排开始和结束需要同时填写。")
+      }
+      if (
+        scheduledStartAt !== null &&
+        scheduledEndAt !== null &&
+        scheduledEndAt <= scheduledStartAt
+      ) {
+        throw new RangeError("安排结束必须晚于开始。")
+      }
+      return apiRequest(`/api/items/${item.id}`, itemSchema, {
         method: "PATCH",
         body: jsonBody({
-          title,
-          notes: notes || null,
-          dueAt: dueAtInstant,
-          reminderMinutes: dueAt && reminder ? Number(reminder) : null,
+          expectedVersion: editor.expectedVersion,
+          title: draft.title,
+          notes: draft.notes || null,
+          priority: draft.priority,
+          parentId: draft.parentId || null,
+          dueDate: draft.dueDate || null,
+          dueAt,
+          estimatedMinutes: draft.estimatedMinutes === "" ? null : Number(draft.estimatedMinutes),
+          scheduledStartAt,
+          scheduledEndAt,
+          scheduleTimezone: scheduledStartAt === null ? null : timezone,
+          isFixed: scheduledStartAt === null ? false : draft.isFixed,
+          reminders: draft.reminders,
+          categoryIds: draft.categoryIds,
+          projectIds: draft.projectIds,
         }),
       })
-      await Promise.all([
-        apiVoid(`/api/items/${item.id}/categories`, {
-          method: "PUT",
-          body: jsonBody({ categoryIds: categories }),
-        }),
-        apiVoid(`/api/items/${item.id}/projects`, {
-          method: "PUT",
-          body: jsonBody({ projectIds }),
-        }),
-      ])
     },
-    onSuccess: () => {
-      if (item === null) return
+    onSuccess: async (savedItem) => {
       const wasInbox = item.categoryIds.length === 0 && item.projectIds.length === 0
-      const leftInbox = wasInbox && (categories.length > 0 || projectIds.length > 0)
-      void client.invalidateQueries({ queryKey: ["items"] })
-      onSaved?.(item, { leftInbox })
+      const leftInbox =
+        wasInbox && (savedItem.categoryIds.length > 0 || savedItem.projectIds.length > 0)
+      await invalidateTaskQueries(client)
+      onSaved?.(savedItem, { leftInbox })
       onClose()
     },
   })
-  if (item === null) return null
-  const toggle = (values: readonly string[], value: string) =>
-    values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]
+  const parentOptions = (activeItems.data ?? []).filter(
+    (candidate) => candidate.id !== item.id && candidate.parentId === null,
+  )
   return (
-    <DialogSurface ariaLabelledBy="organize-title" onClose={onClose}>
+    <DialogSurface
+      ariaLabelledBy="organize-title"
+      className="dialog task-detail-dialog"
+      onClose={onClose}
+    >
       <header className="dialog__header">
         <div>
           <p className="eyebrow">{mode === "edit" ? "编辑待办" : "整理条目"}</p>
@@ -156,96 +134,86 @@ export function OrganizeDialog({
       </header>
       <form
         className="form-stack"
+        onKeyDown={(event) => {
+          if ((event.nativeEvent.isComposing || event.keyCode === 229) && event.key === "Enter") {
+            event.preventDefault()
+          }
+        }}
         onSubmit={(event) => {
           event.preventDefault()
           save.mutate()
         }}
       >
-        <TextField label="标题" onChange={(event) => setTitle(event.target.value)} value={title} />
-        <OrganizeScheduleFields
-          draft={{ dueAt, notes, reminder }}
-          onChange={(next) => {
-            setDueAt(next.dueAt)
-            setNotes(next.notes)
-            setReminder(next.reminder)
-          }}
+        <TextField
+          label="标题"
+          maxLength={240}
+          onChange={(event) => editor.update({ title: event.target.value })}
+          value={draft.title}
         />
-        <fieldset className="choice-group">
-          <legend>分类（可多选）</legend>
-          {meta.data?.ai.configured ? (
-            <div className="button-row">
-              <Button
-                disabled={(meta.data?.categories.length ?? 0) === 0}
-                loading={suggest.isPending}
-                onClick={() => suggest.mutate()}
-                size="compact"
-                type="button"
-                variant="secondary"
-              >
-                <Sparkles size={14} />请 AI 建议分类
-              </Button>
-            </div>
-          ) : null}
-          {suggestToday && !addedToday ? (
-            <div className="button-row">
-              <Button
-                loading={today.isPending}
-                onClick={() =>
-                  today.mutate(
-                    { id: item.id, focus: false },
-                    {
-                      onSuccess: () => {
-                        setAddedToday(true)
-                        setSuggestToday(false)
-                        setSuggestNote("已加入今日。保存整理后仍会离开收集箱（若已选分类或项目）。")
-                      },
-                    },
-                  )
-                }
-                size="compact"
-                type="button"
-                variant="secondary"
-              >
-                <CalendarPlus size={14} />
-                加入今日
-              </Button>
-            </div>
-          ) : null}
-          {suggestNote === null ? null : <p className="setting-note">{suggestNote}</p>}
-          {suggest.isError ? <p className="inline-error">{suggest.error.message}</p> : null}
-          {today.isError ? <p className="inline-error">{today.error.message}</p> : null}
-          {meta.data?.categories.length === 0 ? (
-            <p>还没有分类，可在待办页侧栏或设置中创建。</p>
-          ) : (
-            meta.data?.categories.map((category) => (
-              <label key={category.id}>
-                <input
-                  checked={categories.includes(category.id)}
-                  name={`organize-category-${category.id}`}
-                  onChange={() => setCategories(toggle(categories, category.id))}
-                  type="checkbox"
-                />
-                <span className="color-swatch" style={{ background: category.color }} />
-                {category.name}
-              </label>
-            ))
-          )}
-        </fieldset>
-        <OrganizeProjectPicker
-          onToggle={(id) => setProjectIds(toggle(projectIds, id))}
+        <TaskOrganizationFields
+          aiConfigured={meta.data?.ai.configured ?? false}
+          categories={meta.data?.categories ?? []}
+          draft={draft}
+          item={item}
+          onChange={editor.update}
+          onSuggest={() => suggest.mutate()}
+          parentOptions={parentOptions}
           projects={projects.data ?? []}
-          selectedIds={projectIds}
+          suggestNote={suggestNote}
+          suggestPending={suggest.isPending}
         />
-        {save.isError ? <p className="inline-error">{save.error.message}</p> : null}
+        <OrganizeScheduleFields draft={draft} onChange={editor.update} />
+        {item.recurrenceSeriesId === null ? null : (
+          <div className="series-origin">
+            <Repeat2 size={15} />
+            <span>这是 {item.recurrenceDate} 的重复实例；本页修改只影响本次。</span>
+            {onEditSeries ? (
+              <Button
+                onClick={() => onEditSeries(item.recurrenceSeriesId ?? "")}
+                size="compact"
+                variant="secondary"
+              >
+                管理系列
+              </Button>
+            ) : null}
+          </div>
+        )}
+        {item.parentId === null ? (
+          <TaskSubtasks item={item} onParentVersionBump={editor.acknowledgeOwnVersionBump} />
+        ) : null}
+        {save.isError ? (
+          <div className="conflict-feedback">
+            <p className="inline-error" role="alert">
+              {save.error.message} 本地输入仍保留，请重新载入对照后再试。
+            </p>
+            {save.error instanceof ApiError && save.error.code === "ITEM_VERSION_CONFLICT" ? (
+              <Button
+                onClick={() => {
+                  void invalidateTaskQueries(client)
+                  onClose()
+                }}
+                size="compact"
+                variant="secondary"
+              >
+                重新载入任务
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <footer className="dialog__actions">
           <Button onClick={onClose} variant="ghost">
             取消
           </Button>
-          <Button disabled={!title.trim()} loading={save.isPending} type="submit">
+          <Button disabled={!draft.title.trim()} loading={save.isPending} type="submit">
             {mode === "edit" ? "保存修改" : "保存整理"}
           </Button>
         </footer>
       </form>
     </DialogSurface>
   )
+}
+
+export function OrganizeDialog({ item, mode = "organize", ...props }: OrganizeDialogProps) {
+  if (item === null) return null
+  return <TaskEditorDialog {...props} item={item} key={item.id} mode={mode} />
 }

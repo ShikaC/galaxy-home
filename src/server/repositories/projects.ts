@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import { projectIdSchema } from "../../shared/items.js"
 import type { AdvanceProjectInput, CreateProjectInput, Project } from "../../shared/projects.js"
+import { assertCanComplete } from "./itemMutations.js"
 import { readProject } from "./projectRows.js"
 
 export class ProjectNotFoundError extends Error {
@@ -125,6 +126,15 @@ export function advanceProjectRows(
   now: string,
 ): void {
   if (project.currentTask === null) return
+  const linkedItems = z.array(z.object({ id: z.string().uuid() })).parse(
+    database
+      .prepare(
+        `SELECT id FROM items WHERE deleted_at IS NULL AND status = 'active' AND title = ?
+           AND id IN (SELECT item_id FROM item_projects WHERE project_id = ?)`,
+      )
+      .all(project.currentTask.title, project.id),
+  )
+  for (const item of linkedItems) assertCanComplete(database, item.id, "completed")
   database
     .prepare(
       "UPDATE project_tasks SET position = 'completed', completed_at = ?, updated_at = ? WHERE id = ?",

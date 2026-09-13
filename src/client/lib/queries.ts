@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import { calendarSnapshotSchema, type WorkWindowRule } from "../../shared/calendar.js"
 import { notesSchema } from "../../shared/notes.js"
 import { useAppTime } from "../components/AppContext.js"
 import { apiRequest } from "./api.js"
@@ -20,6 +21,30 @@ export const queryKeys = {
   gains: ["gains"] as const,
   reviews: ["reviews"] as const,
   quote: (date: string) => ["quote", date] as const,
+  calendar: (
+    startDate: string,
+    endDate: string,
+    timezone: string,
+    workWindow: readonly WorkWindowRule[],
+  ) => ["calendar", startDate, endDate, timezone, workWindow] as const,
+}
+
+export function useCalendar(
+  startDate: string,
+  endDate: string,
+  timezone: string,
+  workWindow: readonly WorkWindowRule[],
+) {
+  const query = new URLSearchParams({
+    startDate,
+    endDate,
+    timezone,
+    workWindow: JSON.stringify(workWindow),
+  })
+  return useQuery({
+    queryKey: queryKeys.calendar(startDate, endDate, timezone, workWindow),
+    queryFn: () => apiRequest(`/api/calendar?${query.toString()}`, calendarSnapshotSchema),
+  })
 }
 
 export function useMeta() {

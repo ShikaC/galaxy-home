@@ -2,12 +2,12 @@ import { randomBytes } from "node:crypto"
 import { mkdirSync } from "node:fs"
 import { resolve } from "node:path"
 import { buildApp } from "./app.js"
-import { migrateDatabase, openDatabase } from "./database.js"
+import { inspectMigrationState, migrateDatabase, openDatabase } from "./database.js"
 import { WORKSPACE_DATABASE_FILE } from "./lib/workspacePaths.js"
 import { watchParentLifetime } from "./parentLifetime.js"
 import { getSettings } from "./repositories/settings.js"
 import { purgeExpiredTrash } from "./repositories/trash.js"
-import { ensureDailyBackup } from "./services/backup.js"
+import { ensureDailyBackup, ensurePreMigrationBackup } from "./services/backup.js"
 import type { Clock } from "./services/clock.js"
 import { systemClock } from "./services/clock.js"
 import { maybeGenerateScheduledAiWeeklyReview } from "./services/scheduledAiReview.js"
@@ -38,6 +38,8 @@ const backupDirectory = resolve(dataDirectory, "backups")
 mkdirSync(dataDirectory, { recursive: true })
 process.stdout.write(`数据目录：${dataDirectory}\n`)
 const database = openDatabase(resolve(dataDirectory, WORKSPACE_DATABASE_FILE))
+const migrationState = inspectMigrationState(database)
+await ensurePreMigrationBackup(database, backupDirectory, migrationState)
 migrateDatabase(database)
 const settings = getSettings(database)
 const localDate = new Intl.DateTimeFormat("en-CA", { timeZone: settings.timezone }).format(

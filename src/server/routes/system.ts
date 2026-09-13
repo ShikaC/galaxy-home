@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify"
 import { z } from "zod"
 import { createAiMemoryInputSchema } from "../../shared/ai.js"
 import { aiConfigInputSchema, updateSettingsInputSchema } from "../../shared/app.js"
+import { snoozeNotificationInputSchema } from "../../shared/reminders.js"
 import { onboardingInputSchema } from "../../shared/settings.js"
 import { type AppContext, getAppClock } from "../context.js"
 import { describeWorkspacePaths, workspacePathEnvOverride } from "../lib/workspacePaths.js"
@@ -17,17 +18,16 @@ import {
   getTutorialState,
 } from "../repositories/tutorial.js"
 import { createManualExport, getBackupStatus, restoreManualExport } from "../services/backup.js"
-import { completeOnboarding } from "../services/onboarding.js"
 import {
-  dismissNotification,
-  listDueNotifications,
-  snoozeNotification,
-} from "../services/scheduler.js"
+  NotificationSnoozeError,
+  requestNotificationSnooze,
+} from "../services/notificationSnooze.js"
+import { completeOnboarding } from "../services/onboarding.js"
+import { dismissNotification, listDueNotifications } from "../services/scheduler.js"
 import { getAiConfigStatus, writeSecretConfig } from "../services/secrets.js"
 
 const idSchema = z.object({ id: z.string().uuid() })
 const memoryUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
-const snoozeSchema = z.object({ minutes: z.number().int().min(5).max(1_440) })
 
 export function registerSystemRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)
@@ -64,10 +64,19 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
   app.get("/api/notifications", () => listDueNotifications(context.database, clock.now()))
   app.post("/api/notifications/:id/snooze", (request, reply) => {
     const { id } = idSchema.parse(request.params)
-    const { minutes } = snoozeSchema.parse(request.body)
-    const now = clock.now()
-    snoozeNotification(context.database, id, new Date(now.getTime() + minutes * 60_000), now)
-    return reply.code(204).send()
+    const input = snoozeNotificationInputSchema.parse(request.body)
+    try {
+      const result = requestNotificationSnooze(
+        context.database,
+        { ...input, eventId: id },
+        clock.now(),
+      )
+      return input.requestId === undefined ? reply.code(204).send() : result
+    } catch (error) {
+      if (error instanceof NotificationSnoozeError)
+        return reply.code(error.statusCode).send({ code: error.code, message: error.message })
+      throw error
+    }
   })
   app.post("/api/notifications/:id/dismiss", (request, reply) => {
     dismissNotification(context.database, idSchema.parse(request.params).id, clock.now())

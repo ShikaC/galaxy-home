@@ -98,7 +98,7 @@ describe("project HTTP workflow", () => {
     database.close()
   })
 
-  it("places the current project task onto secondary today when primary today is full", async () => {
+  it("places the current project task onto today without a primary item cap", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-project-today-overflow-"))
     directories.push(directory)
     const database = openDatabase(join(directory, "app.sqlite"))
@@ -147,7 +147,7 @@ describe("project HTTP workflow", () => {
       expect.objectContaining({
         title: "今日满员时加入今日仍能放下",
         inToday: true,
-        isSecondary: true,
+        isSecondary: false,
         projectIds: [projectId],
       }),
     )
