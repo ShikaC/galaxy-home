@@ -111,13 +111,24 @@ export function CalendarTimeline({
       if (drag === null || drag.currentEnd === drag.initialEndMinute) return
       resizeHandler.current(drag.item, endLocalOf(drag.date, drag.currentEnd))
     }
+    // 指针在窗口外松开时 pointerup 可能收不到，留着 resizing 会让下一次
+    // 鼠标移动继续改时长。失焦或隐藏时按放弃处理，不提交这次改动。
+    const abandon = () => {
+      resizeDrag.current = null
+      setResizing(false)
+      setResizePreview(null)
+    }
     window.addEventListener("pointermove", onMove)
     window.addEventListener("pointerup", finish)
     window.addEventListener("pointercancel", finish)
+    window.addEventListener("blur", abandon)
+    document.addEventListener("visibilitychange", abandon)
     return () => {
       window.removeEventListener("pointermove", onMove)
       window.removeEventListener("pointerup", finish)
       window.removeEventListener("pointercancel", finish)
+      window.removeEventListener("blur", abandon)
+      document.removeEventListener("visibilitychange", abandon)
     }
   }, [resizing])
   const hours = Array.from({ length: 24 }, (_, index) => index)

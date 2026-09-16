@@ -138,7 +138,7 @@ export async function completeTaskPlan(
           error instanceof TaskPlanError ||
           error instanceof AiServiceError ||
           error instanceof AiInvalidEndpointError
-        const code = known ? error.code : "AI_UNAVAILABLE"
+        const code = known ? error.code : ERROR_CODES.AI_UNAVAILABLE
         const message = known ? error.message : "生成失败；没有业务数据被写入"
         run = {
           ...run,
