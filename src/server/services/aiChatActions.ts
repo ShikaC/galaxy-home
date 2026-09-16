@@ -23,7 +23,6 @@ import { createProject, updateProjectProgress } from "../repositories/projects.j
 import { clearTodayItem, setTodayItem } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { localClock } from "./time.js"
-import { countPrimaryTodayItems, PRIMARY_TODAY_LIMIT } from "./todayCapacity.js"
 
 const ACTION_BLOCK_PATTERN = /```[ \t]*json\b\s*([\s\S]*?)\s*```/giu
 const MAX_ACTIONS_PER_TURN = 12
@@ -594,35 +593,6 @@ function summarizeActions(actions: readonly ChatAction[]): string {
   return actions.map((action, index) => `${index + 1}. ${summarizeAction(action)}`).join("；")
 }
 
-function fitTodayActions(
-  database: DatabaseSync,
-  settings: WorkspaceSettings,
-  actions: readonly ChatAction[],
-  instant = new Date(),
-): readonly ChatAction[] {
-  const localDate = localClock(instant, settings.timezone).date
-  let remaining = Math.max(0, PRIMARY_TODAY_LIMIT - countPrimaryTodayItems(database, localDate))
-  return actions.map((action) => {
-    if (action.action === "create_item") {
-      if (action.todayMode !== "today" && action.todayMode !== "focus") return action
-      if (remaining > 0) {
-        remaining -= 1
-        return action
-      }
-      return { ...action, todayMode: "secondary" as const }
-    }
-    if (action.action === "set_today") {
-      if (action.mode !== "today" && action.mode !== "focus") return action
-      if (remaining > 0) {
-        remaining -= 1
-        return action
-      }
-      return { ...action, mode: "secondary" as const }
-    }
-    return action
-  })
-}
-
 function recordAction(
   database: DatabaseSync,
   actionType: string,
@@ -1050,16 +1020,15 @@ export function executeChatActions(
       throw new Error("保守模式不支持删除或归档，请切换到开放模式后再试")
     }
   }
-  const fitted = fitTodayActions(database, settings, executable, instant)
   const refs = new Map<string, string>()
   const confirmations: string[] = []
-  for (const [index, action] of fitted.entries()) {
+  for (const [index, action] of executable.entries()) {
     try {
       confirmations.push(executeChatAction(database, settings, action, refs, instant))
     } catch (error) {
       const message = error instanceof Error ? error.message : "操作失败"
       const head = confirmations.length === 0 ? "" : `${confirmations.join("\n")}\n\n`
-      return `${head}（第 ${index + 1}/${fitted.length} 步未能执行：${summarizeAction(action)} — ${message}。已成功 ${confirmations.length} 步，后续未继续；可在操作记录撤销已写入项后重试。）`
+      return `${head}（第 ${index + 1}/${executable.length} 步未能执行：${summarizeAction(action)} — ${message}。已成功 ${confirmations.length} 步，后续未继续；可在操作记录撤销已写入项后重试。）`
     }
   }
   return confirmations.join("\n")

@@ -40,7 +40,6 @@ export const taskPlanInputSchema = z.discriminatedUnion("type", [
       goal: z.string().trim().min(4).max(2_000),
       startDate: localDateSchema,
       horizonDays: z.number().int().min(1).max(7),
-      dailyMinutes: z.number().int().min(5).max(480),
       contextMode: z.enum(["goal_only", "workspace"]),
     })
     .readonly(),
@@ -143,7 +142,6 @@ export const planDraftTaskSchema = z
   .strictObject({
     draftId: z.uuid(),
     title: z.string().trim().min(1).max(240),
-    minutes: z.number().int().min(5).max(480),
     dayOffset: z.number().int().min(0).max(6),
     reason: z.string().trim().min(1).max(500),
     sourceIds: z.array(z.uuid()).max(6).readonly(),

@@ -11,7 +11,6 @@ const composerDraftSchema = z.object({
   // plan 模式（原知识计划）的字段；带默认值以便读取旧的草稿。
   goal: z.string().default(""),
   horizonDays: z.number().int().min(1).max(7).default(3),
-  dailyMinutes: z.number().int().min(5).max(480).default(60),
   contextMode: z.enum(["goal_only", "workspace"]).default("workspace"),
   startDate: z.string(),
   endDate: z.string(),
@@ -59,7 +58,6 @@ export function TaskPlanningComposer({
   const [originalText, setOriginalText] = useState(saved?.originalText ?? "")
   const [goal, setGoal] = useState(saved?.goal ?? "")
   const [horizonDays, setHorizonDays] = useState(saved?.horizonDays ?? 3)
-  const [dailyMinutes, setDailyMinutes] = useState(saved?.dailyMinutes ?? 60)
   const [contextMode, setContextMode] = useState<"goal_only" | "workspace">(
     saved?.contextMode ?? "workspace",
   )
@@ -79,7 +77,6 @@ export function TaskPlanningComposer({
     originalText,
     goal,
     horizonDays,
-    dailyMinutes,
     contextMode,
     startDate,
     endDate,
@@ -93,7 +90,6 @@ export function TaskPlanningComposer({
       originalText,
       goal,
       horizonDays,
-      dailyMinutes,
       contextMode,
       startDate,
       endDate,
@@ -102,17 +98,7 @@ export function TaskPlanningComposer({
       requestId: request.current.id,
       identity: request.current.identity,
     })
-  }, [
-    originalText,
-    goal,
-    horizonDays,
-    dailyMinutes,
-    contextMode,
-    startDate,
-    endDate,
-    workStart,
-    workEnd,
-  ])
+  }, [originalText, goal, horizonDays, contextMode, startDate, endDate, workStart, workEnd])
   const candidate =
     mode === "capture"
       ? taskPlanInputSchema.safeParse({
@@ -130,7 +116,6 @@ export function TaskPlanningComposer({
             // 计划从今天起算，因此不需要用户再选开始日期。
             startDate: today,
             horizonDays,
-            dailyMinutes,
             contextMode,
           })
         : taskPlanInputSchema.safeParse({
@@ -259,15 +244,6 @@ export function TaskPlanningComposer({
             required
             value={horizonDays}
             onChange={(event) => setHorizonDays(event.target.valueAsNumber)}
-          />
-          <TextField
-            label="每天可用分钟"
-            type="number"
-            min={5}
-            max={480}
-            required
-            value={dailyMinutes}
-            onChange={(event) => setDailyMinutes(event.target.valueAsNumber)}
           />
           <label className="field">
             <span className="field__label">资料范围</span>

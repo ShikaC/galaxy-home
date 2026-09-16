@@ -11,7 +11,6 @@ import { withImmediateTransaction } from "../../repositories/transaction.js"
 import { buildCalendarSnapshot } from "../calendar.js"
 import { createTaskSeries } from "../recurrence.js"
 import { shiftCalendarDate } from "../time.js"
-import { hasPrimaryTodaySlot } from "../todayCapacity.js"
 import { assertFreshContext } from "./retrieval.js"
 import { readTaskPlan, saveTaskPlan, TaskPlanError } from "./store.js"
 import { assertConfirmable, deriveReplanProposal } from "./validate.js"
@@ -202,26 +201,24 @@ export function confirmTaskPlan(
                 (item) => normalizedTaskTitle(item.title) === normalizedTaskTitle(draft.title),
               )
             : activeItems.find((item) => item.id === draft.existingItemId)
-        // 每写一项都要重算：主位是随写入变化的。
-        const isSecondary = !hasPrimaryTodaySlot(context.database, localDate)
+        // 今日不再有主位数量上限：计划里的任务一律按主要任务入档。
         if (existing === undefined) {
           const item = createItem(
             context.database,
             {
               requestId: draft.draftId,
               title: draft.title,
-              notes: `${draft.reason}\n预计 ${draft.minutes} 分钟\n计划记录：${run.id}`,
+              notes: `${draft.reason}\n计划记录：${run.id}`,
               priority: "none",
-              estimatedMinutes: draft.minutes,
               isFixed: false,
               categoryIds: [],
               projectIds: [],
-              today: { localDate, isFocus: false, isSecondary },
+              today: { localDate, isFocus: false, isSecondary: false },
             },
             localDate,
             instant,
           )
-          if (item.title !== draft.title || item.isSecondary !== isSecondary)
+          if (item.title !== draft.title || item.isSecondary)
             throw new TaskPlanError("TASK_PLAN_VERIFY_FAILED", "计划任务写入核验失败")
           activeItems.push({ id: item.id, title: item.title })
           results.push({
@@ -229,9 +226,7 @@ export function confirmTaskPlan(
             id: item.id,
             verified: true,
             localDate,
-            minutes: draft.minutes,
             disposition: "created",
-            secondary: isSecondary,
           })
           continue
         }
@@ -239,7 +234,7 @@ export function confirmTaskPlan(
           itemId: existing.id,
           localDate,
           isFocus: false,
-          isSecondary,
+          isSecondary: false,
         })
         const stored = z
           .object({ is_secondary: z.number() })
@@ -248,16 +243,14 @@ export function confirmTaskPlan(
               .prepare("SELECT is_secondary FROM today_items WHERE item_id = ? AND local_date = ?")
               .get(existing.id, localDate),
           )
-        if (stored.is_secondary !== Number(isSecondary))
+        if (stored.is_secondary !== 0)
           throw new TaskPlanError("TASK_PLAN_VERIFY_FAILED", "计划任务入档核验失败")
         results.push({
           kind: "item",
           id: existing.id,
           verified: true,
           localDate,
-          minutes: draft.minutes,
           disposition: "reused",
-          secondary: isSecondary,
         })
       }
     } else throw new TaskPlanError("TASK_PLAN_TYPE_CONFLICT", "计划类型与请求不匹配")

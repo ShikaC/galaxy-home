@@ -25,11 +25,6 @@ export function PlanProposalEditor({
       ),
     })
   }
-  const totals = days.map((day) =>
-    proposal.tasks
-      .filter((task) => task.dayOffset === day)
-      .reduce((sum, task) => sum + task.minutes, 0),
-  )
   return (
     <section className="plan-draft-editor" aria-label="调整行动计划">
       <header>
@@ -49,15 +44,6 @@ export function PlanProposalEditor({
           />
           <p>{task.reason}</p>
           <div className="plan-edit-controls">
-            <TextField
-              label={`任务 ${index + 1} 分钟`}
-              type="number"
-              min={5}
-              max={480}
-              required
-              value={task.minutes}
-              onChange={(event) => update(task.draftId, { minutes: event.target.valueAsNumber })}
-            />
             <label className="field">
               <span className="field__label">任务 {index + 1} 日期</span>
               <select
@@ -89,18 +75,6 @@ export function PlanProposalEditor({
           </div>
         </section>
       ))}
-      <div className="plan-edit-totals" aria-live="polite">
-        {days.map((day) => {
-          const total = totals[day] ?? 0
-          const over = total > input.dailyMinutes
-          return (
-            <p key={planDate(input.startDate, day)} className={over ? "inline-error" : ""}>
-              {planDate(input.startDate, day)} · {total} / {input.dailyMinutes} 分钟
-              {over ? " · 超出可用时间" : ""}
-            </p>
-          )
-        })}
-      </div>
     </section>
   )
 }

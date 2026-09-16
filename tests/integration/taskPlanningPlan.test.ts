@@ -61,7 +61,6 @@ const planInput = () => ({
   goal: "整理作品集案例提纲与验证材料",
   startDate: "2026-09-10",
   horizonDays: 3,
-  dailyMinutes: 60,
   contextMode: "workspace" as const,
 })
 
@@ -84,7 +83,6 @@ describe("plan 模式（原知识计划）", () => {
         proposalFor([
           {
             title: "写作品集案例提纲",
-            minutes: 25,
             dayOffset: 0,
             reason: "形成可检查的提纲。",
             sourceIds: [noteId],
@@ -102,14 +100,11 @@ describe("plan 模式（原知识计划）", () => {
     if (result === undefined) throw new Error("确认后应当产生写入结果")
     expect(result.disposition).toBe("created")
     expect(result.localDate).toBe("2026-09-10")
-    expect(result.minutes).toBe(25)
 
-    const item = database
-      .prepare("SELECT title, estimated_minutes FROM items WHERE id = ?")
-      .get(result.id) as { title: string; estimated_minutes: number } | undefined
+    const item = database.prepare("SELECT title FROM items WHERE id = ?").get(result.id) as
+      | { title: string }
+      | undefined
     expect(item?.title).toBe("写作品集案例提纲")
-    // 计划里的分钟数要落到任务上，而不只是写在说明里。
-    expect(item?.estimated_minutes).toBe(25)
     const today = database
       .prepare("SELECT is_secondary FROM today_items WHERE item_id = ? AND local_date = ?")
       .get(result.id, "2026-09-10") as { is_secondary: number } | undefined
@@ -137,7 +132,6 @@ describe("plan 模式（原知识计划）", () => {
         proposalFor([
           {
             title: "整理验证材料",
-            minutes: 20,
             dayOffset: 1,
             reason: "选出两份支撑结果的材料。",
             sourceIds: [],
@@ -159,7 +153,6 @@ describe("plan 模式（原知识计划）", () => {
         proposalFor([
           {
             title: "写提纲",
-            minutes: 30,
             dayOffset: 0,
             reason: "形成提纲。",
             sourceIds: [],
@@ -174,25 +167,17 @@ describe("plan 模式（原知识计划）", () => {
     if (task === undefined) throw new Error("计划应当包含一项任务")
     const edited = editTaskPlan(context, completed.id, completed.draftRevision, {
       ...proposal,
-      tasks: [{ ...task, minutes: 45 }],
+      tasks: [{ ...task, title: "写提纲（修订）" }],
     })
     expect(edited.draftRevision).toBe(completed.draftRevision + 1)
 
-    // dailyMinutes 是 60：两项 40 分钟合计 80，必须被拒绝而不是写入。
+    // horizonDays 是 3：dayOffset 5 必须被拒绝，而不是静默写到范围外。
     expect(() =>
       editTaskPlan(context, completed.id, edited.draftRevision, {
         ...proposal,
-        tasks: [
-          { ...task, minutes: 40, draftId: crypto.randomUUID() },
-          {
-            ...task,
-            title: "第二项",
-            minutes: 40,
-            draftId: crypto.randomUUID(),
-          },
-        ],
+        tasks: [{ ...task, dayOffset: 5, draftId: crypto.randomUUID() }],
       }),
-    ).toThrow(/超过/)
+    ).toThrow(/日期范围/)
   })
 
   it("重复确认是幂等的，不重复创建任务", async () => {
@@ -204,7 +189,6 @@ describe("plan 模式（原知识计划）", () => {
         proposalFor([
           {
             title: "写提纲",
-            minutes: 25,
             dayOffset: 0,
             reason: "形成提纲。",
             sourceIds: [],

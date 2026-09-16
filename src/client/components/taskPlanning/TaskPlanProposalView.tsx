@@ -69,8 +69,7 @@ export function TaskPlanProposalView({
                   <strong>{task.title}</strong>
                 </header>
                 <p>
-                  第 {task.dayOffset + 1} 天 ·{" "}
-                  <span className="task-plan-token">{task.minutes} 分钟</span>
+                  第 {task.dayOffset + 1} 天
                   {task.existingItemId === null ? null : (
                     <>
                       {" "}

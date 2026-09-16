@@ -645,7 +645,7 @@ describe("AI chat habit actions", () => {
     ).toBe(1)
   })
 
-  it("downgrades overflowing today primary items to secondary instead of failing", async () => {
+  it("keeps every today item primary now that the three-slot cap is gone", async () => {
     const { app, database } = await setup(
       `好的。
 
@@ -686,7 +686,16 @@ describe("AI chat habit actions", () => {
          WHERE items.title = '超额四' AND today_items.is_secondary = 1`,
       )
       .get() as { value: number }
-    expect(secondary.value).toBe(1)
+    // 今日不再有主位上限：第四项也保持为主要任务，不会被降级成临时小事。
+    expect(secondary.value).toBe(0)
+    const inToday = database
+      .prepare(
+        `SELECT COUNT(*) AS value FROM today_items
+         JOIN items ON items.id = today_items.item_id
+         WHERE items.title LIKE '超额%'`,
+      )
+      .get() as { value: number }
+    expect(inToday.value).toBe(4)
   })
 
   it("clears weeklyTarget for daily habits from messy model output", async () => {
