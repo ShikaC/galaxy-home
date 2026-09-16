@@ -41,7 +41,7 @@ export function TodosPage() {
   const meta = useMeta()
   const client = useQueryClient()
   const navigate = useNavigate()
-  const [searchParameters] = useSearchParams()
+  const [searchParameters, setSearchParameters] = useSearchParams()
   // URL 是当前视图的唯一真相源，避免导航与本地状态互相追赶。
   const requestedCategory = searchParameters.get("category")
   const categoryId =
@@ -53,11 +53,26 @@ export function TodosPage() {
     categoryId !== null
       ? "active"
       : (VIEWS.find((option) => option.id === searchParameters.get("view"))?.id ?? "inbox")
+  // 筛选状态也一律走 URL：刷新不丢、链接可分享，且所有切换都保留其它参数。
+  const priority: Item["priority"] | "all" =
+    priorityFilterSchema.safeParse(searchParameters.get("priority")).data ?? "all"
+  const updateParameters = (
+    patch: Record<string, string | null>,
+    options?: { replace?: boolean },
+  ) => {
+    setSearchParameters((current) => {
+      const next = new URLSearchParams(current)
+      for (const [key, value] of Object.entries(patch)) {
+        if (value === null) next.delete(key)
+        else next.set(key, value)
+      }
+      return next
+    }, options)
+  }
   const [organizing, setOrganizing] = useState<Item | null>(null)
   const [editing, setEditing] = useState<Item | null>(null)
   const [seriesOpen, setSeriesOpen] = useState(false)
   const [seriesId, setSeriesId] = useState<string | null>(null)
-  const [priority, setPriority] = useState<Item["priority"] | "all">("all")
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   const [organizeNote, setOrganizeNote] = useState<string | null>(null)
   const [statusNotice, setStatusNotice] = useState<StatusNotice | null>(null)
@@ -179,7 +194,7 @@ export function TodosPage() {
     }).then(() => client.invalidateQueries({ queryKey: ["items"] }))
   }
   const selectView = (next: View) => {
-    void navigate(next === "inbox" ? "/todos" : `/todos?view=${next}`)
+    updateParameters({ view: next === "inbox" ? null : next, category: null })
   }
   return (
     <div className="page">
@@ -245,7 +260,7 @@ export function TodosPage() {
               <button
                 className={categoryId === category.id ? "selected" : ""}
                 key={category.id}
-                onClick={() => void navigate(`/todos?category=${category.id}`)}
+                onClick={() => updateParameters({ category: category.id, view: null })}
                 type="button"
               >
                 <span className="color-swatch" style={{ background: category.color }} />
@@ -265,8 +280,12 @@ export function TodosPage() {
               <label>
                 <span>优先级</span>
                 <select
+                  aria-label="按优先级筛选"
                   value={priority}
-                  onChange={(event) => setPriority(priorityFilterSchema.parse(event.target.value))}
+                  onChange={(event) => {
+                    const next = priorityFilterSchema.parse(event.target.value)
+                    updateParameters({ priority: next === "all" ? null : next }, { replace: true })
+                  }}
                 >
                   <option value="all">全部</option>
                   <option value="high">高</option>
@@ -329,7 +348,7 @@ export function TodosPage() {
       </div>
       <CategoryDialog
         onClose={() => setCreateCategoryOpen(false)}
-        onCreated={(id) => void navigate(`/todos?category=${id}`)}
+        onCreated={(id) => updateParameters({ category: id, view: null })}
         open={createCategoryOpen}
       />
       <OrganizeDialog
