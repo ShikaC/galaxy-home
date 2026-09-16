@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { DatabaseSync } from "node:sqlite"
 import { migrateDatabase } from "../database.js"
-import { retrieveSources } from "../services/planning/retrieval.js"
+import { retrieveSources } from "../services/taskPlanning/retrieval.js"
 
 const corpus = [
   ["作品集", "作品集案例的结构与验证", "如何整理作品集案例"],

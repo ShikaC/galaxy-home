@@ -41,7 +41,7 @@ test("tablet viewport keeps route content inside the main surface", async ({ pag
 
   const routes = [
     { path: "/", heading: /上午好|下午好|晚上好|夜深了/ },
-    { path: "/plans", heading: "AI 行动计划" },
+    { path: "/task-plans", heading: "AI 任务规划" },
     { path: "/notes", heading: "知识笔记" },
     { path: "/projects", heading: "项目空间" },
     { path: "/todos", heading: "待办" },

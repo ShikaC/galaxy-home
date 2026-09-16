@@ -15,6 +15,14 @@ const contextSchema = z.object({
   input: taskPlanInputSchema,
   calendar: calendarSnapshotSchema.nullable(),
 })
+// plan 模式的提示词只带目标、日期范围和来源，不带 input/calendar。
+const planContextSchema = z.object({
+  goal: z.string(),
+  startDate: z.string(),
+  horizonDays: z.number(),
+  sources: z.array(z.object({ id: z.string(), title: z.string(), content: z.string() })),
+  existingItems: z.array(z.object({ id: z.string(), title: z.string() })),
+})
 const pending = new Set<() => void>()
 export function releaseFixtureResponses(): void {
   for (const resolve of pending) resolve()
@@ -35,9 +43,55 @@ export async function startFixture(): Promise<{ readonly server: Server; readonl
       value = null
     }
     const parsed = contextSchema.safeParse(value)
+    const planParsed = planContextSchema.safeParse(value)
     if (!parsed.success) {
+      if (!planParsed.success) {
+        response.writeHead(200, { "content-type": "application/json" })
+        response.end(JSON.stringify({ choices: [{ message: { content: "{}" } }] }))
+        return
+      }
+      const { goal, sources, existingItems } = planParsed.data
+      if (goal.includes("fixture-unavailable")) {
+        response.writeHead(503)
+        response.end("fixture unavailable")
+        return
+      }
+      if (goal.includes("fixture-slow")) await new Promise<void>((resolve) => pending.add(resolve))
+      const reuseTitle = "作品集案例提纲 E2E"
+      const reused = existingItems.find((item) => item.title === reuseTitle)
+      const sourceIds = sources.map((source) => source.id)
+      const clarify = goal.includes("fixture-clarify")
+      const planProposal = {
+        summary: "先写出作品集案例提纲，再整理支撑结果的验证材料。",
+        clarification: clarify ? "作品集要投递到哪个岗位？先确认这个再安排任务。" : null,
+        tasks: clarify
+          ? []
+          : [
+              {
+                title: reuseTitle,
+                dayOffset: 0,
+                reason: "案例需要交代问题、方案与验证结果。",
+                sourceIds,
+                existingItemId: reused?.id ?? null,
+              },
+              {
+                title: "整理作品集验证材料 E2E",
+                dayOffset: 0,
+                reason: "挑选两份能支撑结果的证据材料。",
+                sourceIds,
+                existingItemId: null,
+              },
+            ],
+      }
       response.writeHead(200, { "content-type": "application/json" })
-      response.end(JSON.stringify({ choices: [{ message: { content: "{}" } }] }))
+      response.end(
+        JSON.stringify({
+          // 真实模型不会返回 kind 与 draftId，服务端 parsePlanProposal 会补齐；
+          // fixture 也不在这里校验，否则会把自己的合法输出判成非法。
+          choices: [{ message: { content: JSON.stringify(planProposal) } }],
+          usage: { prompt_tokens: 320, completion_tokens: 180 },
+        }),
+      )
       return
     }
     const { input, calendar } = parsed.data

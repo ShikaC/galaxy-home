@@ -2,6 +2,8 @@
 
 决策：把「知识计划」（`planning`）收敛为「AI 任务」（`taskPlanning`）的一种模式，共享 run 框架，保留其独有能力。日期 2026-09-16。
 
+**状态：已完成。** 8 个阶段全部落地，`npm run eval` 30/30，vitest 98 文件 / 374 测试，E2E 默认套件 56/56 + task-time 套件 8/8。`/api/plans`、`src/server/services/planning/`、`PlansPage`、`components/planning/`、导航项均已退役。
+
 ## 一、为什么不是简单删除
 
 两套能力不重叠，交集只有 run 框架：
@@ -35,7 +37,7 @@ taskPlanProposalSchema = discriminatedUnion("kind", [capture, replan, plan])
 ```ts
 {
   type: "plan",
-  requestId, goal, startDate, horizonDays, dailyMinutes,
+  requestId, goal, startDate, horizonDays,
   contextMode: "goal_only" | "workspace",
 }
 ```
@@ -44,8 +46,10 @@ proposal：
 
 ```ts
 { kind: "plan", summary, clarification, tasks: planTaskDraft[] }
-// planTaskDraft = { draftId, title, minutes, dayOffset, reason, sourceIds, existingItemId }
+// planTaskDraft = { draftId, title, dayOffset, reason, sourceIds, existingItemId }
 ```
+
+计划不涉及分钟数（用户决定）：没有每日预算输入，草稿不带 `minutes`，确认时不写 `estimatedMinutes`。计划只回答“做什么、哪天做”。
 
 `taskPlanRunSchema` 增加两个**可选**字段（仅 plan 类型填充）：
 
@@ -58,16 +62,18 @@ existingItems: planItem[],    // 参与复用的活动任务
 
 | 阶段 | 内容 | 验证 |
 |---|---|---|
-| 1 | `shared/taskPlanning.ts` 扩展三种类型 + run 字段 | typecheck |
-| 2 | 迁移 `retrieval.ts`；`generate.ts` 支持 plan 类型 | 现有 planning 集成测试改到新入口 |
-| 3 | `proposal.ts` / `edit.ts` / `validate.ts` 支持 plan proposal | 同上 |
-| 4 | `confirm.ts` 支持 plan 的确认（改用 `createItem` + `setTodayItem`） | 确认写入正确且带版本 |
-| 5 | 路由：`/api/task-plans` 接受 plan；退役 `/api/plans` | 集成测试 |
-| 6 | 客户端：TaskPlanningPage 增加「从目标规划」；退役 PlansPage 与 `components/planning/` | E2E |
-| 7 | 评测：`evaluation/*` 改到 plan 类型 | `npm run eval` 30/30 |
-| 8 | 清理：删除 `services/planning/`、`shared/planning.ts`、导航项 | 全量测试 |
+| 1 | `shared/taskPlanning.ts` 扩展三种类型 + run 字段 | ✅ typecheck |
+| 2 | 迁移 `retrieval.ts`；`generate.ts` 支持 plan 类型 | ✅ 集成测试 |
+| 3 | `proposal.ts` / `edit.ts` / `validate.ts` 支持 plan proposal | ✅ 集成测试 |
+| 4 | `confirm.ts` 支持 plan 的确认（改用 `createItem` + `setTodayItem`） | ✅ 集成测试 |
+| 5 | 路由：`/api/task-plans` 接受 plan；退役 `/api/plans` | ✅ 集成测试 |
+| 6 | 客户端：TaskPlanningComposer 增加「从笔记做计划」；退役 PlansPage 与 `components/planning/` | ✅ E2E |
+| 7 | 评测：`evaluation/*` 改到 plan 类型 | ✅ `npm run eval` 30/30 |
+| 8 | 清理：删除 `services/planning/`、导航项；`shared/planning.ts` 仅留作旧备份读取 | ✅ 全量测试 |
 
 每阶段独立提交，避免一次性大改无法定位回归。
+
+评测迁移时发现一个真实缺陷：`snapshot.ts` 只把 `plan_runs` 排除在“确认前无写入”快照之外，新流程写的是 `task_plan_runs`，导致 `noWritesBeforeConfirmation` 全数误判为失败。两代表名均已排除。
 
 ## 五、迁移时的等价性要求
 
@@ -81,7 +87,7 @@ INSERT INTO today_items (...) ON CONFLICT ... -- 绕过 setTodayItem
 融合时改用 `createItem` + `setTodayItem`，需保持这些行为不变：
 
 - **任务复用**：先按 `existingItemId` 匹配，否则按 `normalizedTaskTitle` 在活动任务里查同名。命中则复用而不是新建。
-- **加入今日**：按 `planDate(startDate, dayOffset)`，当日已有 3 项主位时该项落为次要。
+- **加入今日**：按 `planDate(startDate, dayOffset)` 全部作为主位写入（今日主位上限已取消）。
 - **写入核验**：写完后读回标题与 `is_secondary`，标题不一致即视为失败并回滚整批。
 - **执行幂等**：已是 `succeeded` 直接返回；`failed` 且 code 为 `EXECUTION_FAILED` 时允许重试。
 - **乐观锁**：`expectedRevision` 与 run 的 revision 不符返回冲突，不覆盖用户编辑。
@@ -94,5 +100,5 @@ INSERT INTO today_items (...) ON CONFLICT ... -- 绕过 setTodayItem
 ## 六、不做什么
 
 - 不迁移 `plan_runs` 的历史行（无数据）。
-- 不保留 `/api/plans` 的兼容层（无外部消费者）。
-- 不把 replan 的容量校验强加给 plan 模式：plan 按 `dailyMinutes` 与 `horizonDays` 自行分配，不做日历冲突检测。
+- 不保留 `/api/plans` 的兼容层（无外部消费者）；`shared/planning.ts` 保留 `planRunSchema`，仅用于备份恢复读取旧备份里的 `plan_runs` 表。
+- 不把 replan 的日历冲突检测强加给 plan 模式：plan 只按 `horizonDays` 分配日期，不做冲突检查。

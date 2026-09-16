@@ -4,8 +4,8 @@ export const PALETTE_COMMANDS = [
     hint: "从知识到行动",
     keywords: ["计划", "规划", "plan", "agent"],
     kind: "navigate",
-    label: "打开 AI 行动计划",
-    path: "/plans",
+    label: "从笔记做计划",
+    path: "/task-plans?mode=plan",
   },
   {
     id: "notes",

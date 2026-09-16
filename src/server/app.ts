@@ -24,7 +24,6 @@ import { registerContentRoutes } from "./routes/content.js"
 import { registerDomainRoutes } from "./routes/domain.js"
 import { registerItemRoutes } from "./routes/items.js"
 import { registerNoteRoutes } from "./routes/notes.js"
-import { registerPlanningRoutes } from "./routes/planning.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { registerTaskPlanningRoutes } from "./routes/taskPlanning.js"
 import { registerTaskSeriesRoutes } from "./routes/taskSeries.js"
@@ -36,7 +35,6 @@ import {
   ImportArchiveMalformedError,
   ImportArchiveTooLargeError,
 } from "./services/backup.js"
-import { PlanError } from "./services/planning/store.js"
 import {
   OccurrenceRequiredError,
   ItemVersionConflictError as RecurrenceItemVersionConflictError,
@@ -149,11 +147,8 @@ export async function buildApp(context: AppContext, production = false) {
   registerContentRoutes(app, context)
   registerNoteRoutes(app, context)
   registerAiRoutes(app, context)
-  registerPlanningRoutes(app, context)
 
   app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof PlanError)
-      return reply.code(error.statusCode).send({ code: error.code, message: error.message })
     if (error instanceof ZodError) {
       return reply
         .code(400)

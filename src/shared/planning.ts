@@ -1,3 +1,6 @@
+// 旧「知识计划」（planning）的数据契约，仅用于读取旧备份里的 `plan_runs` 表。
+// 该能力已并入 shared/taskPlanning.ts 的 plan 模式，这里不再新增或写入数据；
+// schema 保持原样，因为备份里的字段就是长这样，改它会降低损坏检测能力。
 import { z } from "zod"
 
 const localDate = z.iso.date()

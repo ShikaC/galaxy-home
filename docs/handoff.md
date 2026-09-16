@@ -1,6 +1,6 @@
 # Galaxy 新版产品重构交接
 
-更新时间：2026-09-16。交接状态：**M0–M3 已完成，首个任务 / 时间 / AI 重排完整场景已验证；实现已提交并合并到 `main`（`f1bb67c`）。**
+更新时间：2026-09-16。交接状态：**M0–M3 已完成，首个任务 / 时间 / AI 重排完整场景已验证；实现已提交并合并到 `main`。「知识计划」已并入 AI 任务规划（plan 模式），旧 `/plans` 入口与 `services/planning/` 已退役。**
 
 ## 1. 接手顺序与目标
 
@@ -79,11 +79,12 @@ fixture evaluation 为 30/30，不能代表真实模型质量。真实模型为�
 | 任务与版本写入 | `src/server/repositories/items.ts`、`itemMutations.ts`、`transaction.ts` |
 | 重复系列 / 实例 | `taskSeries.ts`、`taskOccurrences.ts`、`recurrence*.ts` |
 | 日历与冲突 | `src/server/services/calendar*.ts`、`routes/calendar.ts`、`src/client/pages/CalendarPage.tsx` |
-| AI 规划 | `src/server/services/taskPlanning/`、`routes/taskPlanning.ts`、`src/shared/taskPlanning.ts` |
+| AI 规划 | `src/server/services/taskPlanning/`（capture / replan / plan 三种模式，含 `retrieval.ts`、`planProposal.ts`）、`routes/taskPlanning.ts`、`src/shared/taskPlanning.ts` |
+| AI 质量门禁 | `src/server/evaluation/`（`npm run eval`，30 个合成 case，全部跑 plan 模式） |
 | 备份与恢复 | `services/backup*.ts`、`db/migrations/011_task_time_core.sql` |
 | 任务 UI | `TodosPage.tsx`、`TaskRow.tsx`、`TaskSubtasks.tsx`、`TaskSeriesDialog.tsx` |
-| 规划 UI | `TaskPlanningPage.tsx`、`components/taskPlanning/` |
-| 验收测试 | `tests/e2e/task-time-acceptance.spec.ts`、`task-time-visual.spec.ts`、`tests/integration/task*.test.ts` |
+| 规划 UI | `TaskPlanningPage.tsx`、`components/taskPlanning/`（含 `PlanProposalEditor.tsx`） |
+| 验收测试 | `tests/e2e/task-time-acceptance.spec.ts`、`task-time-plan-mode.spec.ts`、`task-time-visual.spec.ts`、`tests/integration/task*.test.ts` |
 
 ## 8. 后续工作
 

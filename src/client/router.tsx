@@ -20,10 +20,7 @@ export const router = createBrowserRouter([
     errorElement: <RouteErrorPage />,
     HydrateFallback: RouteLoading,
     children: [
-      {
-        path: "plans",
-        lazy: async () => ({ Component: (await import("./pages/PlansPage.js")).PlansPage }),
-      },
+      {},
       {
         path: "calendar",
         lazy: async () => ({ Component: (await import("./pages/CalendarPage.js")).CalendarPage }),

@@ -1,7 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 import {
   Archive,
-  BookOpen,
   CalendarDays,
   CheckSquare2,
   ChevronDown,
@@ -71,7 +70,6 @@ const NAV_SECTIONS: readonly NavSection[] = [
     label: "AI 与知识",
     items: [
       { to: "/task-plans", label: "AI 任务", icon: Sparkles, end: false },
-      { to: "/plans", label: "知识计划", icon: BookOpen, end: false },
       { to: "/notes", label: "知识笔记", icon: FileText, end: false },
     ],
   },

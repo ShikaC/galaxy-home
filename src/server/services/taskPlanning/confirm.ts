@@ -225,6 +225,7 @@ export function confirmTaskPlan(
             kind: "item",
             id: item.id,
             verified: true,
+            title: item.title,
             localDate,
             disposition: "created",
           })
@@ -249,6 +250,7 @@ export function confirmTaskPlan(
           kind: "item",
           id: existing.id,
           verified: true,
+          title: existing.title,
           localDate,
           disposition: "reused",
         })

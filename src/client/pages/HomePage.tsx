@@ -124,7 +124,7 @@ export function HomePage() {
           </button>
         </form>
         <div className="ai-launchpad__suggestions">
-          <Link className="plan-next-link" to="/plans">
+          <Link className="plan-next-link" to="/task-plans?mode=plan">
             <Sparkles size={13} />
             生成行动计划
             <ArrowUpRight size={12} />

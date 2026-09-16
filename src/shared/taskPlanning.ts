@@ -212,6 +212,8 @@ export const taskPlanRunSchema = z
             kind: z.enum(["item", "series", "schedule"]),
             id: z.uuid(),
             verified: z.literal(true),
+            // plan 模式的写入结果带标题，便于回读核验与在界面上说清楚写入了什么。
+            title: z.string().optional(),
             localDate: localDateSchema.optional(),
             minutes: z.number().int().nonnegative().optional(),
             disposition: z.enum(["created", "reused"]).optional(),
