@@ -79,26 +79,6 @@ export function getDailyQuote(database: DatabaseSync, localDate: string): Quote 
   return quoteSchema.parse(quote)
 }
 
-export function nextDailyQuote(database: DatabaseSync, localDate: string): Quote | null {
-  const current = getDailyQuote(database, localDate)
-  const alternative = database
-    .prepare(
-      `SELECT id, content FROM quotes
-       WHERE enabled = 1 AND deleted_at IS NULL AND id != ? ORDER BY random() LIMIT 1`,
-    )
-    .get(current?.id ?? "")
-  const row = alternative ?? current
-  if (row === undefined) return null
-  const quote = quoteRowSchema.parse(row)
-  database
-    .prepare(
-      `INSERT INTO daily_quote_selections (local_date, quote_id, selected_at) VALUES (?, ?, ?)
-     ON CONFLICT(local_date) DO UPDATE SET quote_id = excluded.quote_id, selected_at = excluded.selected_at`,
-    )
-    .run(localDate, quote.id, new Date().toISOString())
-  return quoteSchema.parse(quote)
-}
-
 export function listQuotes(database: DatabaseSync) {
   return database
     .prepare(

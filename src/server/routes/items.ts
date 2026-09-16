@@ -11,7 +11,6 @@ import {
 import { calendarDateSchema, ianaTimezoneSchema } from "../../shared/taskCore.js"
 import { type AppContext, getAppClock } from "../context.js"
 import { createCategory, reorderCategoryItems, updateCategory } from "../repositories/categories.js"
-import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
 import {
   copyItem,
   createItem,
@@ -76,10 +75,6 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     )
     queueCaptureAnalysis(context.database, context.secretPath, item.id)
     return reply.code(201).send(item)
-  })
-  app.get("/api/items/:id/ai-suggestion", (request) => {
-    const suggestion = getItemAiSuggestion(context.database, idSchema.parse(request.params).id)
-    return suggestion ?? { status: "none" }
   })
   app.get("/api/items/:id", (request) => {
     const localDate = localClock(clock.now(), getSettings(context.database).timezone).date

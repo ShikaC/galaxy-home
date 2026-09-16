@@ -44,11 +44,6 @@ export function registerCalendarRoutes(app: FastifyInstance, context: AppContext
     )
   })
 
-  app.post("/api/calendar/validate", (request) => {
-    const input = calendarValidateInputSchema.parse(request.body)
-    const snapshot = buildCalendarSnapshot(context.database, input)
-    return validateScheduleChanges(snapshot, input.changes)
-  })
   app.post("/api/calendar/schedule", (request, reply) => {
     const input = calendarValidateInputSchema.parse(request.body)
     const [change] = input.changes

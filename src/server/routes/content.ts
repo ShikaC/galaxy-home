@@ -8,7 +8,6 @@ import {
   getDailyQuote,
   listGains,
   listQuotes,
-  nextDailyQuote,
   updateGain,
   updateQuote,
 } from "../repositories/content.js"
@@ -45,9 +44,6 @@ export function registerContentRoutes(app: FastifyInstance, context: AppContext)
   const clock = getAppClock(context)
   app.get("/api/quote", (request) =>
     getDailyQuote(context.database, dateSchema.parse(request.query).localDate),
-  )
-  app.post("/api/quote/next", (request) =>
-    nextDailyQuote(context.database, dateSchema.parse(request.body).localDate),
   )
   app.get("/api/quotes", () => listQuotes(context.database))
   app.post("/api/quotes", (request, reply) =>
