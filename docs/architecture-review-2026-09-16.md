@@ -106,6 +106,16 @@ CREATE TABLE task_plan_runs (id, state_json, created_at, updated_at, owner_pid, 
 
 `view` 和 `categoryId` 已从 URL 派生（本轮修掉了它们与 `useState` 的同步竞态），但 `priority` 仍是本地 `useState`（`TodosPage.tsx:60`）。后果：刷新后过滤丢失，链接无法分享。同类状态应当同一种处理方式。
 
+### P2 — 创建任务时会触发一次无人消费的 AI 调用
+
+**本轮自查新发现**。`POST /api/items` 每次都调 `queueCaptureAnalysis`（`routes/items.ts:76`），它经 `suggestItemCategories` → `chatStructured` 发起一次真实模型调用，结果只写进 `item_ai_suggestions` 表。
+
+而该表在客户端没有任何读取入口。唯一读过它的 `GET /api/items/:id/ai-suggestion` 在死端点清理里被删除（删除本身是对的——客户端从未调用它），同文件的另外两个导出让 capture 流程仍能写入。结果是：配了 AI 的环境里，每个新建任务都花一次调用，产出无人消费。
+
+注意这条不是删除端点引入的，删除只是让"只写不读"变得明显。另一个消费路径 `POST /api/ai/suggest-categories` 是活的，`OrganizeDialog` 在用，未受影响。
+
+需要产品判断：给建议接上读取入口（例如收集箱里标出"AI 建议归入某分类"），或关掉这条自动分析。在决定之前不动——删表涉及迁移，补 UI 是产品决策。
+
 ### P3 — `app.ts` 的 27 个 `instanceof` 分支
 
 87 行的 if-else 链把错误类映射为 HTTP 语义。功能正确、位置正确，但新增错误类型要改这个文件。可换成映射表，收益中等、风险低。优先级不高。
