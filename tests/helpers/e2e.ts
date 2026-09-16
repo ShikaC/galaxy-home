@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test"
 
-export { expect, type Locator, type Page } from "@playwright/test"
+export { type APIRequestContext, expect, type Locator, type Page } from "@playwright/test"
 export const E2E_LOCAL_DATE = "2026-08-05"
 export const test = base.extend<{ readonly apiReady: undefined }>({
   apiReady: [

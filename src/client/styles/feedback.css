@@ -52,3 +52,18 @@
 .skeleton__copy span:last-child {
   inline-size: 62%;
 }
+
+.query-feedback {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding-block: var(--space-4);
+}
+
+.query-feedback p {
+  margin: 0;
+}
+
+.query-feedback--error p {
+  color: var(--color-attention);
+}

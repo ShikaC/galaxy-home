@@ -34,6 +34,7 @@ import { OnboardingPage } from "../pages/OnboardingPage.js"
 import { AiDrawer } from "./AiDrawer.js"
 import { AppActionsContext, AppAppearanceContext, AppTimeContext } from "./AppContext.js"
 import { CaptureDialog } from "./CaptureDialog.js"
+import { ItemDeepLink } from "./ItemDeepLink.js"
 import { ReminderBanner } from "./ReminderBanner.js"
 import { SearchDialog } from "./SearchDialog.js"
 import { Button } from "./ui/Button.js"
@@ -395,6 +396,7 @@ export function AppShell() {
             )}
             <CaptureDialog onClose={() => setCaptureOpen(false)} open={captureOpen} />
             <SearchDialog onClose={() => setSearchOpen(false)} open={searchOpen} />
+            <ItemDeepLink />
           </div>
         </AppActionsContext.Provider>
       </AppTimeContext.Provider>

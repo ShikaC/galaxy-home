@@ -20,6 +20,7 @@ import type { Item } from "../../shared/items.js"
 import { useAppActions, useAppTime } from "../components/AppContext.js"
 import { FocusTimer } from "../components/FocusTimer.js"
 import { HabitRow } from "../components/HabitRow.js"
+import { InlineCapture } from "../components/InlineCapture.js"
 import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { ProjectDialog } from "../components/ProjectDialog.js"
 import { TaskRow } from "../components/TaskRow.js"
@@ -279,10 +280,7 @@ export function HomePage() {
                 查看其余 {visibleTasks.length - 7} 项
               </Link>
             ) : null}
-            <button className="inline-create" type="button" onClick={actions.openCapture}>
-              <Plus size={15} />
-              记下一件事<span>让想法有个落点</span>
-            </button>
+            <InlineCapture />
             {today.data && today.data.length > 0 ? (
               <div className="daily-progress">
                 <div>

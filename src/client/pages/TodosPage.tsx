@@ -15,6 +15,7 @@ import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { Toast } from "../components/ui/Feedback.js"
 import { IconButton } from "../components/ui/IconButton.js"
+import { QueryFeedback } from "../components/ui/QueryFeedback.js"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { invalidateTaskQueries, useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useMeta } from "../lib/queries.js"
@@ -41,8 +42,17 @@ export function TodosPage() {
   const client = useQueryClient()
   const navigate = useNavigate()
   const [searchParameters] = useSearchParams()
-  const [view, setView] = useState<View>("inbox")
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  // URL 是当前视图的唯一真相源，避免导航与本地状态互相追赶。
+  const requestedCategory = searchParameters.get("category")
+  const categoryId =
+    requestedCategory !== null &&
+    (meta.data?.categories.some((category) => category.id === requestedCategory) ?? false)
+      ? requestedCategory
+      : null
+  const view: View =
+    categoryId !== null
+      ? "active"
+      : (VIEWS.find((option) => option.id === searchParameters.get("view"))?.id ?? "inbox")
   const [organizing, setOrganizing] = useState<Item | null>(null)
   const [editing, setEditing] = useState<Item | null>(null)
   const [seriesOpen, setSeriesOpen] = useState(false)
@@ -51,20 +61,6 @@ export function TodosPage() {
   const [createCategoryOpen, setCreateCategoryOpen] = useState(false)
   const [organizeNote, setOrganizeNote] = useState<string | null>(null)
   const [statusNotice, setStatusNotice] = useState<StatusNotice | null>(null)
-  useEffect(() => {
-    const requested = searchParameters.get("category")
-    if (requested === null) {
-      setCategoryId(null)
-      const requestedView = searchParameters.get("view")
-      const requestedViewOption = VIEWS.find((option) => option.id === requestedView)
-      setView(requestedViewOption?.id ?? "inbox")
-      return
-    }
-    if (meta.data?.categories.some((category) => category.id === requested)) {
-      setCategoryId(requested)
-      setView("active")
-    }
-  }, [meta.data?.categories, searchParameters])
   useEffect(() => {
     if (organizeNote === null) return
     const timer = window.setTimeout(() => setOrganizeNote(null), 4_000)
@@ -191,8 +187,6 @@ export function TodosPage() {
     }).then(() => client.invalidateQueries({ queryKey: ["items"] }))
   }
   const selectView = (next: View) => {
-    setView(next)
-    setCategoryId(null)
     void navigate(next === "inbox" ? "/todos" : `/todos?view=${next}`)
   }
   return (
@@ -259,11 +253,7 @@ export function TodosPage() {
               <button
                 className={categoryId === category.id ? "selected" : ""}
                 key={category.id}
-                onClick={() => {
-                  setCategoryId(category.id)
-                  setView("active")
-                  void navigate(`/todos?category=${category.id}`)
-                }}
+                onClick={() => void navigate(`/todos?category=${category.id}`)}
                 type="button"
               >
                 <span className="color-swatch" style={{ background: category.color }} />
@@ -293,14 +283,20 @@ export function TodosPage() {
                   <option value="none">无</option>
                 </select>
               </label>
-              <span>{visibleItems.length} 项</span>
+              <span>{items.data === undefined ? "—" : `${visibleItems.length} 项`}</span>
               <Link className="text-action" to="/task-plans?mode=capture">
                 <Sparkles size={13} />
                 AI 拆分录入
               </Link>
             </div>
           </header>
-          {visibleItems.length === 0 ? (
+          {items.isError || items.isPending ? (
+            <QueryFeedback
+              error={items.error}
+              pending={items.isPending}
+              retry={() => void items.refetch()}
+            />
+          ) : visibleItems.length === 0 ? (
             <EmptyState
               action={
                 view === "inbox" && categoryId === null ? (
@@ -341,11 +337,7 @@ export function TodosPage() {
       </div>
       <CategoryDialog
         onClose={() => setCreateCategoryOpen(false)}
-        onCreated={(id) => {
-          setCategoryId(id)
-          setView("active")
-          void navigate(`/todos?category=${id}`)
-        }}
+        onCreated={(id) => void navigate(`/todos?category=${id}`)}
         open={createCategoryOpen}
       />
       <OrganizeDialog

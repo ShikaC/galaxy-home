@@ -49,7 +49,7 @@ function resultPath(type: SearchType, id: string): string {
     case "review":
       return "/review"
     case "item":
-      return "/todos"
+      return `/todos?item=${id}`
     case "conversation":
       return "/"
     default:
