@@ -1,10 +1,10 @@
 # 新版任务与时间核心：阶段验证记录
 
-更新：2026-09-12。状态：**M1–M3 首场景及最终检查完成；M4/M5 和平台边界仍待验收。** 本页只记录本轮实际证据，不使用历史结果替代新版验证。需求见 [product-requirements.md](product-requirements.md)，合约见 [task-time-model.md](task-time-model.md)，下一步见 [current-task.md](current-task.md)。
+更新：2026-09-16。状态：**M1–M3 首场景及最终检查完成；M4/M5 和平台边界仍待验收。** 本页只记录本轮实际证据，不使用历史结果替代新版验证。需求见 [product-requirements.md](product-requirements.md)，合约见 [task-time-model.md](task-time-model.md)，下一步见 [current-task.md](current-task.md)。
 
 ## 验证对象与证据范围
 
-工作树 `/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home`，分支 `codex/task-time-core`，接手提交 `4d438b0d2620c0d927a7d8a074485a01a5f85dd3`。以下模块证据来自本轮未提交实现；最终提交和最终全仓结果待主执行者补录。运行环境 Node v24.18.0、npm 11.16.0。
+实现位于 `main`（`f1bb67c`，合并自分支 `codex/task-time-core`；上一版上游基线 `4d438b0d2620c0d927a7d8a074485a01a5f85dd3`），原工作树 `/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home` 保留备用。以下模块证据来自本轮实现，已随 `f1bb67c` 提交。运行环境 Node v24.18.0、npm 11.16.0。
 
 详细日志和合成数据位于本机忽略目录 `.omo/evidence/task-core/`，不会随克隆下载。本页保存可跟随 Git 的结果摘要与复现入口；日志文件名只用于本机追查。多个模块包含相同集成测试，表中数量不能相加成全仓总数。
 
@@ -83,3 +83,5 @@ v2 ZIP 包含新系列、实例、提醒规则、任务提案与创建请求绑�
 AI 校验计算提案执行后的最终状态，保留未解决重叠并移除已解决重叠；本次范围内遗漏的已知耗时工作明确返回 UNSCHEDULED_WORK，逐项连续时段及截止时间前缀总容量检查补充不可行原因。该能力不是最优调度求解器。
 
 M4 的账号、同步协议、移动技术与供应商尚未选定；M5 连续使用及实际用户效果未执行。最终全仓计数、浏览器证据和真实模型结果必须在各自完成后更新本页，不能由历史通过数或计划推断。
+
+2026-09-16 在合并后的 `main` 补录全仓复核：`npx vitest run --exclude 'tests/e2e/**'` 为 102 files / 395 tests PASS（26.7 秒），`npm run build` 通过。本次未重跑完整 Playwright 套件，只运行 `tests/e2e/core.spec.ts`（2/2 通过）；原 50/50 记录仍指合并前的最终 release 检查。

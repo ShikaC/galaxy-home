@@ -1,6 +1,6 @@
 # Galaxy 新版产品重构交接
 
-更新时间：2026-09-12。交接状态：**M0–M3 已完成，首个任务 / 时间 / AI 重排完整场景已验证；当前实现仍在独立分支，尚未提交、推送或合并。**
+更新时间：2026-09-16。交接状态：**M0–M3 已完成，首个任务 / 时间 / AI 重排完整场景已验证；实现已提交并合并到 `main`（`f1bb67c`）。**
 
 ## 1. 接手顺序与目标
 
@@ -13,20 +13,21 @@
 | 项目 | 当前事实 |
 | --- | --- |
 | 仓库 | https://github.com/ShikaC/galaxy-home.git |
-| 主检出 | `/Users/shika/Documents/galaxy-home`，保持未修改 |
-| 实施工作树 | `/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home` |
-| 分支 | `codex/task-time-core` |
-| 接手基线 | `4d438b0d2620c0d927a7d8a074485a01a5f85dd3` |
+| 主检出 | `/Users/shika/Documents/galaxy-home`，分支 `main`，当前工作位置 |
+| 实施工作树 | `/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home`（保留备用，与 `main` 同提交） |
+| 分支 | `main`；`codex/task-time-core` 已合并，指向同一提交 |
+| 接手基线 | `f1bb67c55db2ba878211b81e357f62da5d7edebf`（`实现任务时间核心与日历规划工作流`，156 文件 / +16627 −1073） |
+| 上一版上游基线 | `4d438b0d2620c0d927a7d8a074485a01a5f85dd3` |
 | Node / npm | Node `v24.18.0`、npm `11.16.0` |
 | 前端 | React 19 + TypeScript + Vite |
 | 服务端 | Fastify + SQLite + Zod |
 | 开发前端 | `http://127.0.0.1:5173/` |
 | 开发 API | `http://127.0.0.1:3001/` |
-| 当前数据目录 | 工作树下 `data/`；迁移只在副本或合成库执行 |
+| 当前数据目录 | 主检出下 `data/`；迁移只在副本或合成库执行 |
 
-启动：在工作树执行 `npm run dev`。它会构建服务端、启动 API、Vite 和 TypeScript watch。接手时重新运行 `git status --short --branch`、`git log -5 --oneline` 并确认端口和数据目录；文档中的路径与进程都是本机快照。
+启动：在主检出执行 `npm run dev`。它会构建服务端、启动 API、Vite 和 TypeScript watch。接手时重新运行 `git status --short --branch`、`git log -5 --oneline` 并确认端口和数据目录；文档中的路径与进程都是本机快照。
 
-当前工作树有大量未提交改动，包含实现、测试和文档。按用户要求暂不 commit、push 或 merge；主 checkout、真实数据库和既有预览不得覆盖。
+实现、测试与文档已全部提交，主检出工作树干净。真实用户数据库在本轮未被迁移或写入；新功能首次启动会按迁移流程升级目标库，操作前先备份。
 
 ## 3. 已完成的产品与技术能力
 
@@ -62,7 +63,9 @@
 
 ## 6. 验证结果与诚实边界
 
-最终 release checks：`npm run lint` 通过（401 files，39 warnings、98 infos，无 error）；`npm run typecheck` 通过；`npm run build` 通过（Vite transformed 3026 modules）；`npm run test:e2e` 通过 50/50；定向重复、提醒、备份恢复和 AI / 日历复核全部通过。完整 Vitest 回归为 101 files / 392 tests PASS，发生在最终 CSS 视觉修复之前；之后的改动仅涉及 UI / CSS 与测试定位，需重新改动业务逻辑后再跑全量回归。
+最终 release checks：`npm run lint` 通过（401 files，39 warnings、98 infos，无 error）；`npm run typecheck` 通过；`npm run build` 通过（Vite transformed 3026 modules）；`npm run test:e2e` 通过 50/50；定向重复、提醒、备份恢复和 AI / 日历复核全部通过。完整 Vitest 回归为 101 files / 392 tests PASS，发生在最终 CSS 视觉修复之前。
+
+2026-09-16 在合并后的 `main`（`f1bb67c`）复核：`npx vitest run --exclude 'tests/e2e/**'` 为 **102 files / 395 tests PASS**（26.7 秒）；`npm run build` 通过；`npm run lint` 为 2 warnings（`lint/style/noDescendingSpecificity`，CSS）+ 103 infos（`lint/complexity/useLiteralKeys`，与 `noPropertyAccessFromIndexSignature` 冲突），无 error。本次复核只运行了 `tests/e2e/core.spec.ts`（2/2 通过），未重跑完整 Playwright 50 项。
 
 视觉验证覆盖 27 个 UI 状态、375 / 768 / 1440 宽度、dawn / night 主题，共 350 张 PNG（含辅助时间轴截图），双审查 PASS。仅有日历 backlog 卡片的设计内水平滚动。
 
@@ -86,4 +89,4 @@ fixture evaluation 为 30/30，不能代表真实模型质量。真实模型为�
 
 M4/M5 尚未完成：跨设备同步与离线多端冲突、移动端技术方案、安装 / 升级 / 分发、连续两周以上真实用户效果，以及外部日历、MCP 和共享协作扩展。原生通知后台投递也需单独设计和实测。
 
-下一位执行者先核对最终文档、`git diff --check`、工作树状态和残留进程，再根据用户授权决定是否拆分提交。任何提交操作必须先审查完整 diff 并保持原有数据库和主 checkout 不变。
+下一位执行者先核对最终文档、`git diff --check`、工作树状态和残留进程。后续提交保持原有数据库和主检出可用，改动业务逻辑后跑 `npm test` 与 `npm run typecheck`。

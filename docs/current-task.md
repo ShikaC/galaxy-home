@@ -1,6 +1,6 @@
 # 当前任务
 
-更新日期：2026-09-10。
+更新日期：2026-09-16。
 
 ## 目标与状态
 
@@ -12,7 +12,7 @@
 
 ## 本轮环境与数据保护
 
-- 实际工作树：`/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home`；分支：`codex/task-time-core`；接手 HEAD：`4d438b0d2620c0d927a7d8a074485a01a5f85dd3`。当前有正在实施的未提交改动，主检出保留在 `/Users/shika/Documents/galaxy-home`。
+- 实现已提交并合并到 `main`（`f1bb67c`，156 文件 / +16627 −1073）。当前工作位置为主检出 `/Users/shika/Documents/galaxy-home`，分支 `main`，工作树干净；`codex/task-time-core` 与 `main` 指向同一提交，worktree `/Users/shika/.codex/worktrees/galaxy-task-time-core/galaxy-home` 保留备用。上一版上游基线为 `4d438b0d2620c0d927a7d8a074485a01a5f85dd3`。
 - 已核对 Node `v24.18.0`、npm `11.16.0`。工作树通过本地忽略的 node_modules 软链接复用主检出依赖，没有改动锁文件。
 - 已只读核对主检出 `data/galaxy-home.sqlite` 和桌面 `~/Library/Application Support/app.galaxyhome.desktop/galaxy-home.sqlite`，两者均为 schema v8、31 张表，分别生成 SQLite backup API 副本。源数据库未迁移或写入。
 - 副本位于本地忽略目录 `.omo/evidence/task-core/legacy-copies/`，分别为 `data-galaxy-home.sqlite`、`app.galaxyhome.desktop-galaxy-home.sqlite`；源库数据不同，不能把两个目录当成同一个空间。
@@ -29,7 +29,7 @@
 
 ## 已完成与下一步
 
-核心 schema、011 迁移、items/版本/原子创建、重复服务、提醒与备份、手动 UI、日历和 AI 提案已有实现与模块定向回归。当前由独立审查者检查跨模块风险，主执行者整合最终修正、全量类型/构建检查和实际 UI 场景；模块日志的通过数有重叠，不能相加作为总测试数。
+核心 schema、011 迁移、items/版本/原子创建、重复服务、提醒与备份、手动 UI、日历和 AI 提案均已有实现与模块定向回归，并已随 `f1bb67c` 提交。跨模块风险审查、最终修正、全量类型/构建检查和实际 UI 场景已收口；模块日志的通过数有重叠，不能相加作为总测试数。
 
 首场景已贯通：工作日反馈系列与周五方案 → 子任务 → 周日历安排 → 临时固定会议 → AI 重排预览/修改/确认 → 跨窗口冲突保留输入 → 刷新重启/重复实例/提醒。迁移副本、备份恢复、中文输入法、长文本、不同宽度和日夜主题均已完成对应证据。
 
