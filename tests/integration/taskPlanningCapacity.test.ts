@@ -110,6 +110,19 @@ describe("server-derived unresolved replan capacity", () => {
     expect(() => confirmTaskPlan(context, run.id, 0)).toThrow()
   })
 
+  it("counts a task with no estimate as the default block when replanning", async () => {
+    // Given：一个没有预计耗时的任务，用户没有填任何分钟数。
+    const item = task({ estimatedMinutes: undefined })
+    // When
+    const run = await plan()
+    // Then：它不再隐身，而是按默认 30 分钟参与容量计算，并在消息里说明是估算。
+    const unresolved = conflicts(run).find(
+      (conflict) => conflict.itemId === item.id && conflict.code === "UNSCHEDULED_WORK",
+    )
+    expect(unresolved?.message).toContain("30 分钟")
+    expect(unresolved?.message).toContain("估算")
+  })
+
   it("blocks omitted work when its deadline is before the only free slot", async () => {
     // Given
     const item = task({ dueDate: undefined, dueAt: "2026-09-10T01:00:00.000Z" })

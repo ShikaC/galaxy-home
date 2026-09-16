@@ -2,6 +2,7 @@ import { CalendarPlus, Sparkles } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router"
 import type { CalendarItem, WorkWindowRule } from "../../shared/calendar.js"
+import { DEFAULT_TASK_MINUTES } from "../../shared/taskCore.js"
 import { useAppTime } from "../components/AppContext.js"
 import { CalendarCapacity } from "../components/calendar/CalendarCapacity.js"
 import { CalendarControls } from "../components/calendar/CalendarControls.js"
@@ -98,10 +99,15 @@ export function CalendarPage() {
       setError(cause.message)
     }
   }
+  // 拖块边缘改时长：块的长度就是安排时长，不需要用户输数字。
+  const resizeItem = (item: CalendarItem, endLocal: string) => {
+    if (item.scheduledStartAt === null) return
+    schedule(item, localDateTimeFromInstant(item.scheduledStartAt, timezone), endLocal)
+  }
   const dropItem = (itemId: string, localDate: string, hour: number) => {
     const item = calendar.data?.items.find((value) => value.id === itemId)
     if (item === undefined) return
-    const duration = item.estimatedMinutes ?? 60
+    const duration = item.estimatedMinutes ?? DEFAULT_TASK_MINUTES
     const start = `${localDate}T${String(hour).padStart(2, "0")}:00`
     const startInstant = localInstant(start, timezone)
     const endInstant = new Date(Date.parse(startInstant) + duration * 60_000).toISOString()
@@ -231,6 +237,7 @@ export function CalendarPage() {
                 setError(null)
                 setSelected(item)
               }}
+              onResizeItem={resizeItem}
               timezone={timezone}
             />
           </section>

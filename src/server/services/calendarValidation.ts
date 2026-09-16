@@ -62,13 +62,8 @@ export function validateScheduleChanges(
         itemId: item.id,
         message: "已完成任务不能移动",
       })
-    if (item.estimatedMinutes === null && !(options.manual && item.isFixed))
-      blockers.push({
-        code: "UNKNOWN_DURATION",
-        severity: "blocker",
-        itemId: item.id,
-        message: "请先补充预计耗时",
-      })
+    // 不再要求 estimatedMinutes：变更本身就带着明确的起止时间，
+    // 块的长度就是时长。缺估时只影响重排估算，不应阻断手动拖动。
     return {
       ...item,
       scheduledStartAt: change.scheduledStartAt,
@@ -136,12 +131,14 @@ export function validateScheduleChanges(
         message: "安排结束时间晚于截止要求",
       })
     const duration = interval.end - interval.start
+    // 用户拖出的块长度就是实际安排，比预计值短时只提醒、不阻断；
+    // 否则想把一个大任务先安排一段就做不到，也违背「别让人填数字」的初衷。
     if (item.estimatedMinutes !== null && duration < item.estimatedMinutes * 60_000)
-      blockers.push({
+      warnings.push({
         code: "INSUFFICIENT_CAPACITY",
-        severity: "blocker",
+        severity: "warning",
         itemId: item.id,
-        message: `安排时段少于预计 ${item.estimatedMinutes} 分钟`,
+        message: `安排时段少于预计 ${item.estimatedMinutes} 分钟，按实际长度安排`,
       })
     const available = snapshot.freeSlots.some(
       (slot) =>

@@ -190,8 +190,8 @@ describe("calendar capacity", () => {
     expect(result.blockers.map((conflict) => conflict.code)).toContain("OUTSIDE_RANGE")
   })
 
-  it("blocks a candidate shorter than its estimate", () => {
-    // Given
+  it("warns instead of blocking when a dragged block is shorter than the estimate", () => {
+    // Given：任务是 120 分钟，但用户只拖出了 60 分钟的块。
     const task = item({ estimatedMinutes: 120 })
 
     // When
@@ -205,8 +205,10 @@ describe("calendar capacity", () => {
       },
     ])
 
-    // Then
-    expect(result.blockers.map((conflict) => conflict.code)).toContain("INSUFFICIENT_CAPACITY")
+    // Then：拖出来的长度就是安排结果，只提醒不阻断。
+    expect(result.valid).toBe(true)
+    expect(result.blockers).toHaveLength(0)
+    expect(result.warnings.map((conflict) => conflict.code)).toContain("INSUFFICIENT_CAPACITY")
   })
 
   it("does not include an active scheduled item outside the range", () => {
@@ -256,7 +258,31 @@ describe("calendar scoped capacity", () => {
     // Then
     expect(result.freeSlots.map((slot) => slot.minutes)).toEqual([180, 300])
   })
-  it("does not block a manual task on unrelated unknown durations", () => {
+  it("lets a task with no estimate be dragged onto the calendar", () => {
+    // Given：任务没有预计耗时，用户从没填过数字。
+    const task = item({ estimatedMinutes: null })
+
+    // When：手动把它拖到日历（manual），块长 60 分钟。
+    const result = validateScheduleChanges(
+      snapshot([task]),
+      [
+        {
+          itemId: task.id,
+          expectedVersion: 1,
+          scheduledStartAt: "2026-09-10T01:00:00.000Z",
+          scheduledEndAt: "2026-09-10T02:00:00.000Z",
+          scheduleTimezone: range.timezone,
+        },
+      ],
+      { manual: true },
+    )
+
+    // Then：不再要求先补预计耗时；块的起止时间本身就说明了时长。
+    expect(result.valid).toBe(true)
+    expect(result.blockers.map((conflict) => conflict.code)).not.toContain("UNKNOWN_DURATION")
+  })
+
+  it("schedules a task that has no estimate at all", () => {
     // Given
     const task = item()
     const base = snapshot([task, item({ estimatedMinutes: null })])

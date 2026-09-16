@@ -1,6 +1,22 @@
 import { Clock3, LockKeyhole } from "lucide-react"
-import { type CSSProperties, type DragEvent, useEffect, useRef } from "react"
+import { type CSSProperties, type DragEvent, useEffect, useRef, useState } from "react"
 import type { CalendarConflict, CalendarItem } from "../../../shared/calendar.js"
+
+// 拖块边缘改变时长时的吸附粒度，与时间轴刻度一致。
+const SNAP_MINUTES = 15
+// 一个块最少保留这么长，避免拖成零高度后无法再抓取。
+const MIN_EVENT_MINUTES = 15
+
+function endLocalOf(date: string, endMinute: number): string {
+  if (endMinute >= 24 * 60) {
+    const next = new Date(`${date}T12:00:00.000Z`)
+    next.setUTCDate(next.getUTCDate() + 1)
+    return `${next.toISOString().slice(0, 10)}T00:00`
+  }
+  const hours = String(Math.floor(endMinute / 60)).padStart(2, "0")
+  const minutes = String(endMinute % 60).padStart(2, "0")
+  return `${date}T${hours}:${minutes}`
+}
 
 function localParts(
   iso: string,
@@ -38,6 +54,7 @@ export function CalendarTimeline({
   items,
   onDropItem,
   onEditItem,
+  onResizeItem,
   timezone,
 }: {
   readonly conflicts: readonly CalendarConflict[]
@@ -45,9 +62,23 @@ export function CalendarTimeline({
   readonly items: readonly CalendarItem[]
   readonly onDropItem: (itemId: string, localDate: string, hour: number) => void
   readonly onEditItem: (item: CalendarItem) => void
+  readonly onResizeItem: (item: CalendarItem, endLocal: string) => void
   readonly timezone: string
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  // 拖动只在手势期间存在，不入库；松手才提交一次。
+  const [resizePreview, setResizePreview] = useState<{
+    readonly key: string
+    readonly endMinute: number
+  } | null>(null)
+  const resizeDrag = useRef<{
+    readonly item: CalendarItem
+    readonly date: string
+    readonly startMinute: number
+    readonly initialEndMinute: number
+    readonly startY: number
+    endMinute: number
+  } | null>(null)
   const firstDate = dates[0]
   useEffect(() => {
     if (firstDate !== undefined && scrollRef.current !== null) scrollRef.current.scrollTop = 8 * 60
@@ -105,7 +136,12 @@ export function CalendarTimeline({
             const endMinute = date === end.date ? end.minutes : 24 * 60
             if (endMinute <= startMinute) return []
             const top = startMinute
-            const height = Math.max(28, Math.min(24 * 60 - top, endMinute - startMinute))
+            // 拖动中先用预览值渲染高度，松手才写库。
+            const eventKey = `${item.id}-${date}`
+            const previewing = resizePreview?.key === eventKey
+            const effectiveEnd = previewing ? resizePreview.endMinute : endMinute
+            const height = Math.max(28, Math.min(24 * 60 - top, effectiveEnd - startMinute))
+            const resizable = !item.isFixed && item.status === "active"
             const hasConflict = conflicts.some(
               (conflict) => conflict.itemId === item.id || conflict.relatedItemId === item.id,
             )
@@ -125,13 +161,65 @@ export function CalendarTimeline({
                 style={eventStyle}
                 type="button"
               >
-                <span>
+                <span className="calendar-event__title">
                   {item.isFixed ? <LockKeyhole size={11} /> : <Clock3 size={11} />}
                   {item.title}
                 </span>
                 <small>
-                  {timeLabel(scheduledStartAt, timezone)}–{timeLabel(scheduledEndAt, timezone)}
+                  {timeLabel(scheduledStartAt, timezone)}–
+                  {timeLabel(
+                    previewing
+                      ? `${date}T${String(Math.floor(effectiveEnd / 60)).padStart(2, "0")}:${String(effectiveEnd % 60).padStart(2, "0")}`
+                      : scheduledEndAt,
+                    timezone,
+                  )}
                 </small>
+                {resizable ? (
+                  <span
+                    aria-hidden
+                    className="calendar-event__resize"
+                    onClick={(clickEvent) => clickEvent.stopPropagation()}
+                    onPointerDown={(pointerEvent) => {
+                      // 阻止冒泡，否则会触发块的点击编辑和 HTML 拖拽。
+                      pointerEvent.preventDefault()
+                      pointerEvent.stopPropagation()
+                      pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
+                      const initialEndMinute = Math.min(endMinute, 24 * 60)
+                      resizeDrag.current = {
+                        item,
+                        date,
+                        startMinute,
+                        initialEndMinute,
+                        startY: pointerEvent.clientY,
+                        endMinute: initialEndMinute,
+                      }
+                      setResizePreview({ key: eventKey, endMinute: initialEndMinute })
+                    }}
+                    onPointerMove={(pointerEvent) => {
+                      const drag = resizeDrag.current
+                      if (drag === null) return
+                      const delta =
+                        Math.round((pointerEvent.clientY - drag.startY) / SNAP_MINUTES) *
+                        SNAP_MINUTES
+                      drag.endMinute = Math.min(
+                        24 * 60,
+                        Math.max(
+                          drag.startMinute + MIN_EVENT_MINUTES,
+                          drag.initialEndMinute + delta,
+                        ),
+                      )
+                      setResizePreview({ key: eventKey, endMinute: drag.endMinute })
+                    }}
+                    onPointerUp={(pointerEvent) => {
+                      const drag = resizeDrag.current
+                      resizeDrag.current = null
+                      pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
+                      setResizePreview(null)
+                      if (drag === null || drag.endMinute === drag.initialEndMinute) return
+                      onResizeItem(drag.item, endLocalOf(drag.date, drag.endMinute))
+                    }}
+                  />
+                ) : null}
               </button>
             )
           })

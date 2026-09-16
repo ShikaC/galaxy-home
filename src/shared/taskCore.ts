@@ -31,6 +31,9 @@ export const ianaTimezoneSchema = z
     }
   }, "时区无效")
 
+// 未估时任务在排期与容量计算中的默认占用。对标滴答清单的「默认任务时长」：
+// 用户不必手填数字，拖到日历就得到这个长度，之后可拖动调整。
+export const DEFAULT_TASK_MINUTES = 30
 export const taskPrioritySchema = z.enum(["none", "low", "medium", "high"])
 export const reminderAnchorSchema = z.enum(["due", "scheduled"])
 

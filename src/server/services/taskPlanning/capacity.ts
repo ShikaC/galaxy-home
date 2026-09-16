@@ -1,5 +1,6 @@
 import { addDays } from "date-fns"
 import type { CalendarSnapshot } from "../../../shared/calendar.js"
+import { DEFAULT_TASK_MINUTES } from "../../../shared/taskCore.js"
 import { type TaskPlanProposal, taskPlanConflictSchema } from "../../../shared/taskPlanning.js"
 import { isoDate, localDateAt } from "../calendarIntervals.js"
 import { localDateTimeToInstant } from "../time.js"
@@ -26,7 +27,7 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
   const rangeEnd = midnight(snapshot.endDate)
   const plansAllUnscheduled = /(?:所有|全部)(?:的)?(?:未安排|未排期|任务)/u.test(originalText)
   const work = snapshot.unscheduled.flatMap((item) => {
-    if (item.status !== "active" || item.estimatedMinutes === null || moved.has(item.id)) return []
+    if (item.status !== "active" || moved.has(item.id)) return []
     const anchored =
       item.dateAssignments.some(includesDate) ||
       (item.dueDate !== null && includesDate(item.dueDate)) ||
@@ -50,10 +51,16 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
           ? midnight(isoDate(addDays(new Date(`${item.dueDate}T12:00:00.000Z`), 1)))
           : rangeEnd,
     )
+    // 没有估时的任务不隐身：按默认时长参与计算，并标记这是估算值，
+    // 好让冲突消息和提案能看到哪些数字不是用户设的。
+    const minutes = item.estimatedMinutes ?? DEFAULT_TASK_MINUTES
+    const estimated = item.estimatedMinutes === null
     return [
       {
         item,
-        duration: item.estimatedMinutes * 60_000,
+        minutes,
+        estimated,
+        duration: minutes * 60_000,
         deadline,
         earliest: Math.max(
           now.getTime(),
@@ -66,15 +73,17 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
     start: Math.max(Date.parse(slot.startAt), now.getTime()),
     end: Date.parse(slot.endAt),
   }))
-  const conflicts = work.map(({ item }) =>
+  const conflicts = work.map(({ item, minutes, estimated }) =>
     taskPlanConflictSchema.parse({
       code: "UNSCHEDULED_WORK",
-      message: `“${item.title}”仍未安排，请补充具体时段或调整本次重排范围`,
+      message: estimated
+        ? `“${item.title}”没有预计耗时，重排按默认 ${minutes} 分钟估算，本次仍未安排`
+        : `“${item.title}”仍未安排，请补充具体时段或调整本次重排范围`,
       itemId: item.id,
       blocking: true,
     }),
   )
-  for (const { item, duration, deadline, earliest } of work) {
+  for (const { item, minutes, estimated, duration, deadline, earliest } of work) {
     if (
       !available.some(
         (slot) => Math.min(slot.end, deadline) - Math.max(slot.start, earliest) >= duration,
@@ -83,7 +92,7 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
       conflicts.push(
         taskPlanConflictSchema.parse({
           code: "INSUFFICIENT_CAPACITY",
-          message: `“${item.title}”在截止要求内没有可容纳 ${item.estimatedMinutes} 分钟的空闲时段`,
+          message: `“${item.title}”在截止要求内没有可容纳 ${minutes} 分钟${estimated ? "（默认估算）" : ""}的空闲时段`,
           itemId: item.id,
           blocking: true,
         }),

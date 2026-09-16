@@ -1,6 +1,7 @@
 import type { FormEvent } from "react"
 import { useEffect, useState } from "react"
 import type { CalendarItem } from "../../../shared/calendar.js"
+import { DEFAULT_TASK_MINUTES } from "../../../shared/taskCore.js"
 import { Button } from "../ui/Button.js"
 import { DialogSurface } from "../ui/ModalSurface.js"
 
@@ -102,7 +103,8 @@ export function CalendarSchedulePanel({
         </label>
         {item?.estimatedMinutes === null ? (
           <p className="calendar-editor__hint">
-            这个任务还没有预计耗时。请先在任务详情补充，避免把未知时长当成零。
+            这个任务没有预计耗时，智能重排会按默认 {DEFAULT_TASK_MINUTES}{" "}
+            分钟估算它。日历上的块长度就是实际安排的时间，拖动边缘即可调整。
           </p>
         ) : null}
         {error === null ? null : (

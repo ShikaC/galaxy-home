@@ -53,12 +53,70 @@ it("opens the actual task through its keyboard-accessible calendar event", () =>
       conflicts={[]}
       onDropItem={vi.fn()}
       onEditItem={onEditItem}
+      onResizeItem={vi.fn()}
     />,
   )
   // When
   fireEvent.click(screen.getByRole("button", { name: `编辑 ${item.title}，09:00 至 10:00` }))
   // Then
   expect(onEditItem).toHaveBeenCalledWith(item)
+})
+
+it("resizes an event by dragging its lower edge instead of typing minutes", () => {
+  // Given：一个 09:00–10:00 的块，带可拖拽的下边缘手柄。
+  const onResizeItem = vi.fn()
+  const { container } = render(
+    <CalendarTimeline
+      dates={["2026-09-10"]}
+      items={[item]}
+      timezone="Asia/Shanghai"
+      conflicts={[]}
+      onDropItem={vi.fn()}
+      onEditItem={vi.fn()}
+      onResizeItem={onResizeItem}
+    />,
+  )
+  const handle = container.querySelector(".calendar-event__resize")
+  if (handle === null) throw new Error("Missing resize handle")
+  // jsdom 不实现指针捕获。
+  handle.setPointerCapture = vi.fn()
+  handle.releasePointerCapture = vi.fn()
+
+  // When：向下拖 60px（时间轴 1 分钟 ≈ 1px）。
+  fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 })
+  fireEvent.pointerMove(handle, { pointerId: 1, clientY: 160 })
+  fireEvent.pointerUp(handle, { pointerId: 1, clientY: 160 })
+
+  // Then：新的结束时间是 11:00，而不是让用户填「预计分钟」。
+  expect(onResizeItem).toHaveBeenCalledWith(item, "2026-09-10T11:00")
+})
+
+it("snaps a small resize drag to the 15-minute grid instead of submitting noise", () => {
+  // Given
+  const onResizeItem = vi.fn()
+  const { container } = render(
+    <CalendarTimeline
+      dates={["2026-09-10"]}
+      items={[item]}
+      timezone="Asia/Shanghai"
+      conflicts={[]}
+      onDropItem={vi.fn()}
+      onEditItem={vi.fn()}
+      onResizeItem={onResizeItem}
+    />,
+  )
+  const handle = container.querySelector(".calendar-event__resize")
+  if (handle === null) throw new Error("Missing resize handle")
+  handle.setPointerCapture = vi.fn()
+  handle.releasePointerCapture = vi.fn()
+
+  // When：只拖了 4px，不足半格。
+  fireEvent.pointerDown(handle, { pointerId: 1, clientY: 100 })
+  fireEvent.pointerMove(handle, { pointerId: 1, clientY: 104 })
+  fireEvent.pointerUp(handle, { pointerId: 1, clientY: 104 })
+
+  // Then：吸附回原值，不产生一次无意义的写入。
+  expect(onResizeItem).not.toHaveBeenCalled()
 })
 
 it("does not draw a phantom event on the midnight end date", () => {
@@ -77,6 +135,7 @@ it("does not draw a phantom event on the midnight end date", () => {
       conflicts={[]}
       onDropItem={vi.fn()}
       onEditItem={vi.fn()}
+      onResizeItem={vi.fn()}
     />,
   )
   // Then

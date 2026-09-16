@@ -1,4 +1,5 @@
 import type { RecurrenceRule } from "../../../shared/recurrence.js"
+import { DEFAULT_TASK_MINUTES } from "../../../shared/taskCore.js"
 import type { TaskPlanProposal } from "../../../shared/taskPlanning.js"
 import { Button } from "../ui/Button.js"
 import { TextArea, TextField } from "../ui/Field.js"
@@ -14,10 +15,6 @@ const priorities = [
   ["medium", "中"],
   ["high", "高"],
 ] as const
-
-function nullableNumber(value: string): number | null {
-  return value === "" ? null : Number(value)
-}
 
 function nullableText(value: string): string | null {
   return value.trim() === "" ? null : value
@@ -123,17 +120,11 @@ export function CaptureProposalEditor({
                 updateTask(task.draftId, { dueDate: nullableText(event.target.value) })
               }
             />
-            <TextField
-              label={`任务 ${index + 1} 预计分钟`}
-              type="number"
-              min={1}
-              max={1440}
-              value={task.estimatedMinutes ?? ""}
-              onChange={(event) =>
-                updateTask(task.draftId, { estimatedMinutes: nullableNumber(event.target.value) })
-              }
-            />
           </div>
+          <p className="proposal-duration">
+            AI 估算约 {task.estimatedMinutes ?? DEFAULT_TASK_MINUTES}{" "}
+            分钟；排到日历后拖动边缘即可调整。
+          </p>
           <Button
             variant="ghost"
             onClick={() =>
@@ -210,19 +201,11 @@ export function CaptureProposalEditor({
                 updateSeries(series.draftId, { dueTime: nullableText(event.target.value) })
               }
             />
-            <TextField
-              label="预计分钟"
-              type="number"
-              min={1}
-              max={1440}
-              value={series.estimatedMinutes ?? ""}
-              onChange={(event) =>
-                updateSeries(series.draftId, {
-                  estimatedMinutes: nullableNumber(event.target.value),
-                })
-              }
-            />
           </div>
+          <p className="proposal-duration">
+            AI 估算每次约 {series.estimatedMinutes ?? DEFAULT_TASK_MINUTES}{" "}
+            分钟；排到日历后拖动边缘即可调整。
+          </p>
           <TaskPlanRecurrenceFields
             rule={series.rule}
             onChange={(rule) => updateSeries(series.draftId, { rule })}

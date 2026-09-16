@@ -54,7 +54,8 @@ test("renders manual task, recurrence, calendar and home states across widths an
   await page.getByRole("menuitem", { name: "编辑待办" }).click()
   await expect(page.getByLabel("标题", { exact: true })).toHaveValue(longTitle)
   await page.getByText("说明、截止与安排", { exact: true }).click()
-  await page.getByLabel("预计耗时（分钟）").fill("90")
+  const draftNotes = `${longTitle.repeat(3)}编辑中的补充说明`
+  await page.getByRole("textbox", { name: "说明", exact: true }).fill(draftNotes)
   await capture(page, "task-editor-long-chinese")
   const second = await context.newPage()
   await second.goto("/todos?view=active")
@@ -72,12 +73,12 @@ test("renders manual task, recurrence, calendar and home states across widths an
   )
   await page.getByRole("button", { name: "保存修改", exact: true }).click()
   expect((await conflict).status()).toBe(409)
-  await expect(page.getByLabel("预计耗时（分钟）")).toHaveValue("90")
+  await expect(page.getByRole("textbox", { name: "说明", exact: true })).toHaveValue(draftNotes)
   await capture(page, "task-editor-conflict-draft")
   await page.getByRole("button", { name: "取消", exact: true }).last().click()
-  expect(
-    itemSchema.parse(await (await request.get(`/api/items/${task.id}`)).json()).estimatedMinutes,
-  ).toBe(45)
+  const afterConflict = itemSchema.parse(await (await request.get(`/api/items/${task.id}`)).json())
+  expect(afterConflict.notes).toBe(longTitle.repeat(5))
+  expect(afterConflict.priority).toBe("medium")
   await page.getByRole("button", { name: "创建重复任务", exact: true }).click()
   await page.getByLabel("重复任务标题").fill("工作日检查中文客户反馈")
   await page.getByLabel("截止时刻").fill("09:30")

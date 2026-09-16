@@ -1,3 +1,4 @@
+import { DEFAULT_TASK_MINUTES } from "../../shared/taskCore.js"
 import { FormDisclosure } from "./FormDisclosure.js"
 import { TextArea, TextField } from "./ui/Field.js"
 import type { ReminderDraft, TaskEditorDraft } from "./useTaskEditorDraft.js"
@@ -60,16 +61,11 @@ export function OrganizeScheduleFields({
             type="datetime-local"
             value={draft.dueAt}
           />
-          <TextField
-            hint="未知可留空；不把未知当作 0 分钟。"
-            label="预计耗时（分钟）"
-            max={1440}
-            min={1}
-            onChange={(event) => onChange({ estimatedMinutes: event.target.value })}
-            type="number"
-            value={draft.estimatedMinutes}
-          />
         </div>
+        <p className="form-hint">
+          不用填耗时。把任务拖到日历上就会得到一个 {DEFAULT_TASK_MINUTES}{" "}
+          分钟的块，再拖动边缘调成实际长度。
+        </p>
         <div className="form-grid">
           <TextField
             label="安排开始"

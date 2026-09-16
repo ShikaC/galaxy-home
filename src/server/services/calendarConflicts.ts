@@ -5,6 +5,7 @@ import {
   type CalendarQuery,
   defaultWorkWindow,
 } from "../../shared/calendar.js"
+import { DEFAULT_TASK_MINUTES } from "../../shared/taskCore.js"
 import {
   datesBetween,
   dayWindows,
@@ -28,12 +29,14 @@ export function scheduleConflicts(
     return interval !== null && overlaps(interval, range)
   })
   for (const item of items) {
+    // 缺估时不再是阻断项：重排会按默认时长估算。保留提示，好让用户知道
+    // 哪些任务在容量计算里用的是估值，而不是他实际设过的数字。
     if (item.status === "active" && intervalFor(item) === null && item.estimatedMinutes === null)
       conflicts.push({
         code: "UNKNOWN_DURATION",
-        severity: "blocker",
+        severity: "warning",
         itemId: item.id,
-        message: "未安排任务缺少预计耗时",
+        message: `未安排任务没有预计耗时，重排时会按默认 ${DEFAULT_TASK_MINUTES} 分钟估算`,
       })
   }
   for (const item of scheduled) {
