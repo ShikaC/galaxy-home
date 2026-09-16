@@ -27,7 +27,8 @@ export function TaskPlanningPage() {
   const cache = useQueryClient()
   const [params, setParams] = useSearchParams()
   const selectedId = params.get("run")
-  const mode = params.get("mode") === "replan" ? "replan" : "capture"
+  const requestedMode = params.get("mode")
+  const mode = requestedMode === "replan" || requestedMode === "plan" ? requestedMode : "capture"
   const [editing, setEditing] = useState(false)
   const [editorKey, setEditorKey] = useState(0)
   const history = useQuery({
