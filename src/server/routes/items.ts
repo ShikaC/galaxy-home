@@ -10,12 +10,7 @@ import {
 } from "../../shared/items.js"
 import { calendarDateSchema, ianaTimezoneSchema } from "../../shared/taskCore.js"
 import { type AppContext, getAppClock } from "../context.js"
-import {
-  createCategory,
-  reorderCategoryItems,
-  replaceItemCategories,
-  updateCategory,
-} from "../repositories/categories.js"
+import { createCategory, reorderCategoryItems, updateCategory } from "../repositories/categories.js"
 import { getItemAiSuggestion } from "../repositories/itemAiSuggestions.js"
 import {
   copyItem,
@@ -25,7 +20,6 @@ import {
   setTodayItem,
   updateItem,
 } from "../repositories/items.js"
-import { replaceItemProjects } from "../repositories/projectRelations.js"
 import { convertItemToProject } from "../repositories/projects.js"
 import { getSettings } from "../repositories/settings.js"
 import { clearTodayItem, reorderTodayItems } from "../repositories/todayItems.js"
@@ -48,8 +42,6 @@ const todaySchema = z.object({
   isSecondary: z.boolean(),
   expectedVersion: z.number().int().positive().optional(),
 })
-const categoriesSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
-const projectsSchema = z.object({ projectIds: z.array(z.string().uuid()) })
 const reorderSchema = z.object({ localDate: z.string(), itemIds: z.array(z.string().uuid()) })
 const categoryReorderSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
 const itemReorderSchema = z.object({ itemIds: z.array(z.string().uuid()) })
@@ -120,26 +112,6 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
   app.post("/api/items/:id/convert-to-project", (request, reply) =>
     reply.code(201).send(convertItemToProject(context.database, idSchema.parse(request.params).id)),
   )
-  app.put("/api/items/:id/categories", (request, reply) => {
-    const { id } = idSchema.parse(request.params)
-    const body = categoriesSchema.parse(request.body)
-    replaceItemCategories(
-      context.database,
-      z.string().uuid().brand("ItemId").parse(id),
-      body.categoryIds.map((value) => z.string().uuid().brand("CategoryId").parse(value)),
-    )
-    return reply.code(204).send()
-  })
-  app.put("/api/items/:id/projects", (request, reply) => {
-    const { id } = idSchema.parse(request.params)
-    const body = projectsSchema.parse(request.body)
-    replaceItemProjects(
-      context.database,
-      z.string().uuid().brand("ItemId").parse(id),
-      body.projectIds.map((value) => z.string().uuid().brand("ProjectId").parse(value)),
-    )
-    return reply.code(204).send()
-  })
   app.put("/api/items/:id/today", (request, reply) => {
     const { id } = idSchema.parse(request.params)
     const body = todaySchema.parse(request.body)

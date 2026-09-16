@@ -5,7 +5,6 @@ import {
   type CreateCategoryInput,
   categoryIdSchema,
   categorySchema,
-  type Item,
 } from "../../shared/items.js"
 
 const countRowSchema = z.object({ count: z.number().int().nonnegative() })
@@ -73,27 +72,6 @@ export function updateCategory(
       .prepare("SELECT id, name, color, icon, sort_order FROM categories WHERE id = ?")
       .get(id),
   )
-}
-
-export function replaceItemCategories(
-  database: DatabaseSync,
-  itemId: Item["id"],
-  categoryIds: readonly Category["id"][],
-) {
-  database.exec("BEGIN IMMEDIATE")
-  try {
-    database.prepare("DELETE FROM item_categories WHERE item_id = ?").run(itemId)
-    const statement = database.prepare(
-      "INSERT INTO item_categories (item_id, category_id, sort_order) VALUES (?, ?, ?)",
-    )
-    categoryIds.forEach((categoryId, index) => {
-      statement.run(itemId, categoryId, index)
-    })
-    database.exec("COMMIT")
-  } catch (error) {
-    database.exec("ROLLBACK")
-    throw error
-  }
 }
 
 export function reorderCategoryItems(

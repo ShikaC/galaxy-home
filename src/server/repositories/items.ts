@@ -29,7 +29,7 @@ import { ItemCreateRequestConflictError, ItemNotFoundError } from "./taskErrors.
 import { setTodayItem } from "./todayItems.js"
 import { withImmediateTransaction } from "./transaction.js"
 
-export { createCategory, replaceItemCategories } from "./categories.js"
+export { createCategory } from "./categories.js"
 export {
   ItemCreateRequestConflictError,
   ItemHasOpenSubtasksError,

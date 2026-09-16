@@ -17,8 +17,8 @@ import { createProjectInputSchema } from "../../shared/projects.js"
 import { DEFAULT_AI_PERSONALITY_PROMPT, type WorkspaceSettings } from "../../shared/settings.js"
 import { createCategory } from "../repositories/categories.js"
 import { createHabit, getHabit, recordHabit } from "../repositories/habits.js"
-import { createItem, getItem, replaceItemCategories, updateItem } from "../repositories/items.js"
-import { replaceItemProjects } from "../repositories/projectRelations.js"
+import { replaceCategoryRelations, replaceProjectRelations } from "../repositories/itemMutations.js"
+import { createItem, getItem, updateItem } from "../repositories/items.js"
 import { createProject, updateProjectProgress } from "../repositories/projects.js"
 import { clearTodayItem, setTodayItem } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
@@ -826,10 +826,10 @@ export function executeChatAction(
         rememberAlias(refs, action.as, existingId)
         if (projectIds.length > 0) {
           const mergedProjects = [...new Set([...before.projectIds, ...projectIds])]
-          replaceItemProjects(database, itemIdSchema.parse(existingId), mergedProjects)
+          replaceProjectRelations(database, itemIdSchema.parse(existingId), mergedProjects)
         }
         if (categoryIds.length > 0) {
-          replaceItemCategories(database, itemIdSchema.parse(existingId), categoryIds)
+          replaceCategoryRelations(database, itemIdSchema.parse(existingId), categoryIds)
         }
         if (action.todayMode !== undefined) {
           placeItemToday(database, existingId, localDate, action.todayMode)
@@ -937,7 +937,7 @@ export function executeChatAction(
     case "set_item_categories": {
       const itemId = resolveItemRef(database, action.itemId, refs)
       const before = getItem(database, itemId, localDate)
-      replaceItemCategories(
+      replaceCategoryRelations(
         database,
         itemIdSchema.parse(itemId),
         action.categoryIds.map((id) => resolveCategoryRef(database, id, refs)),

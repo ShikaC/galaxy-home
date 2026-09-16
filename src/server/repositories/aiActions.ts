@@ -3,8 +3,7 @@ import { z } from "zod"
 import { aiActionSchema } from "../../shared/ai.js"
 import { habitIdSchema } from "../../shared/habits.js"
 import { categoryIdSchema, itemIdSchema, itemStatusSchema } from "../../shared/items.js"
-import { replaceItemCategories } from "./categories.js"
-import { assertCanComplete } from "./itemMutations.js"
+import { assertCanComplete, replaceCategoryRelations } from "./itemMutations.js"
 import {
   projectMatchesSnapshot,
   projectUndoPayloadSchema,
@@ -402,7 +401,7 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
     } else if (payload.kind === "trash_item") {
       restoreTrash(database, payload.trashId)
     } else if (payload.kind === "set_item_categories") {
-      replaceItemCategories(
+      replaceCategoryRelations(
         database,
         itemIdSchema.parse(payload.itemId),
         payload.previousCategoryIds.map((id) => categoryIdSchema.parse(id)),

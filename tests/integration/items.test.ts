@@ -4,11 +4,11 @@ import { join } from "node:path"
 import type { DatabaseSync } from "node:sqlite"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { migrateDatabase, openDatabase } from "../../src/server/database.js"
+import { replaceCategoryRelations } from "../../src/server/repositories/itemMutations.js"
 import {
   createCategory,
   createItem,
   listItems,
-  replaceItemCategories,
   setTodayItem,
   updateItem,
 } from "../../src/server/repositories/items.js"
@@ -37,7 +37,7 @@ describe("item repository", () => {
     const category = createCategory(database, { name: "生活", color: "#26734d", icon: "leaf" })
 
     // When
-    replaceItemCategories(database, item.id, [category.id])
+    replaceCategoryRelations(database, item.id, [category.id])
     updateItem(database, item.id, { status: "completed" })
 
     // Then
