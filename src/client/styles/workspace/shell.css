@@ -147,6 +147,18 @@ kbd {
   letter-spacing: 1px;
   color: var(--color-sidebar-muted);
 }
+/* 一级导航按用途分组：日常清单在前，AI 与知识在后。 */
+.nav-section {
+  display: flex;
+  flex-direction: column;
+}
+.nav-section + .nav-section .sidebar-label {
+  margin-top: 18px;
+  margin-bottom: 6px;
+}
+.app-shell--sidebar-collapsed .nav-section + .nav-section {
+  margin-top: 12px;
+}
 .sidebar .nav-item {
   min-height: 40px;
   height: 40px;

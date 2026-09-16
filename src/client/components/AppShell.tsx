@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react"
 import {
   Archive,
   BookOpen,
@@ -5,6 +6,7 @@ import {
   CheckSquare2,
   ChevronDown,
   Command,
+  FileText,
   FolderKanban,
   Home,
   PanelLeftClose,
@@ -40,17 +42,42 @@ import { SearchDialog } from "./SearchDialog.js"
 import { Button } from "./ui/Button.js"
 import { IconButton } from "./ui/IconButton.js"
 
-const NAV_ITEMS = [
-  { to: "/", label: "工作台", icon: Home, end: true },
-  { to: "/todos", label: "任务", icon: CheckSquare2, end: false },
-  { to: "/calendar", label: "日历", icon: CalendarDays, end: false },
-  { to: "/projects", label: "项目", icon: FolderKanban, end: false },
-  { to: "/task-plans", label: "AI 任务", icon: Sparkles, end: false },
-  { to: "/plans", label: "知识计划", icon: BookOpen, end: false },
-  { to: "/notes", label: "知识笔记", icon: BookOpen, end: false },
-  { to: "/habits", label: "习惯", icon: Target, end: false },
-  { to: "/review", label: "回顾", icon: Archive, end: false },
-] as const
+type NavItem = {
+  readonly to: string
+  readonly label: string
+  readonly icon: LucideIcon
+  readonly end: boolean
+}
+
+type NavSection = {
+  readonly label?: string
+  readonly items: readonly NavItem[]
+}
+
+// 日常使用的清单能力排在前面，AI 与知识相关入口收进同一分组，
+// 避免一级导航被九个平铺入口摊平。
+const NAV_SECTIONS: readonly NavSection[] = [
+  {
+    items: [
+      { to: "/", label: "工作台", icon: Home, end: true },
+      { to: "/todos", label: "任务", icon: CheckSquare2, end: false },
+      { to: "/calendar", label: "日历", icon: CalendarDays, end: false },
+      { to: "/projects", label: "项目", icon: FolderKanban, end: false },
+      { to: "/habits", label: "习惯", icon: Target, end: false },
+      { to: "/review", label: "回顾", icon: Archive, end: false },
+    ],
+  },
+  {
+    label: "AI 与知识",
+    items: [
+      { to: "/task-plans", label: "AI 任务", icon: Sparkles, end: false },
+      { to: "/plans", label: "知识计划", icon: BookOpen, end: false },
+      { to: "/notes", label: "知识笔记", icon: FileText, end: false },
+    ],
+  },
+]
+
+const NAV_ITEMS = NAV_SECTIONS.flatMap((section) => section.items)
 
 import {
   applyTheme,
@@ -252,20 +279,27 @@ export function AppShell() {
               </button>
               <p className="sidebar-label">我的工作空间</p>
               <nav aria-label="主导航">
-                {NAV_ITEMS.map(({ end, icon: Icon, label, to }) => (
-                  <NavLink
-                    aria-label={label}
-                    className={({ isActive, isPending }) =>
-                      `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
-                    }
-                    end={end}
-                    key={to}
-                    to={to}
-                    title={label}
-                  >
-                    <Icon aria-hidden="true" size={18} />
-                    <span>{label}</span>
-                  </NavLink>
+                {NAV_SECTIONS.map((section) => (
+                  <div className="nav-section" key={section.label ?? "core"}>
+                    {section.label === undefined ? null : (
+                      <p className="sidebar-label">{section.label}</p>
+                    )}
+                    {section.items.map(({ end, icon: Icon, label, to }) => (
+                      <NavLink
+                        aria-label={label}
+                        className={({ isActive, isPending }) =>
+                          `nav-item${isActive ? " nav-item--active" : ""}${isPending ? " nav-item--pending" : ""}`
+                        }
+                        end={end}
+                        key={to}
+                        to={to}
+                        title={label}
+                      >
+                        <Icon aria-hidden="true" size={18} />
+                        <span>{label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
                 ))}
               </nav>
               <div className="sidebar-projects">

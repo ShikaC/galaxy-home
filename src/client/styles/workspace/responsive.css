@@ -161,6 +161,10 @@
     gap: 3px;
     margin: 0;
   }
+  /* 窄屏下导航是一整条横排，分组容器不能占位，否则各项会被挤成两列。 */
+  .sidebar nav .nav-section {
+    display: contents;
+  }
   .sidebar .nav-item,
   .sidebar--collapsed .nav-item {
     display: flex;
