@@ -40,21 +40,25 @@
 
 ## 三、需要处理的
 
-### P1 — `aiChatActions.ts` 是 1243 行单文件
+### ✅ 已解决 — `aiChatActions.ts` 是 1243 行单文件
 
-第二名文件只有 468 行，它是特例而非趋势。30 个函数里，`executeChatAction` 一个函数占 317 行（710–1027 行），`normalizeActionCandidate` 占 225 行（314–538 行）。
+**2026-09-16 完成拆分**，见 `src/server/services/aiChat/`。原文件保留为 12 行的 re-export 入口，调用方路径未变。结果：
 
-按职责本可切开：
-
-| 职责 | 现有函数 | 大致行数 |
+| 模块 | 内容 | 行数 |
 |---|---|---|
-| 实体引用解析 | `resolveEntityRef` / `resolveItemRef` / `rememberAlias` 等 | 84–183 |
-| 动作提取与修复 | `extractChatActions` / `repairActionJson` / `normalizeActionCandidate` 等 | 184–538 |
-| 摘要与判定 | `summarizeAction` / `isOpenConfirmAction` 等 | 539–595 |
-| 容量适配 | `countPrimaryTodayItems` / `fitTodayActions` | 596–637 |
-| 执行 | `executeChatAction` | 710–1027 |
+| `context.ts` | 执行单个动作时共享的上下文 | 13 |
+| `refs.ts` | 实体引用解析、别名记忆 | 108 |
+| `parsing.ts` | 从回答里抠 JSON、修复截断 | 154 |
+| `normalize.ts` | 宽松模型输出的规范化 | 275 |
+| `summary.ts` | 摘要文案与操作记录 | 84 |
+| `today.ts` | 今日标记 | 47 |
+| `handlers.ts` | 动作分发器 | 69 |
+| `handlersItem.ts` / `handlersOrganization.ts` | 14 个动作的实现 | 200 / 173 |
+| `apply.ts` | 整轮应用与系统提示词 | 187 |
 
-317 行的执行函数是真正的问题：它同时处理动作分派、权限判定、今日容量和写入。224 行的规范化函数同样把多种动作类型的修复规则堆在一个分支链里。AI 动作的种类还在增加，不切会继续膨胀。
+原 317 行的 `executeChatAction` 拆成每个动作一个具名函数，分发器只做查表；各动作体原本直接引用 `database`/`settings`/`localDate`/`refs`/`instant` 自由变量，现统一走 `context` 参数。
+
+行号引用已过时：`countPrimaryTodayItems` / `fitTodayActions` 在同一轮里随「今日主位上限」一起删除了。
 
 ### P1 — `planning` 与 `taskPlanning` 是两代同构实现
 
@@ -126,8 +130,8 @@ END;
 
 ## 五、建议顺序
 
-1. **拆分 `aiChatActions.ts`** — 纯重构，测试现成，风险最低，收益最直接。
-2. **决定 `planning` 去留** — 需要产品判断，越早越好，因为它决定后续在哪套上加功能。
+1. ~~**拆分 `aiChatActions.ts`**~~ — **已完成**（2026-09-16，见上）。
+2. ~~**决定 `planning` 去留**~~ — **已完成**：并入 `taskPlanning` 作为 plan 模式，旧实现已退役。 — 需要产品判断，越早越好，因为它决定后续在哪套上加功能。
 3. **错误码集中到 `shared/`** — 小改动，防止静默失配。
 4. **`HabitTrend` 懒加载** — 一行改动换 300 KB。
 5. **`TodosPage.priority` URL 化** — 与既有模式对齐。
