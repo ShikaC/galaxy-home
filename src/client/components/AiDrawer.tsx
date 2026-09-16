@@ -218,6 +218,17 @@ export function AiDrawer({
             ),
           )
         }}
+        onDismissProposedMemory={(messageId) => {
+          void apiVoid(`/api/ai/messages/${messageId}/dismiss-memory`, { method: "POST" }).then(
+            () => {
+              setMessages((current) =>
+                current.map((entry) =>
+                  entry.id === messageId ? { ...entry, proposedMemory: null } : entry,
+                ),
+              )
+            },
+          )
+        }}
         onRemember={(content) => {
           setMemoryKind("preference")
           setMemoryContent(content)

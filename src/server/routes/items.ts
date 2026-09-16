@@ -23,7 +23,6 @@ import { convertItemToProject } from "../repositories/projects.js"
 import { getSettings } from "../repositories/settings.js"
 import { clearTodayItem, reorderTodayItems } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
-import { queueCaptureAnalysis } from "../services/aiCaptureAnalysis.js"
 import { replenishRecurrenceAfterItemMutation } from "../services/recurrenceMaterializer.js"
 import { localClock } from "../services/time.js"
 
@@ -73,7 +72,6 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
       localDate,
       clock.now(),
     )
-    queueCaptureAnalysis(context.database, context.secretPath, item.id)
     return reply.code(201).send(item)
   })
   app.get("/api/items/:id", (request) => {

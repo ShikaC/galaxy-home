@@ -29,6 +29,7 @@ export function AiDrawerBody({
   onSavedMemory,
   onMessageUpdate,
   onAcceptProposedMemory,
+  onDismissProposedMemory,
 }: {
   readonly configured: boolean
   readonly error: string | null
@@ -41,6 +42,7 @@ export function AiDrawerBody({
   readonly onRemember: (content: string, kind?: "preference" | "goal" | "background") => void
   readonly onSavedMemory: () => void
   readonly onMessageUpdate?: (message: AiMessage, confirmation?: string) => void
+  readonly onDismissProposedMemory?: (messageId: string) => void
   readonly onAcceptProposedMemory?: (
     content: string,
     kind: "preference" | "goal" | "background",
@@ -83,6 +85,7 @@ export function AiDrawerBody({
               nickname={nickname}
               onRemember={(content) => onRemember(content)}
               {...(onAcceptProposedMemory === undefined ? {} : { onAcceptProposedMemory })}
+              {...(onDismissProposedMemory === undefined ? {} : { onDismissProposedMemory })}
               {...(onMessageUpdate === undefined ? {} : { onMessageUpdate })}
             />
           ))

@@ -18,6 +18,7 @@ export function AiChatMessage({
   onRemember,
   onMessageUpdate,
   onAcceptProposedMemory,
+  onDismissProposedMemory,
 }: {
   readonly message: DisplayMessage
   readonly nickname: string
@@ -27,9 +28,11 @@ export function AiChatMessage({
     content: string,
     kind: "preference" | "goal" | "background",
   ) => void
+  readonly onDismissProposedMemory?: (messageId: string) => void
 }) {
   const user = message.role === "user"
   const proposedMemory = message.proposedMemory
+  const messageId = message.id
   return (
     <div className={`chat-message chat-message--${user ? "user" : "assistant"}`}>
       <span className="chat-message__author">{user ? "你" : nickname}</span>
@@ -75,6 +78,15 @@ export function AiChatMessage({
               >
                 确认保存记忆
               </Button>
+              {onDismissProposedMemory === undefined || messageId === undefined ? null : (
+                <Button
+                  onClick={() => onDismissProposedMemory(messageId)}
+                  size="compact"
+                  variant="ghost"
+                >
+                  忽略
+                </Button>
+              )}
             </div>
           ) : null}
           <details className="chat-references">

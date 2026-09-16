@@ -106,7 +106,7 @@ CREATE TABLE task_plan_runs (id, state_json, created_at, updated_at, owner_pid, 
 
 `view` 和 `categoryId` 已从 URL 派生（本轮修掉了它们与 `useState` 的同步竞态），但 `priority` 仍是本地 `useState`（`TodosPage.tsx:60`）。后果：刷新后过滤丢失，链接无法分享。同类状态应当同一种处理方式。
 
-### P2 — 创建任务时会触发一次无人消费的 AI 调用
+### ✅ 已解决 — 创建任务时会触发一次无人消费的 AI 调用
 
 **本轮自查新发现**。`POST /api/items` 每次都调 `queueCaptureAnalysis`（`routes/items.ts:76`），它经 `suggestItemCategories` → `chatStructured` 发起一次真实模型调用，结果只写进 `item_ai_suggestions` 表。
 
@@ -114,7 +114,13 @@ CREATE TABLE task_plan_runs (id, state_json, created_at, updated_at, owner_pid, 
 
 注意这条不是删除端点引入的，删除只是让"只写不读"变得明显。另一个消费路径 `POST /api/ai/suggest-categories` 是活的，`OrganizeDialog` 在用，未受影响。
 
-需要产品判断：给建议接上读取入口（例如收集箱里标出"AI 建议归入某分类"），或关掉这条自动分析。在决定之前不动——删表涉及迁移，补 UI 是产品决策。
+**处理：关掉自动分析**（2026-09-16）。`routes/items.ts` 不再调用 `queueCaptureAnalysis`，连带删除 `services/aiCaptureAnalysis.ts` 和 `repositories/itemAiSuggestions.ts`（两者只为这条链路存在）。
+
+保留的是按需路径：`POST /api/ai/suggest-categories` 仍在，`OrganizeDialog` 里用户主动请求建议时走它，`services/aiCategorySuggest.ts` 因此保留。
+
+选择关掉而不是补 UI，是因为按需路径已经覆盖了同一个能力，而自动推送需要额外的界面承接（在收集箱哪里显示、用户如何回应），那是独立的产品工作。自动分析在没有承接时只是净消耗。
+
+`item_ai_suggestions` 表未删除——删表需要迁移，且 `backupSchema.ts` 还要用它读旧备份。表变成纯历史数据。
 
 ### P3 — `app.ts` 的 27 个 `instanceof` 分支
 
