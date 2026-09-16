@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import type { FastifyInstance } from "fastify"
 import { z } from "zod"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { noteInputSchema, noteSchema } from "../../shared/notes.js"
 import { type AppContext, getAppClock } from "../context.js"
 
@@ -50,7 +51,7 @@ export function registerNoteRoutes(app: FastifyInstance, context: AppContext): v
     const input = updateSchema.parse(request.body)
     const row = database.prepare(`${selectNote} WHERE id = ?`).get(id)
     if (row === undefined)
-      return reply.code(404).send({ code: "NOTE_NOT_FOUND", message: "这篇笔记已不存在" })
+      return reply.code(404).send({ code: ERROR_CODES.NOTE_NOT_FOUND, message: "这篇笔记已不存在" })
     const previous = rowSchema.parse(row)
     database
       .prepare(

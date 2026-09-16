@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { pendingChatActionSchema } from "./aiChatActions.js"
+import { errorCodeSchema } from "./errorCodes.js"
 
 export const aiReferenceSchema = z
   .object({
@@ -93,7 +94,7 @@ export const aiStreamEventSchema = z.discriminatedUnion("type", [
       message: aiMessageSchema,
     })
     .readonly(),
-  z.object({ type: z.literal("error"), code: z.string(), message: z.string() }).readonly(),
+  z.object({ type: z.literal("error"), code: errorCodeSchema, message: z.string() }).readonly(),
 ])
 
 export type AiStreamEvent = z.infer<typeof aiStreamEventSchema>

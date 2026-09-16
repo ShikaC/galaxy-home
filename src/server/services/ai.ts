@@ -1,5 +1,6 @@
 import { FormData, fetch, type RequestInit, type Response } from "undici"
 import { z } from "zod"
+import type { ErrorCode } from "../../shared/errorCodes.js"
 import { AiInvalidEndpointError, aiApiUrl, assertSafeAiEndpoint } from "./aiEndpoint.js"
 import { getAiDispatcher } from "./aiProxy.js"
 import { readSecretConfig } from "./secrets.js"
@@ -27,7 +28,7 @@ export type ChatMessage = {
 export class AiServiceError extends Error {
   readonly name = "AiServiceError"
   constructor(
-    readonly code: string,
+    readonly code: ErrorCode,
     message: string,
   ) {
     super(message)

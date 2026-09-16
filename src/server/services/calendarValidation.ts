@@ -6,6 +6,7 @@ import {
   calendarValidationResultSchema,
   type ScheduleChange,
 } from "../../shared/calendar.js"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { buildCalendarSnapshotFromItems } from "./calendar.js"
 import { scheduleConflicts } from "./calendarConflicts.js"
 import { intervalFor, isoDate, localDateAt, rangeInstants } from "./calendarIntervals.js"
@@ -24,7 +25,7 @@ export function validateScheduleChanges(
     const end = Date.parse(change.scheduledEndAt)
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start)
       blockers.push({
-        code: "INVALID_INTERVAL",
+        code: ERROR_CODES.INVALID_INTERVAL,
         severity: "blocker",
         itemId: change.itemId,
         message: "安排结束时间必须晚于开始时间",
@@ -43,21 +44,21 @@ export function validateScheduleChanges(
     if (change === undefined) return item
     if (item.version !== change.expectedVersion)
       blockers.push({
-        code: "VERSION_CONFLICT",
+        code: ERROR_CODES.VERSION_CONFLICT,
         severity: "blocker",
         itemId: item.id,
         message: "任务已在其他位置更新",
       })
     if (item.isFixed && !options.manual)
       blockers.push({
-        code: "FIXED_ITEM",
+        code: ERROR_CODES.FIXED_ITEM,
         severity: "blocker",
         itemId: item.id,
         message: "固定日程不能移动",
       })
     if (item.status === "completed")
       blockers.push({
-        code: "COMPLETED_ITEM",
+        code: ERROR_CODES.COMPLETED_ITEM,
         severity: "blocker",
         itemId: item.id,
         message: "已完成任务不能移动",
@@ -74,7 +75,7 @@ export function validateScheduleChanges(
   for (const change of changes)
     if (!snapshot.items.some((item) => item.id === change.itemId))
       blockers.push({
-        code: "ITEM_NOT_FOUND",
+        code: ERROR_CODES.ITEM_NOT_FOUND,
         severity: "blocker",
         itemId: change.itemId,
         message: "任务不在当前日历快照中",
@@ -91,7 +92,7 @@ export function validateScheduleChanges(
     const end = Date.parse(change.scheduledEndAt)
     if (start < allowedRange.start || end > allowedRange.end)
       blockers.push({
-        code: "OUTSIDE_RANGE",
+        code: ERROR_CODES.OUTSIDE_RANGE,
         severity: "blocker",
         itemId: change.itemId,
         message: "候选安排必须完整落在日历范围内",
@@ -104,7 +105,7 @@ export function validateScheduleChanges(
       (changeIds.has(conflict.itemId) ||
         (conflict.relatedItemId !== undefined && changeIds.has(conflict.relatedItemId)))
     if (!relevant) continue
-    if (conflict.code === "OUTSIDE_WORK_WINDOW" && !options.manual)
+    if (conflict.code === ERROR_CODES.OUTSIDE_WORK_WINDOW && !options.manual)
       blockers.push({ ...conflict, severity: "blocker" })
     else if (conflict.severity === "blocker") blockers.push(conflict)
     else warnings.push(conflict)
@@ -124,7 +125,7 @@ export function validateScheduleChanges(
         : Date.parse(item.dueAt)
     if (deadline !== null && interval.end > deadline)
       blockers.push({
-        code: "DEADLINE_EXCEEDED",
+        code: ERROR_CODES.DEADLINE_EXCEEDED,
         severity: "blocker",
         itemId: item.id,
         localDate: localDateAt(interval.end, snapshot.timezone),
@@ -135,7 +136,7 @@ export function validateScheduleChanges(
     // 否则想把一个大任务先安排一段就做不到，也违背「别让人填数字」的初衷。
     if (item.estimatedMinutes !== null && duration < item.estimatedMinutes * 60_000)
       warnings.push({
-        code: "INSUFFICIENT_CAPACITY",
+        code: ERROR_CODES.INSUFFICIENT_CAPACITY,
         severity: "warning",
         itemId: item.id,
         message: `安排时段少于预计 ${item.estimatedMinutes} 分钟，按实际长度安排`,
@@ -148,11 +149,12 @@ export function validateScheduleChanges(
       !available &&
       blockers.some(
         (value) =>
-          (value.itemId === item.id || value.relatedItemId === item.id) && value.code === "OVERLAP",
+          (value.itemId === item.id || value.relatedItemId === item.id) &&
+          value.code === ERROR_CODES.OVERLAP,
       )
     )
       blockers.push({
-        code: "INSUFFICIENT_CAPACITY",
+        code: ERROR_CODES.INSUFFICIENT_CAPACITY,
         severity: "blocker",
         itemId: item.id,
         message: `没有可容纳 ${Math.round(duration / 60_000)} 分钟任务的空闲时段`,

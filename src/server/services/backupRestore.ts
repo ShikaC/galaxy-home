@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { backup, type DatabaseSync } from "node:sqlite"
 import { strFromU8 } from "fflate"
 import { z } from "zod"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { planRunSchema } from "../../shared/planning.js"
 import { taskPlanRunSchema } from "../../shared/taskPlanning.js"
 import {
@@ -133,7 +134,7 @@ export async function restoreManualExport(
               ...run,
               status: "cancelled",
               error: {
-                code: "RESTORED_WORKSPACE",
+                code: ERROR_CODES.RESTORED_WORKSPACE,
                 message: "工作区已恢复，请重新生成建议",
                 retryable: true,
               },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { useBlocker } from "react-router"
+import { ERROR_CODES } from "../../../shared/errorCodes.js"
 import {
   type TaskPlanProposal,
   type TaskPlanRun,
@@ -56,7 +57,8 @@ export function TaskPlanDraftEditor({
     proposal === null
       ? null
       : taskPlanEditSchema.safeParse({ expectedRevision: baseline.revision, proposal })
-  const revisionConflict = error instanceof ApiError && error.code === "TASK_PLAN_REVISION_CONFLICT"
+  const revisionConflict =
+    error instanceof ApiError && error.code === ERROR_CODES.TASK_PLAN_REVISION_CONFLICT
   useEffect(() => {
     if (!dirty) return
     const prevent = (event: BeforeUnloadEvent) => event.preventDefault()

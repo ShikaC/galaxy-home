@@ -5,6 +5,7 @@ import {
   type CalendarQuery,
   defaultWorkWindow,
 } from "../../shared/calendar.js"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { DEFAULT_TASK_MINUTES } from "../../shared/taskCore.js"
 import {
   datesBetween,
@@ -33,7 +34,7 @@ export function scheduleConflicts(
     // 哪些任务在容量计算里用的是估值，而不是他实际设过的数字。
     if (item.status === "active" && intervalFor(item) === null && item.estimatedMinutes === null)
       conflicts.push({
-        code: "UNKNOWN_DURATION",
+        code: ERROR_CODES.UNKNOWN_DURATION,
         severity: "warning",
         itemId: item.id,
         message: `未安排任务没有预计耗时，重排时会按默认 ${DEFAULT_TASK_MINUTES} 分钟估算`,
@@ -55,7 +56,7 @@ export function scheduleConflicts(
       const windows = dayWindows(date, query.timezone, rules)
       if (!windows.some((window) => interval.start >= window.start && interval.end <= window.end))
         conflicts.push({
-          code: "OUTSIDE_WORK_WINDOW",
+          code: ERROR_CODES.OUTSIDE_WORK_WINDOW,
           severity: "warning",
           itemId: item.id,
           localDate: date,
@@ -64,7 +65,7 @@ export function scheduleConflicts(
     }
     if (!overlaps(interval, range))
       conflicts.push({
-        code: "OUTSIDE_RANGE",
+        code: ERROR_CODES.OUTSIDE_RANGE,
         severity: "blocker",
         itemId: item.id,
         message: "安排超出日历范围",
@@ -81,7 +82,7 @@ export function scheduleConflicts(
         : Date.parse(item.dueAt)
     if (deadline !== null && interval.end > deadline)
       conflicts.push({
-        code: "DEADLINE_EXCEEDED",
+        code: ERROR_CODES.DEADLINE_EXCEEDED,
         severity: "blocker",
         itemId: item.id,
         localDate: localDateAt(interval.end, query.timezone),
@@ -99,7 +100,7 @@ export function scheduleConflicts(
       const rightInterval = intervalFor(right)
       if (rightInterval !== null && overlaps(leftInterval, rightInterval))
         conflicts.push({
-          code: "OVERLAP",
+          code: ERROR_CODES.OVERLAP,
           severity: "blocker",
           itemId: left.id,
           relatedItemId: right.id,

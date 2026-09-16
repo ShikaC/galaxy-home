@@ -25,7 +25,7 @@ import { shiftCalendarDate } from "./time.js"
 
 export class RecurrenceRequestConflictError extends Error {
   readonly name = "RecurrenceRequestConflictError"
-  readonly code = "RECURRENCE_REQUEST_CONFLICT"
+  readonly code = ERROR_CODES.RECURRENCE_REQUEST_CONFLICT
   readonly statusCode = 409
   constructor(readonly entityId: string) {
     super(`Request id is already bound to another task series payload: ${entityId}`)
@@ -34,7 +34,7 @@ export class RecurrenceRequestConflictError extends Error {
 
 export class SeriesVersionConflictError extends Error {
   readonly name = "SeriesVersionConflictError"
-  readonly code = "SERIES_VERSION_CONFLICT"
+  readonly code = ERROR_CODES.SERIES_VERSION_CONFLICT
   readonly statusCode = 409
   constructor(
     readonly entityId: string,
@@ -46,7 +46,7 @@ export class SeriesVersionConflictError extends Error {
 
 export class OccurrenceRequiredError extends Error {
   readonly name = "OccurrenceRequiredError"
-  readonly code = "OCCURRENCE_REQUIRED"
+  readonly code = ERROR_CODES.OCCURRENCE_REQUIRED
   readonly statusCode = 409
   constructor(readonly itemId: string) {
     super(`Item is not a recurring occurrence: ${itemId}`)
@@ -55,7 +55,7 @@ export class OccurrenceRequiredError extends Error {
 
 export class ItemVersionConflictError extends Error {
   readonly name = "ItemVersionConflictError"
-  readonly code = "ITEM_VERSION_CONFLICT"
+  readonly code = ERROR_CODES.ITEM_VERSION_CONFLICT
   readonly statusCode = 409
   constructor(
     readonly entityId: string,
@@ -67,7 +67,7 @@ export class ItemVersionConflictError extends Error {
 
 export class TaskSeriesRelationNotFoundError extends Error {
   readonly name = "TaskSeriesRelationNotFoundError"
-  readonly code = "TASK_SERIES_RELATION_NOT_FOUND"
+  readonly code = ERROR_CODES.TASK_SERIES_RELATION_NOT_FOUND
   readonly statusCode = 409
   constructor(readonly entityId: string) {
     super(`Task series references a category or project that does not exist: ${entityId}`)
@@ -207,3 +207,5 @@ export function skipOccurrence(
 }
 
 export { materializeTaskSeries } from "./recurrenceMaterializer.js"
+
+import { ERROR_CODES } from "../../shared/errorCodes.js"

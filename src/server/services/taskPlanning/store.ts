@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
+import { ERROR_CODES, type ErrorCode } from "../../../shared/errorCodes.js"
 import {
   type TaskPlanInput,
   type TaskPlanRun,
@@ -17,7 +18,7 @@ const leaseRowSchema = z.strictObject({
 export class TaskPlanError extends Error {
   readonly name = "TaskPlanError"
   constructor(
-    readonly code: string,
+    readonly code: ErrorCode,
     message: string,
     readonly statusCode = 409,
   ) {
@@ -113,7 +114,7 @@ export function recoverTaskPlans(database: DatabaseSync): void {
       status: "failed",
       updatedAt: new Date().toISOString(),
       error: {
-        code: "INTERRUPTED",
+        code: ERROR_CODES.INTERRUPTED,
         message: "生成在服务重启时中断，可以用相同请求重新查看或新请求重试。",
         retryable: true,
       },

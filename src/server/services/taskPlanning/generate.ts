@@ -1,4 +1,5 @@
 import type { CalendarSnapshot } from "../../../shared/calendar.js"
+import { ERROR_CODES } from "../../../shared/errorCodes.js"
 import type { TaskPlanInput, TaskPlanRun } from "../../../shared/taskPlanning.js"
 import type { AppContext } from "../../context.js"
 import { getAppClock } from "../../context.js"
@@ -131,7 +132,8 @@ export async function completeTaskPlan(
         }
         break
       } catch (error) {
-        const invalid = error instanceof TaskPlanError && error.code === "INVALID_TASK_PLAN"
+        const invalid =
+          error instanceof TaskPlanError && error.code === ERROR_CODES.INVALID_TASK_PLAN
         const known =
           error instanceof TaskPlanError ||
           error instanceof AiServiceError ||

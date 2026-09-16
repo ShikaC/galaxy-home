@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Repeat2, X } from "lucide-react"
 import { useState } from "react"
 import { z } from "zod"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import type { Item } from "../../shared/items.js"
 import { type RecurrenceRule, type TaskSeries, taskSeriesSchema } from "../../shared/recurrence.js"
 import { ApiError, apiRequest, jsonBody } from "../lib/api.js"
@@ -163,7 +164,8 @@ function SeriesEditor({
               {save.error?.message ?? pause.error?.message} 当前输入仍保留，请重新载入对照后再试。
             </p>
             {[save.error, pause.error].some(
-              (error) => error instanceof ApiError && error.code === "SERIES_VERSION_CONFLICT",
+              (error) =>
+                error instanceof ApiError && error.code === ERROR_CODES.SERIES_VERSION_CONFLICT,
             ) ? (
               <Button
                 onClick={() => {

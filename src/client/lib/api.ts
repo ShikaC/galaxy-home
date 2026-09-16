@@ -1,5 +1,6 @@
 import type { ZodType } from "zod"
 import { z } from "zod"
+import { ERROR_CODES, type ErrorCode, errorCodeSchema } from "../../shared/errorCodes.js"
 
 const errorSchema = z.object({ code: z.string(), message: z.string() })
 const capabilityHashKey = "capability"
@@ -7,7 +8,7 @@ const capabilityHashKey = "capability"
 export class ApiError extends Error {
   readonly name = "ApiError"
   constructor(
-    readonly code: string,
+    readonly code: ErrorCode,
     message: string,
   ) {
     super(message)
@@ -16,10 +17,9 @@ export class ApiError extends Error {
 
 export async function throwApiError(response: Response): Promise<never> {
   const parsed = errorSchema.safeParse(await response.json().catch(() => null))
-  throw new ApiError(
-    parsed.success ? parsed.data.code : "NETWORK_ERROR",
-    parsed.success ? parsed.data.message : "请求失败，请稍后再试",
-  )
+  if (!parsed.success) throw new ApiError(ERROR_CODES.NETWORK_ERROR, "请求失败，请稍后再试")
+  const code = errorCodeSchema.safeParse(parsed.data.code)
+  throw new ApiError(code.success ? code.data : ERROR_CODES.INTERNAL_ERROR, parsed.data.message)
 }
 
 export async function bootstrapApiCapability(): Promise<void> {

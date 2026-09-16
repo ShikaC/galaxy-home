@@ -3,6 +3,7 @@ import multipart from "@fastify/multipart"
 import staticPlugin from "@fastify/static"
 import Fastify from "fastify"
 import { ZodError } from "zod"
+import { ERROR_CODES } from "../shared/errorCodes.js"
 import { RecurrenceLocalTimeError } from "../shared/recurrence.js"
 import type { AppContext } from "./context.js"
 import { AiActionUnavailableError } from "./repositories/aiActions.js"
@@ -107,7 +108,9 @@ export async function buildApp(context: AppContext, production = false) {
         !isSessionBootstrap) ||
       (origin !== undefined && !allowedOrigins.has(normalizeBrowserOrigin(origin) ?? ""))
     ) {
-      reply.code(403).send({ code: "ORIGIN_NOT_ALLOWED", message: "只允许本机页面访问此服务" })
+      reply
+        .code(403)
+        .send({ code: ERROR_CODES.ORIGIN_NOT_ALLOWED, message: "只允许本机页面访问此服务" })
       return
     }
     if (isSessionBootstrap) {
@@ -121,7 +124,7 @@ export async function buildApp(context: AppContext, production = false) {
       !hasCapability
     ) {
       reply.code(401).send({
-        code: "API_CAPABILITY_REQUIRED",
+        code: ERROR_CODES.API_CAPABILITY_REQUIRED,
         message: "桌面会话已失效，请重新打开应用",
       })
       return
@@ -150,35 +153,40 @@ export async function buildApp(context: AppContext, production = false) {
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ZodError) {
-      return reply
-        .code(400)
-        .send({ code: "VALIDATION_ERROR", message: error.issues[0]?.message ?? "输入内容无效" })
+      return reply.code(400).send({
+        code: ERROR_CODES.VALIDATION_ERROR,
+        message: error.issues[0]?.message ?? "输入内容无效",
+      })
     }
     if (error instanceof ItemVersionConflictError)
       return reply.code(409).send({
-        code: "ITEM_VERSION_CONFLICT",
+        code: ERROR_CODES.ITEM_VERSION_CONFLICT,
         entityId: error.itemId,
         currentVersion: error.currentVersion,
         message: error.message,
       })
     if (error instanceof ItemCreateRequestConflictError)
       return reply.code(409).send({
-        code: "ITEM_CREATE_REQUEST_CONFLICT",
+        code: ERROR_CODES.ITEM_CREATE_REQUEST_CONFLICT,
         entityId: error.requestId,
         message: error.message,
       })
     if (error instanceof ItemParentConflictError)
-      return reply
-        .code(409)
-        .send({ code: "ITEM_PARENT_CONFLICT", entityId: error.itemId, message: error.message })
+      return reply.code(409).send({
+        code: ERROR_CODES.ITEM_PARENT_CONFLICT,
+        entityId: error.itemId,
+        message: error.message,
+      })
     if (error instanceof ItemHasOpenSubtasksError)
-      return reply
-        .code(409)
-        .send({ code: "ITEM_HAS_OPEN_SUBTASKS", entityId: error.itemId, message: error.message })
+      return reply.code(409).send({
+        code: ERROR_CODES.ITEM_HAS_OPEN_SUBTASKS,
+        entityId: error.itemId,
+        message: error.message,
+      })
     if (error instanceof ItemNotFoundError)
       return reply
         .code(404)
-        .send({ code: "ITEM_NOT_FOUND", entityId: error.itemId, message: error.message })
+        .send({ code: ERROR_CODES.ITEM_NOT_FOUND, entityId: error.itemId, message: error.message })
     if (error instanceof SeriesVersionConflictError)
       return reply.code(409).send({
         code: error.code,
@@ -206,33 +214,53 @@ export async function buildApp(context: AppContext, production = false) {
         .code(409)
         .send({ code: error.code, entityId: error.itemId, message: error.message })
     if (error instanceof TaskSeriesNotFoundError)
-      return reply
-        .code(404)
-        .send({ code: "TASK_SERIES_NOT_FOUND", entityId: error.seriesId, message: error.message })
+      return reply.code(404).send({
+        code: ERROR_CODES.TASK_SERIES_NOT_FOUND,
+        entityId: error.seriesId,
+        message: error.message,
+      })
     if (error instanceof RecurrenceLocalTimeError)
-      return reply.code(400).send({ code: "RECURRENCE_LOCAL_TIME_INVALID", message: error.message })
+      return reply
+        .code(400)
+        .send({ code: ERROR_CODES.RECURRENCE_LOCAL_TIME_INVALID, message: error.message })
     if (error instanceof TaskPlanError)
       return reply.code(error.statusCode).send({ code: error.code, message: error.message })
     if (error instanceof HabitRestDayError)
-      return reply.code(409).send({ code: "HABIT_REST_DAY", message: error.message })
+      return reply.code(409).send({ code: ERROR_CODES.HABIT_REST_DAY, message: error.message })
     if (error instanceof ProjectAiPlanStaleError)
-      return reply.code(409).send({ code: "PROJECT_AI_STALE", message: error.message })
+      return reply.code(409).send({ code: ERROR_CODES.PROJECT_AI_STALE, message: error.message })
     if (error instanceof ProjectAiSessionNotFoundError)
-      return reply.code(409).send({ code: "PROJECT_AI_SESSION_MISSING", message: error.message })
+      return reply
+        .code(409)
+        .send({ code: ERROR_CODES.PROJECT_AI_SESSION_MISSING, message: error.message })
     if (error instanceof ProjectTaskNotRecommendedError)
-      return reply.code(409).send({ code: "PROJECT_TASK_NOT_RECOMMENDED", message: error.message })
+      return reply
+        .code(409)
+        .send({ code: ERROR_CODES.PROJECT_TASK_NOT_RECOMMENDED, message: error.message })
     if (error instanceof ReviewSuggestionUnavailableError)
-      return reply.code(409).send({ code: "REVIEW_SUGGESTION_UNAVAILABLE", message: error.message })
+      return reply
+        .code(409)
+        .send({ code: ERROR_CODES.REVIEW_SUGGESTION_UNAVAILABLE, message: error.message })
     if (error instanceof AiConfirmationRequiredError)
-      return reply.code(409).send({ code: "AI_CONFIRMATION_REQUIRED", message: error.message })
+      return reply
+        .code(409)
+        .send({ code: ERROR_CODES.AI_CONFIRMATION_REQUIRED, message: error.message })
     if (error instanceof AiActionUnavailableError)
-      return reply.code(409).send({ code: "AI_ACTION_UNAVAILABLE", message: error.message })
+      return reply
+        .code(409)
+        .send({ code: ERROR_CODES.AI_ACTION_UNAVAILABLE, message: error.message })
     if (error instanceof ImportArchiveTooLargeError)
-      return reply.code(413).send({ code: "IMPORT_ARCHIVE_TOO_LARGE", message: error.message })
+      return reply
+        .code(413)
+        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_TOO_LARGE, message: error.message })
     if (error instanceof ImportArchiveMalformedError)
-      return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: error.message })
+      return reply
+        .code(400)
+        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_INVALID, message: error.message })
     if (error instanceof ImportArchiveInvalidError)
-      return reply.code(400).send({ code: "IMPORT_ARCHIVE_INVALID", message: "导入文件字段无效" })
+      return reply
+        .code(400)
+        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_INVALID, message: "导入文件字段无效" })
     if (error instanceof AiInvalidEndpointError)
       return reply.code(400).send({ code: error.code, message: error.message })
     if (error instanceof AiServiceError) {
@@ -240,14 +268,14 @@ export async function buildApp(context: AppContext, production = false) {
       return reply.code(503).send({ code: error.code, message: error.message })
     }
     app.log.error(error)
-    return reply.code(500).send({ code: "INTERNAL_ERROR", message: "服务暂时不可用" })
+    return reply.code(500).send({ code: ERROR_CODES.INTERNAL_ERROR, message: "服务暂时不可用" })
   })
 
   if (production) {
     await app.register(staticPlugin, { root: resolve(process.cwd(), "dist/client") })
     app.setNotFoundHandler((request, reply) => {
       if (request.url.startsWith("/api/"))
-        return reply.code(404).send({ code: "NOT_FOUND", message: "接口不存在" })
+        return reply.code(404).send({ code: ERROR_CODES.NOT_FOUND, message: "接口不存在" })
       return reply.sendFile("index.html")
     })
   }

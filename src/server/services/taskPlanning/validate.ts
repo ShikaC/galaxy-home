@@ -6,6 +6,7 @@ import {
   type ScheduleChange,
   scheduleChangeSchema,
 } from "../../../shared/calendar.js"
+import { ERROR_CODES } from "../../../shared/errorCodes.js"
 import { type TaskPlanProposal, taskPlanConflictSchema } from "../../../shared/taskPlanning.js"
 import { buildCalendarSnapshotFromItems, validateScheduleChanges } from "../calendar.js"
 import { scheduleConflicts } from "../calendarConflicts.js"
@@ -113,7 +114,7 @@ export function deriveReplanProposal(
     if (lockedItemIds.includes(change.itemId))
       serverConflicts.push(
         taskPlanConflictSchema.parse({
-          code: "USER_LOCKED",
+          code: ERROR_CODES.USER_LOCKED,
           message: "用户锁定的任务不能移动",
           itemId: change.itemId,
           blocking: true,
@@ -165,7 +166,7 @@ export function deriveReplanProposal(
     if (Date.parse(change.after.startAt) < now.getTime())
       serverConflicts.push(
         taskPlanConflictSchema.parse({
-          code: "PAST_SCHEDULE",
+          code: ERROR_CODES.PAST_SCHEDULE,
           message: "不能把任务安排到已过去的时段",
           itemId,
           blocking: true,
@@ -179,7 +180,7 @@ export function deriveReplanProposal(
     )
       serverConflicts.push(
         taskPlanConflictSchema.parse({
-          code: "RECURRENCE_DATE",
+          code: ERROR_CODES.RECURRENCE_DATE,
           message: "重复任务不能安排到名义发生日期之前",
           itemId,
           blocking: true,
@@ -193,7 +194,7 @@ export function deriveReplanProposal(
     )
       serverConflicts.push(
         taskPlanConflictSchema.parse({
-          code: "DURATION_TOO_SHORT",
+          code: ERROR_CODES.DURATION_TOO_SHORT,
           message: "安排时长短于任务预计耗时",
           itemId,
           blocking: true,

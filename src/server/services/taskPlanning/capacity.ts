@@ -1,5 +1,6 @@
 import { addDays } from "date-fns"
 import type { CalendarSnapshot } from "../../../shared/calendar.js"
+import { ERROR_CODES } from "../../../shared/errorCodes.js"
 import { DEFAULT_TASK_MINUTES } from "../../../shared/taskCore.js"
 import { type TaskPlanProposal, taskPlanConflictSchema } from "../../../shared/taskPlanning.js"
 import { isoDate, localDateAt } from "../calendarIntervals.js"
@@ -75,7 +76,7 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
   }))
   const conflicts = work.map(({ item, minutes, estimated }) =>
     taskPlanConflictSchema.parse({
-      code: "UNSCHEDULED_WORK",
+      code: ERROR_CODES.UNSCHEDULED_WORK,
       message: estimated
         ? `“${item.title}”没有预计耗时，重排按默认 ${minutes} 分钟估算，本次仍未安排`
         : `“${item.title}”仍未安排，请补充具体时段或调整本次重排范围`,
@@ -91,7 +92,7 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
     )
       conflicts.push(
         taskPlanConflictSchema.parse({
-          code: "INSUFFICIENT_CAPACITY",
+          code: ERROR_CODES.INSUFFICIENT_CAPACITY,
           message: `“${item.title}”在截止要求内没有可容纳 ${minutes} 分钟${estimated ? "（默认估算）" : ""}的空闲时段`,
           itemId: item.id,
           blocking: true,
@@ -108,7 +109,7 @@ export function unresolvedCapacity(context: ReplanCapacityContext) {
     if (required > capacity)
       conflicts.push(
         taskPlanConflictSchema.parse({
-          code: "INSUFFICIENT_CAPACITY",
+          code: ERROR_CODES.INSUFFICIENT_CAPACITY,
           message: `截止要求内的未安排任务合计需要 ${required / 60_000} 分钟，剩余空闲时间只有 ${capacity / 60_000} 分钟：${dueWork.map(({ item }) => item.title).join("、")}`,
           itemId: null,
           blocking: true,

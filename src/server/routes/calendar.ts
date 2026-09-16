@@ -5,6 +5,7 @@ import {
   calendarValidateInputSchema,
   workWindowRuleSchema,
 } from "../../shared/calendar.js"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { type AppContext, getAppClock } from "../context.js"
 import { updateItem } from "../repositories/items.js"
 import { withImmediateTransaction } from "../repositories/transaction.js"
@@ -55,7 +56,7 @@ export function registerCalendarRoutes(app: FastifyInstance, context: AppContext
       if (!validation.valid)
         return reply.code(409).send({
           message: validation.blockers.map((entry) => entry.message).join("；"),
-          code: "CALENDAR_CONFLICT",
+          code: ERROR_CODES.CALENDAR_CONFLICT,
         })
       const instant = getAppClock(context).now()
       return updateItem(

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
+import type { ErrorCode } from "../../shared/errorCodes.js"
 import type { SnoozeNotificationInput } from "../../shared/reminders.js"
 import { withImmediateTransaction } from "../repositories/transaction.js"
 import { snoozeNotification } from "./schedulerNotifications.js"
@@ -7,7 +8,7 @@ import { snoozeNotification } from "./schedulerNotifications.js"
 export class NotificationSnoozeError extends Error {
   readonly name = "NotificationSnoozeError"
   constructor(
-    readonly code: "SNOOZE_REQUEST_CONFLICT" | "NOTIFICATION_NOT_FOUND",
+    readonly code: ErrorCode,
     message: string,
     readonly statusCode: 404 | 409,
   ) {

@@ -88,11 +88,15 @@ CREATE TABLE task_plan_runs (id, state_json, created_at, updated_at, owner_pid, 
 
 这是产品判断，不是纯技术判断——需要你决定。
 
-### P2 — 错误码是散落的字符串字面量
+### ✅ 已解决 — 错误码是散落的字符串字面量
 
-服务端返回的 code 与客户端分支比较的 code 各写一遍，没有共享联合类型。客户端有 7 处按 code 分支：`ITEM_VERSION_CONFLICT`、`SERIES_VERSION_CONFLICT`、`TASK_PLAN_REVISION_CONFLICT`、`EXECUTION_FAILED`、`AI_NOT_CONFIGURED`、`AI_AUTH`、`NETWORK_ERROR`。任一端的拼写变化都不会引发编译错误。
+**2026-09-16 完成**。`src/shared/errorCodes.ts` 收录 65 个业务码作为唯一真相源，两端共 61 处引用改为 `ERROR_CODES.X`。`ApiError.code`、`AiServiceError.code`、`TaskPlanError.code` 收窄为 `ErrorCode` 联合类型。
 
-建议在 `shared/` 建错误码常量表，两端同时引用。`ApiError.code` 目前是 `string`，可收窄为联合类型。
+收窄当场见效：第一次 typecheck 就报出 10 个 grep 漏掉的码（`TASK_PLAN_*` 系列），它们是 `TaskPlanError` 的位置参数，形式为 `throw new TaskPlanError("X", ...)`，最初的收集脚本只扫 `code: "X"` 没覆盖到。
+
+边界处不做断言：`shared` 导出 `errorCodeSchema`，客户端 `throwApiError` 与流式 error 事件各校验一次，失败落到 `INTERNAL_ERROR` 而不是笼统的 `NETWORK_ERROR`。
+
+`EADDRINUSE`、`UND_ERR_CONNECT_TIMEOUT` 未进表——它们由 Node/undici 抛出，不是本服务定义的码。
 
 ### P2 — `HabitsPage` 打包 362 KB
 
@@ -132,8 +136,8 @@ END;
 
 1. ~~**拆分 `aiChatActions.ts`**~~ — **已完成**（2026-09-16，见上）。
 2. ~~**决定 `planning` 去留**~~ — **已完成**：并入 `taskPlanning` 作为 plan 模式，旧实现已退役。 — 需要产品判断，越早越好，因为它决定后续在哪套上加功能。
-3. **错误码集中到 `shared/`** — 小改动，防止静默失配。
-4. **`HabitTrend` 懒加载** — 一行改动换 300 KB。
-5. **`TodosPage.priority` URL 化** — 与既有模式对齐。
+3. ~~**错误码集中到 `shared/`**~~ — **已完成**（2026-09-16，见上）。
+4. ~~**`HabitTrend` 懒加载**~~ — **已完成**：recharts 独立成 352 kB chunk，首屏不再包含。
+5. ~~**`TodosPage.priority` URL 化**~~ — **已完成**：筛选状态统一由 URL 承载，新增 E2E 覆盖。
 
 未在本次检查中覆盖：真实模型行为、Tauri 打包、Windows 桌面路径、并发压力下的 SQLite 表现。这些需要对应平台的实测，不能由静态检查代替。

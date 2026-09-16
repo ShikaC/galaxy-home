@@ -1,5 +1,6 @@
 import { lookup as defaultLookup } from "node:dns/promises"
 import { isIP, isIPv4, isIPv6 } from "node:net"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 
 export function aiApiUrl(baseUrl: string, resource: "chat/completions" | "audio/transcriptions") {
   const url = new URL(baseUrl)
@@ -10,7 +11,7 @@ export function aiApiUrl(baseUrl: string, resource: "chat/completions" | "audio/
 
 export class AiInvalidEndpointError extends Error {
   readonly name = "AiInvalidEndpointError"
-  readonly code = "AI_INVALID_ENDPOINT"
+  readonly code = ERROR_CODES.AI_INVALID_ENDPOINT
   constructor(
     message = "AI 服务地址无效：请使用 HTTPS 公网地址，或本机 loopback（如 http://127.0.0.1）",
   ) {

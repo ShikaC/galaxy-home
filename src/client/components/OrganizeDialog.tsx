@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Repeat2, X } from "lucide-react"
 import { useState } from "react"
 import { z } from "zod"
+import { ERROR_CODES } from "../../shared/errorCodes.js"
 import type { Item } from "../../shared/items.js"
 import { itemSchema } from "../../shared/items.js"
 import { ApiError, apiRequest, jsonBody } from "../lib/api.js"
@@ -186,7 +187,8 @@ function TaskEditorDialog({
             <p className="inline-error" role="alert">
               {save.error.message} 本地输入仍保留，请重新载入对照后再试。
             </p>
-            {save.error instanceof ApiError && save.error.code === "ITEM_VERSION_CONFLICT" ? (
+            {save.error instanceof ApiError &&
+            save.error.code === ERROR_CODES.ITEM_VERSION_CONFLICT ? (
               <Button
                 onClick={() => {
                   void invalidateTaskQueries(client)
