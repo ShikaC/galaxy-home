@@ -77,12 +77,49 @@ export function CalendarTimeline({
     readonly startMinute: number
     readonly initialEndMinute: number
     readonly startY: number
-    endMinute: number
+    readonly pointerId: number
+    currentEnd: number
   } | null>(null)
+  // 用独立的布尔状态控制监听生命周期：预览值每次移动都变，不能当依赖，
+  // 否则会在一次拖动里反复增删监听器。
+  const [resizing, setResizing] = useState(false)
+  const resizeHandler = useRef(onResizeItem)
+  resizeHandler.current = onResizeItem
   const firstDate = dates[0]
   useEffect(() => {
     if (firstDate !== undefined && scrollRef.current !== null) scrollRef.current.scrollTop = 8 * 60
   }, [firstDate])
+  // 拖动监听挂在 window 上而不是靠 setPointerCapture：指针很快就会移出只有
+  // 几像素高的手柄，靠捕获容易丢事件。同一次拖动的其它手指不参与。
+  useEffect(() => {
+    if (!resizing) return
+    const onMove = (event: PointerEvent) => {
+      const drag = resizeDrag.current
+      if (drag === null || event.pointerId !== drag.pointerId) return
+      const delta = Math.round((event.clientY - drag.startY) / SNAP_MINUTES) * SNAP_MINUTES
+      drag.currentEnd = Math.min(
+        24 * 60,
+        Math.max(drag.startMinute + MIN_EVENT_MINUTES, drag.initialEndMinute + delta),
+      )
+      setResizePreview({ key: `${drag.item.id}-${drag.date}`, endMinute: drag.currentEnd })
+    }
+    const finish = () => {
+      const drag = resizeDrag.current
+      resizeDrag.current = null
+      setResizing(false)
+      setResizePreview(null)
+      if (drag === null || drag.currentEnd === drag.initialEndMinute) return
+      resizeHandler.current(drag.item, endLocalOf(drag.date, drag.currentEnd))
+    }
+    window.addEventListener("pointermove", onMove)
+    window.addEventListener("pointerup", finish)
+    window.addEventListener("pointercancel", finish)
+    return () => {
+      window.removeEventListener("pointermove", onMove)
+      window.removeEventListener("pointerup", finish)
+      window.removeEventListener("pointercancel", finish)
+    }
+  }, [resizing])
   const hours = Array.from({ length: 24 }, (_, index) => index)
   const timelineStyle: CSSProperties & Record<`--${string}`, string | number> = {
     "--calendar-days": dates.length,
@@ -180,10 +217,10 @@ export function CalendarTimeline({
                     className="calendar-event__resize"
                     onClick={(clickEvent) => clickEvent.stopPropagation()}
                     onPointerDown={(pointerEvent) => {
-                      // 阻止冒泡，否则会触发块的点击编辑和 HTML 拖拽。
+                      // 阻止冒泡，否则会触发块的点击编辑和 HTML 拖拽。拖动过程
+                      // 由组件上的 window 监听接管，不依赖 setPointerCapture。
                       pointerEvent.preventDefault()
                       pointerEvent.stopPropagation()
-                      pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId)
                       const initialEndMinute = Math.min(endMinute, 24 * 60)
                       resizeDrag.current = {
                         item,
@@ -191,32 +228,11 @@ export function CalendarTimeline({
                         startMinute,
                         initialEndMinute,
                         startY: pointerEvent.clientY,
-                        endMinute: initialEndMinute,
+                        pointerId: pointerEvent.pointerId,
+                        currentEnd: initialEndMinute,
                       }
                       setResizePreview({ key: eventKey, endMinute: initialEndMinute })
-                    }}
-                    onPointerMove={(pointerEvent) => {
-                      const drag = resizeDrag.current
-                      if (drag === null) return
-                      const delta =
-                        Math.round((pointerEvent.clientY - drag.startY) / SNAP_MINUTES) *
-                        SNAP_MINUTES
-                      drag.endMinute = Math.min(
-                        24 * 60,
-                        Math.max(
-                          drag.startMinute + MIN_EVENT_MINUTES,
-                          drag.initialEndMinute + delta,
-                        ),
-                      )
-                      setResizePreview({ key: eventKey, endMinute: drag.endMinute })
-                    }}
-                    onPointerUp={(pointerEvent) => {
-                      const drag = resizeDrag.current
-                      resizeDrag.current = null
-                      pointerEvent.currentTarget.releasePointerCapture(pointerEvent.pointerId)
-                      setResizePreview(null)
-                      if (drag === null || drag.endMinute === drag.initialEndMinute) return
-                      onResizeItem(drag.item, endLocalOf(drag.date, drag.endMinute))
+                      setResizing(true)
                     }}
                   />
                 ) : null}

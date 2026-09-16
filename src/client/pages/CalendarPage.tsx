@@ -184,7 +184,9 @@ export function CalendarPage() {
                 >
                   <strong>{item.title}</strong>
                   <small>
-                    {item.estimatedMinutes === null ? "耗时未知" : `${item.estimatedMinutes} 分钟`}
+                    {item.estimatedMinutes === null
+                      ? `耗时未填，按 ${DEFAULT_TASK_MINUTES} 分钟算`
+                      : `${item.estimatedMinutes} 分钟`}
                     {item.dueDate === null && item.dueAt === null ? null : (
                       <>
                         {" "}
