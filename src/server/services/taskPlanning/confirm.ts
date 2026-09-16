@@ -1,16 +1,22 @@
+import { z } from "zod"
 import { occurrenceDates } from "../../../shared/recurrence.js"
-import type { TaskPlanRun } from "../../../shared/taskPlanning.js"
+import { normalizedTaskTitle, planDate, type TaskPlanRun } from "../../../shared/taskPlanning.js"
 import type { AppContext } from "../../context.js"
 import { getAppClock } from "../../context.js"
 import { createItem, getItem, updateItem } from "../../repositories/items.js"
 import { getSettings } from "../../repositories/settings.js"
 import { getTaskSeries } from "../../repositories/taskSeries.js"
+import { setTodayItem } from "../../repositories/todayItems.js"
 import { withImmediateTransaction } from "../../repositories/transaction.js"
 import { buildCalendarSnapshot } from "../calendar.js"
 import { createTaskSeries } from "../recurrence.js"
 import { shiftCalendarDate } from "../time.js"
+import { hasPrimaryTodaySlot } from "../todayCapacity.js"
+import { assertFreshContext } from "./retrieval.js"
 import { readTaskPlan, saveTaskPlan, TaskPlanError } from "./store.js"
 import { assertConfirmable, deriveReplanProposal } from "./validate.js"
+
+const taskRow = z.object({ id: z.string().uuid().brand("ItemId"), title: z.string() })
 
 export function confirmTaskPlan(
   context: AppContext,
@@ -178,6 +184,81 @@ export function confirmTaskPlan(
         )
           throw new TaskPlanError("TASK_PLAN_VERIFY_FAILED", "任务安排写入核验失败")
         results.push({ kind: "schedule", id: item.id, verified: true })
+      }
+    } else if (run.proposal.kind === "plan" && run.input.type === "plan") {
+      // 作为依据的笔记或待复用任务若已变化，整批中止而不是写入过期计划。
+      assertFreshContext(context.database, run)
+      const activeItems = context.database
+        .prepare(
+          "SELECT id, title FROM items WHERE status = 'active' AND deleted_at IS NULL AND is_tutorial = 0 ORDER BY created_at, id",
+        )
+        .all()
+        .map((row) => taskRow.parse(row))
+      for (const draft of run.proposal.tasks) {
+        const localDate = planDate(run.input.startDate, draft.dayOffset)
+        const existing =
+          draft.existingItemId === null
+            ? activeItems.find(
+                (item) => normalizedTaskTitle(item.title) === normalizedTaskTitle(draft.title),
+              )
+            : activeItems.find((item) => item.id === draft.existingItemId)
+        // 每写一项都要重算：主位是随写入变化的。
+        const isSecondary = !hasPrimaryTodaySlot(context.database, localDate)
+        if (existing === undefined) {
+          const item = createItem(
+            context.database,
+            {
+              requestId: draft.draftId,
+              title: draft.title,
+              notes: `${draft.reason}\n预计 ${draft.minutes} 分钟\n计划记录：${run.id}`,
+              priority: "none",
+              estimatedMinutes: draft.minutes,
+              isFixed: false,
+              categoryIds: [],
+              projectIds: [],
+              today: { localDate, isFocus: false, isSecondary },
+            },
+            localDate,
+            instant,
+          )
+          if (item.title !== draft.title || item.isSecondary !== isSecondary)
+            throw new TaskPlanError("TASK_PLAN_VERIFY_FAILED", "计划任务写入核验失败")
+          activeItems.push({ id: item.id, title: item.title })
+          results.push({
+            kind: "item",
+            id: item.id,
+            verified: true,
+            localDate,
+            minutes: draft.minutes,
+            disposition: "created",
+            secondary: isSecondary,
+          })
+          continue
+        }
+        setTodayItem(context.database, {
+          itemId: existing.id,
+          localDate,
+          isFocus: false,
+          isSecondary,
+        })
+        const stored = z
+          .object({ is_secondary: z.number() })
+          .parse(
+            context.database
+              .prepare("SELECT is_secondary FROM today_items WHERE item_id = ? AND local_date = ?")
+              .get(existing.id, localDate),
+          )
+        if (stored.is_secondary !== Number(isSecondary))
+          throw new TaskPlanError("TASK_PLAN_VERIFY_FAILED", "计划任务入档核验失败")
+        results.push({
+          kind: "item",
+          id: existing.id,
+          verified: true,
+          localDate,
+          minutes: draft.minutes,
+          disposition: "reused",
+          secondary: isSecondary,
+        })
       }
     } else throw new TaskPlanError("TASK_PLAN_TYPE_CONFLICT", "计划类型与请求不匹配")
     for (const result of results) {

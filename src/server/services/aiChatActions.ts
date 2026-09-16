@@ -23,6 +23,7 @@ import { createProject, updateProjectProgress } from "../repositories/projects.j
 import { clearTodayItem, setTodayItem } from "../repositories/todayItems.js"
 import { moveToTrash } from "../repositories/trash.js"
 import { localClock } from "./time.js"
+import { countPrimaryTodayItems, PRIMARY_TODAY_LIMIT } from "./todayCapacity.js"
 
 const ACTION_BLOCK_PATTERN = /```[ \t]*json\b\s*([\s\S]*?)\s*```/giu
 const MAX_ACTIONS_PER_TURN = 12
@@ -593,19 +594,6 @@ function summarizeActions(actions: readonly ChatAction[]): string {
   return actions.map((action, index) => `${index + 1}. ${summarizeAction(action)}`).join("；")
 }
 
-function countPrimaryTodayItems(database: DatabaseSync, localDate: string): number {
-  return z.object({ count: z.number().int().nonnegative() }).parse(
-    database
-      .prepare(
-        `SELECT COUNT(*) AS count FROM today_items
-           JOIN items ON items.id = today_items.item_id
-           WHERE today_items.local_date = ? AND today_items.is_secondary = 0
-             AND items.status = 'active' AND items.deleted_at IS NULL`,
-      )
-      .get(localDate),
-  ).count
-}
-
 function fitTodayActions(
   database: DatabaseSync,
   settings: WorkspaceSettings,
@@ -613,7 +601,7 @@ function fitTodayActions(
   instant = new Date(),
 ): readonly ChatAction[] {
   const localDate = localClock(instant, settings.timezone).date
-  let remaining = Math.max(0, 3 - countPrimaryTodayItems(database, localDate))
+  let remaining = Math.max(0, PRIMARY_TODAY_LIMIT - countPrimaryTodayItems(database, localDate))
   return actions.map((action) => {
     if (action.action === "create_item") {
       if (action.todayMode !== "today" && action.todayMode !== "focus") return action

@@ -1,5 +1,6 @@
 import { History } from "lucide-react"
 import type { TaskPlanRun } from "../../../shared/taskPlanning.js"
+import { taskPlanInputKind, taskPlanInputText } from "../../../shared/taskPlanning.js"
 import { taskPlanStatusLabel } from "./TaskPlanningRunDetail.js"
 
 export function TaskPlanRunList({
@@ -27,7 +28,7 @@ export function TaskPlanRunList({
         </p>
       ) : null}
       {!loading && runs.length === 0 ? (
-        <p>自然语言录入和日历重排会作为可恢复的运行保存在这里。</p>
+        <p>自然语言录入、日历重排和从笔记规划都会作为可恢复的运行保存在这里。</p>
       ) : null}
       <div className="task-plan-history__list">
         {runs.map((run) => (
@@ -37,9 +38,9 @@ export function TaskPlanRunList({
             aria-current={selectedId === run.id ? "true" : undefined}
             onClick={() => onSelect(run.id)}
           >
-            <strong>{run.input.originalText}</strong>
+            <strong>{taskPlanInputText(run.input)}</strong>
             <span>
-              {run.input.type === "capture" ? "录入" : "重排"} · {taskPlanStatusLabel[run.status]}
+              {taskPlanInputKind(run.input)} · {taskPlanStatusLabel[run.status]}
             </span>
             <time dateTime={run.updatedAt}>{run.updatedAt.slice(0, 16).replace("T", " ")}</time>
           </button>

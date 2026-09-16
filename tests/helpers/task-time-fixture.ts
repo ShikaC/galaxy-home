@@ -2,7 +2,11 @@ import { randomUUID } from "node:crypto"
 import { createServer, type Server } from "node:http"
 import { z } from "zod"
 import { calendarSnapshotSchema } from "../../src/shared/calendar.js"
-import { taskPlanInputSchema, taskPlanProposalSchema } from "../../src/shared/taskPlanning.js"
+import {
+  taskPlanInputSchema,
+  taskPlanInputText,
+  taskPlanProposalSchema,
+} from "../../src/shared/taskPlanning.js"
 
 const requestSchema = z.object({
   messages: z.array(z.object({ role: z.string(), content: z.string() })),
@@ -37,12 +41,12 @@ export async function startFixture(): Promise<{ readonly server: Server; readonl
       return
     }
     const { input, calendar } = parsed.data
-    if (input.originalText.includes("fixture-unavailable")) {
+    if (taskPlanInputText(input).includes("fixture-unavailable")) {
       response.writeHead(503)
       response.end("fixture unavailable")
       return
     }
-    if (input.originalText.includes("fixture-slow"))
+    if (taskPlanInputText(input).includes("fixture-slow"))
       await new Promise<void>((resolve) => pending.add(resolve))
     const proposal =
       input.type === "capture"
@@ -83,6 +87,8 @@ export async function startFixture(): Promise<{ readonly server: Server; readonl
             changes: (calendar?.items ?? [])
               .filter((item) => item.scheduledStartAt !== null || item.estimatedMinutes !== null)
               .map((item) => {
+                // 收窄在闭包内不保持，先取出重排专属字段。
+                const lockedItemIds = input.type === "replan" ? input.lockedItemIds : []
                 const before =
                   item.scheduledStartAt === null ||
                   item.scheduledEndAt === null ||
@@ -96,8 +102,8 @@ export async function startFixture(): Promise<{ readonly server: Server; readonl
                 if (
                   item.isFixed ||
                   item.status !== "active" ||
-                  input.lockedItemIds.includes(item.id) ||
-                  (input.originalText.includes("fixture stale scope") &&
+                  lockedItemIds.includes(item.id) ||
+                  (taskPlanInputText(input).includes("fixture stale scope") &&
                     item.title !== "并发版本任务")
                 )
                   return {
@@ -125,7 +131,8 @@ export async function startFixture(): Promise<{ readonly server: Server; readonl
                   after: {
                     startAt,
                     endAt,
-                    timezone: input.timezone,
+                    // 收窄在闭包内不保持；此分支本就只在 replan 输入下生成。
+                    timezone: input.type === "replan" ? input.timezone : "UTC",
                   },
                   reason: "原时段与临时会议重叠；下午有连续六十分钟空闲并早于周五截止。",
                 }

@@ -11,6 +11,7 @@ import { DialogSurface } from "../ui/ModalSurface.js"
 import { CaptureProposalEditor } from "./CaptureProposalEditor.js"
 import { taskPlanEditorStateSchema } from "./draftState.js"
 import { editorDraftKey, readDraft, writeDraft } from "./draftStorage.js"
+import { PlanProposalEditor } from "./PlanProposalEditor.js"
 import { ReplanProposalEditor } from "./ReplanProposalEditor.js"
 
 export function TaskPlanDraftEditor({
@@ -84,12 +85,14 @@ export function TaskPlanDraftEditor({
       <fieldset disabled={pending} className="task-plan-editor-root">
         {proposal.kind === "capture" ? (
           <CaptureProposalEditor proposal={proposal} onChange={setProposal} />
-        ) : (
+        ) : proposal.kind === "replan" ? (
           <ReplanProposalEditor
             snapshot={run.baseSnapshot}
             proposal={proposal}
             onChange={setProposal}
           />
+        ) : (
+          <PlanProposalEditor proposal={proposal} run={run} onChange={setProposal} />
         )}
       </fieldset>
       {!edit?.success ? (

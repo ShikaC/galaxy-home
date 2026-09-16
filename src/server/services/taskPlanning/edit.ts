@@ -1,6 +1,8 @@
 import type { TaskPlanProposal, TaskPlanRun } from "../../../shared/taskPlanning.js"
 import type { AppContext } from "../../context.js"
 import { getAppClock } from "../../context.js"
+import { validatePlanProposal } from "./planProposal.js"
+import { statusAfterProposal } from "./proposal.js"
 import { readTaskPlan, saveTaskPlan, TaskPlanError } from "./store.js"
 import { deriveReplanProposal } from "./validate.js"
 
@@ -23,23 +25,22 @@ export function editTaskPlan(
     if (proposal.kind !== run.input.type)
       throw new TaskPlanError("TASK_PLAN_TYPE_CONFLICT", "任务计划类型不能更改")
     const validatedProposal =
-      proposal.kind === "replan" && run.input.type === "replan" && run.baseSnapshot !== null
-        ? deriveReplanProposal(
-            run.baseSnapshot,
-            proposal,
-            run.input.lockedItemIds,
-            run.input.originalText,
-            getAppClock(context).now(),
-          ).proposal
-        : proposal
+      proposal.kind === "plan" && run.input.type === "plan"
+        ? validatePlanProposal(proposal, run)
+        : proposal.kind === "replan" && run.input.type === "replan" && run.baseSnapshot !== null
+          ? deriveReplanProposal(
+              run.baseSnapshot,
+              proposal,
+              run.input.lockedItemIds,
+              run.input.originalText,
+              getAppClock(context).now(),
+            ).proposal
+          : proposal
     const edited = saveTaskPlan(context.database, {
       ...run,
       proposal: validatedProposal,
       draftRevision: run.draftRevision + 1,
-      status:
-        validatedProposal.kind === "capture" && validatedProposal.ambiguities.length > 0
-          ? "needs_input"
-          : "awaiting_confirmation",
+      status: statusAfterProposal(validatedProposal),
       updatedAt: getAppClock(context).now().toISOString(),
     })
     context.database.exec("COMMIT")

@@ -1,3 +1,4 @@
+import { z } from "zod"
 import {
   captureProposalSchema,
   replanProposalSchema,
@@ -5,9 +6,12 @@ import {
   type TaskPlanRun,
 } from "../../../shared/taskPlanning.js"
 import type { ChatMessage } from "../ai.js"
+import { parsePlanProposal, planMessages } from "./planProposal.js"
 import { TaskPlanError } from "./store.js"
 
 export function taskPlanningMessages(run: TaskPlanRun, currentTime: Date): readonly ChatMessage[] {
+  // plan 模式有独立提示词：它携带检索到的笔记与可复用任务，不用 JSON Schema 描述输出。
+  if (run.input.type === "plan") return planMessages(run)
   const schema = run.input.type === "capture" ? captureProposalSchema : replanProposalSchema
   return [
     {
@@ -28,6 +32,7 @@ export function taskPlanningMessages(run: TaskPlanRun, currentTime: Date): reado
 }
 
 export function parseTaskPlanProposal(content: string, run: TaskPlanRun): TaskPlanProposal {
+  if (run.input.type === "plan") return parsePlanProposal(content, run)
   let value: unknown
   try {
     value = JSON.parse(content)
@@ -58,4 +63,11 @@ export function parseTaskPlanProposal(content: string, run: TaskPlanRun): TaskPl
   return parsed.data
 }
 
-import { z } from "zod"
+// capture 用 ambiguities 表示待澄清，plan 用 clarification；两者都需要用户补充输入后才能确认。
+export function statusAfterProposal(proposal: TaskPlanProposal): TaskPlanRun["status"] {
+  if (proposal.kind === "capture")
+    return proposal.ambiguities.length > 0 ? "needs_input" : "awaiting_confirmation"
+  if (proposal.kind === "plan")
+    return proposal.clarification === null ? "awaiting_confirmation" : "needs_input"
+  return "awaiting_confirmation"
+}

@@ -6,7 +6,8 @@ import { getSettings } from "../../repositories/settings.js"
 import { AiServiceError, type ChatMessage, requestCompletionWithUsage } from "../ai.js"
 import { AiInvalidEndpointError } from "../aiEndpoint.js"
 import { buildCalendarSnapshot } from "../calendar.js"
-import { parseTaskPlanProposal, taskPlanningMessages } from "./proposal.js"
+import { parseTaskPlanProposal, statusAfterProposal, taskPlanningMessages } from "./proposal.js"
+import { retrieveContext } from "./retrieval.js"
 import {
   claimTaskPlan,
   findTaskPlan,
@@ -45,16 +46,23 @@ export function prepareTaskPlan(
     snapshotProvider ??
     ((value: Extract<TaskPlanInput, { readonly type: "replan" }>) =>
       buildCalendarSnapshot(context.database, value))
+  // plan 模式先检索工作区笔记与候选任务；权限不足会在 retrieveContext 内抛
+  // TASK_PLAN_CONTEXT_PERMISSION（与 replan 的检查同一语义）。
+  const retrieved =
+    input.type === "plan"
+      ? retrieveContext(context.database, input)
+      : { sources: [], existingItems: [] }
   const now = getAppClock(context).now().toISOString()
   const run: TaskPlanRun = {
     id: input.requestId,
     input,
-    promptVersion: "task-plan-v2",
+    promptVersion: input.type === "plan" ? "workspace-plan-v1" : "task-plan-v2",
     status: "planning",
     draftRevision: 0,
     baseSnapshot: input.type === "replan" ? provider(input) : null,
     proposal: null,
     attempts: [],
+    ...retrieved,
     results: [],
     error: null,
     createdAt: now,
@@ -107,10 +115,7 @@ export async function completeTaskPlan(
         run = {
           ...run,
           proposal,
-          status:
-            proposal.kind === "capture" && proposal.ambiguities.length > 0
-              ? "needs_input"
-              : "awaiting_confirmation",
+          status: statusAfterProposal(proposal),
           attempts: [
             ...run.attempts,
             {

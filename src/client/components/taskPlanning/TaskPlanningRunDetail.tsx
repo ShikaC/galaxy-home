@@ -1,7 +1,9 @@
-import { CheckCircle2, Pencil, RefreshCw, StopCircle } from "lucide-react"
+import { CheckCircle2, FileText, Pencil, RefreshCw, StopCircle } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { Link } from "react-router"
 import { z } from "zod"
 import type { TaskPlanInput, TaskPlanRun } from "../../../shared/taskPlanning.js"
+import { taskPlanInputText, taskPlanInputTitle } from "../../../shared/taskPlanning.js"
 import { Button } from "../ui/Button.js"
 import { TextArea } from "../ui/Field.js"
 import { readDraft, writeDraft } from "./draftStorage.js"
@@ -37,31 +39,36 @@ export function TaskPlanningRunDetail({
   readonly run: TaskPlanRun
 }) {
   const answerKey = `galaxy-task-plan-answer:${run.id}`
+  const sourcesRef = useRef<HTMLDetailsElement>(null)
   const [answer, setAnswer] = useState(() => readDraft(answerKey, z.string()) ?? "")
   const retryRequest = useRef({ identity: "", id: crypto.randomUUID() })
   useEffect(() => {
     writeDraft(answerKey, answer)
   }, [answerKey, answer])
-  const retryWith = (originalText: string) => {
-    const identity = JSON.stringify({ runId: run.id, originalText })
+  const retryWith = (text: string) => {
+    const identity = JSON.stringify({ runId: run.id, text })
     if (retryRequest.current.identity !== identity)
       retryRequest.current = { identity, id: crypto.randomUUID() }
-    onRetry({ ...run.input, originalText, requestId: retryRequest.current.id })
+    const requestId = retryRequest.current.id
+    onRetry(
+      run.input.type === "plan"
+        ? { ...run.input, goal: text, requestId }
+        : { ...run.input, originalText: text, requestId },
+    )
   }
   const blocking =
     run.proposal?.kind === "replan" &&
     run.proposal.unresolvedConflicts.some((conflict) => conflict.blocking)
   const canConfirm = run.status === "awaiting_confirmation" && run.proposal !== null && !blocking
   const retry = () => {
-    const originalText = `${run.input.originalText}\n\n补充说明：${answer.trim()}`
-    retryWith(originalText)
+    retryWith(`${taskPlanInputText(run.input)}\n\n补充说明：${answer.trim()}`)
   }
   return (
-    <article className="task-planning-run">
+    <article className="task-planning-run" aria-label="计划详情">
       <header className="task-planning-run__header">
         <div>
           <p className="eyebrow">AI TASK PLAN</p>
-          <h2>{run.input.type === "capture" ? "任务识别预览" : "日历调整预览"}</h2>
+          <h2>{taskPlanInputTitle(run.input)}</h2>
         </div>
         <span className={`task-plan-status task-plan-status--${run.status}`}>
           {taskPlanStatusLabel[run.status]}
@@ -72,7 +79,7 @@ export function TaskPlanningRunDetail({
         open={run.status === "failed" || run.status === "cancelled"}
       >
         <summary>查看始终保留的原始输入</summary>
-        <p>{run.input.originalText}</p>
+        <p>{taskPlanInputText(run.input)}</p>
       </details>
       {run.status === "planning" ? (
         <div className="task-plan-waiting" role="status">
@@ -108,7 +115,28 @@ export function TaskPlanningRunDetail({
         </p>
       ) : null}
       {run.proposal ? (
-        <TaskPlanProposalView snapshot={run.baseSnapshot} proposal={run.proposal} />
+        <TaskPlanProposalView
+          proposal={run.proposal}
+          snapshot={run.baseSnapshot}
+          onCite={() => {
+            if (sourcesRef.current) sourcesRef.current.open = true
+          }}
+        />
+      ) : null}
+      {run.sources.length ? (
+        <details className="plan-sources" ref={sourcesRef}>
+          <summary>参考了 {run.sources.length} 篇笔记</summary>
+          <p>以下是生成时的资料快照，笔记中的指令不会获得执行权限。</p>
+          {run.sources.map((source) => (
+            <section id={`source-${source.id}`} key={source.id}>
+              <Link to={`/notes?note=${source.id}`}>
+                <FileText size={14} />
+                {source.title}
+              </Link>
+              <p>{source.excerpt}</p>
+            </section>
+          ))}
+        </details>
       ) : null}
       {run.status === "needs_input" ? (
         <section className="task-plan-ambiguity">
@@ -176,7 +204,7 @@ export function TaskPlanningRunDetail({
           </Button>
         ) : null}
         {run.status === "failed" || run.status === "cancelled" ? (
-          <Button loading={pending} onClick={() => retryWith(run.input.originalText)}>
+          <Button loading={pending} onClick={() => retryWith(taskPlanInputText(run.input))}>
             <RefreshCw size={16} /> 使用原始输入重试
           </Button>
         ) : null}
@@ -184,7 +212,7 @@ export function TaskPlanningRunDetail({
           <Button
             variant="secondary"
             loading={pending}
-            onClick={() => retryWith(run.input.originalText)}
+            onClick={() => retryWith(taskPlanInputText(run.input))}
           >
             根据当前数据重新生成
           </Button>
@@ -194,7 +222,7 @@ export function TaskPlanningRunDetail({
         </Button>
       </footer>
       {run.status === "failed" || run.status === "cancelled" || run.status === "needs_input" ? (
-        <TaskPlanManualCapture originalText={run.input.originalText} today={today} />
+        <TaskPlanManualCapture originalText={taskPlanInputText(run.input)} today={today} />
       ) : null}
     </article>
   )

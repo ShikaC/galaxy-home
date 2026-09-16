@@ -36,12 +36,64 @@ function TaskPlanSchedule({
 }
 
 export function TaskPlanProposalView({
+  onCite,
   proposal,
   snapshot,
 }: {
   readonly proposal: TaskPlanProposal
   readonly snapshot: CalendarSnapshot | null
+  // plan 模式的任务会引用笔记；点击引用需要把下方的来源快照展开。
+  readonly onCite?: (() => void) | undefined
 }) {
+  if (proposal.kind === "plan")
+    return (
+      <div className="task-plan-proposal">
+        <section>
+          <h3>计划概览</h3>
+          <p>{proposal.summary}</p>
+        </section>
+        {proposal.clarification !== null ? (
+          <section className="task-plan-conflicts">
+            <h3>
+              <AlertTriangle size={17} /> 需要补充的信息
+            </h3>
+            <p>{proposal.clarification}</p>
+          </section>
+        ) : null}
+        <section>
+          <h3>计划任务 · {proposal.tasks.length}</h3>
+          <div className="task-plan-card-list">
+            {proposal.tasks.map((task) => (
+              <article className="task-plan-card" key={task.draftId}>
+                <header>
+                  <strong>{task.title}</strong>
+                </header>
+                <p>
+                  第 {task.dayOffset + 1} 天 ·{" "}
+                  <span className="task-plan-token">{task.minutes} 分钟</span>
+                  {task.existingItemId === null ? null : (
+                    <>
+                      {" "}
+                      · <CircleDot size={14} /> 复用已有任务
+                    </>
+                  )}
+                </p>
+                <p>{task.reason}</p>
+                {task.sourceIds.length ? (
+                  <div className="plan-citations">
+                    {task.sourceIds.map((id) => (
+                      <a href={`#source-${id}`} key={id} onClick={() => onCite?.()}>
+                        引用笔记
+                      </a>
+                    ))}
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    )
   if (proposal.kind === "capture")
     return (
       <div className="task-plan-proposal">
