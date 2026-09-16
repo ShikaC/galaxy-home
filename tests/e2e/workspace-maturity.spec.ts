@@ -66,6 +66,45 @@ test("搜索可以直达任务详情", async ({ page, request }) => {
   }
 })
 
+test("连续设置今日标记不会因为版本过期而冲突", async ({ page, request }) => {
+  await enterWorkspace(page)
+  const title = `连续今日操作-${Date.now().toString().slice(-7)}`
+  const created = await request.post("/api/items", { data: { title } })
+  expect(created.ok()).toBe(true)
+  const item = z.object({ id: z.string() }).parse(await created.json())
+  const sentBodies: unknown[] = []
+  page.on("request", (captured) => {
+    if (captured.method() !== "PUT" || !captured.url().endsWith("/today")) return
+    const raw = captured.postData()
+    if (raw !== null) sentBodies.push(JSON.parse(raw))
+  })
+
+  try {
+    await page.getByRole("link", { name: "任务", exact: true }).click()
+    const row = page.getByRole("article").filter({ hasText: title })
+    await expect(row).toBeVisible()
+
+    // 加入今日会触发 today_items 写入，任务版本随触发器递增。
+    // 这里刻意不等列表刷新就接着设为重点，覆盖用户连续操作的真实节奏。
+    await row.getByRole("button", { name: "更多操作" }).click()
+    await page.getByRole("menuitem", { name: "加入今日待办" }).click()
+    await row.getByRole("button", { name: "更多操作" }).click()
+    await page.getByRole("menuitem", { name: "设为今日重点" }).click()
+
+    await expect(page.getByRole("alert")).toHaveCount(0)
+    expect(sentBodies.length).toBeGreaterThanOrEqual(2)
+    expect(sentBodies.every((body) => !("expectedVersion" in (body as object)))).toBe(true)
+
+    await page.getByRole("link", { name: "工作台", exact: true }).click()
+    await expect(
+      page.getByRole("article").filter({ hasText: title }).getByText("今日重点"),
+    ).toBeVisible()
+  } finally {
+    await request.delete(`/api/items/${item.id}/today?localDate=${E2E_LOCAL_DATE}`)
+    await removeItemsByTitle(request, title)
+  }
+})
+
 test("待办视图在刷新与历史返回后保持", async ({ page }) => {
   await enterWorkspace(page)
   await page.getByRole("link", { name: "任务", exact: true }).click()

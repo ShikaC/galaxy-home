@@ -54,11 +54,7 @@ function SortableTask({
             status: item.status === "completed" ? "active" : "completed",
           })
         }}
-        onFocus={
-          item.isSecondary
-            ? undefined
-            : () => today.mutate({ id: item.id, expectedVersion: item.version, focus: true })
-        }
+        onFocus={item.isSecondary ? undefined : () => today.mutate({ id: item.id, focus: true })}
         onEdit={onEdit === undefined ? undefined : () => onEdit(item)}
       />
     </div>

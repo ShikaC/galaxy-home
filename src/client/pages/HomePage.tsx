@@ -244,16 +244,8 @@ export function HomePage() {
                           })
                       }}
                       onEdit={() => setEditing(item)}
-                      onToday={() =>
-                        addToday.mutate({
-                          id: item.id,
-                          expectedVersion: item.version,
-                          focus: false,
-                        })
-                      }
-                      onFocus={() =>
-                        addToday.mutate({ id: item.id, expectedVersion: item.version, focus: true })
-                      }
+                      onToday={() => addToday.mutate({ id: item.id, focus: false })}
+                      onFocus={() => addToday.mutate({ id: item.id, focus: true })}
                     />
                     <button
                       className="task-ai-action"

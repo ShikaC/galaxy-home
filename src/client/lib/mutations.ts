@@ -43,25 +43,21 @@ export function useTodayMutation() {
   const client = useQueryClient()
   const { today } = useAppTime()
   return useMutation({
+    // 今日标记是幂等的意图操作：服务端直接 UPSERT/DELETE，不做读-改-写，不存在覆盖风险。
+    // today_items 上的触发器会递增 items.version，若继续携带 expectedVersion，
+    // 连续操作（例如先「加入今日」再「设为今日重点」）会因版本已过期而 409。
     mutationFn: ({
       id,
-      expectedVersion,
       focus,
       secondary = false,
     }: {
       readonly id: string
-      readonly expectedVersion: number
       readonly focus: boolean
       readonly secondary?: boolean
     }) =>
       apiVoid(`/api/items/${id}/today`, {
         method: "PUT",
-        body: jsonBody({
-          localDate: today,
-          expectedVersion,
-          isFocus: focus,
-          isSecondary: secondary,
-        }),
+        body: jsonBody({ localDate: today, isFocus: focus, isSecondary: secondary }),
       }),
     onSuccess: () => invalidateTaskQueries(client),
   })

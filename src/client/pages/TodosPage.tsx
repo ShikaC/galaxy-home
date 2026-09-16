@@ -139,9 +139,7 @@ export function TodosPage() {
       onDelete={() => remove.mutate(item)}
       onEdit={() => setEditing(item)}
       onFocus={
-        item.status === "active"
-          ? () => today.mutate({ id: item.id, expectedVersion: item.version, focus: true })
-          : undefined
+        item.status === "active" ? () => today.mutate({ id: item.id, focus: true }) : undefined
       }
       onManageSeries={
         item.recurrenceSeriesId
@@ -154,13 +152,7 @@ export function TodosPage() {
       onOrganize={item.status === "active" ? () => setOrganizing(item) : undefined}
       onSecondary={
         item.status === "active" && !item.inToday
-          ? () =>
-              today.mutate({
-                id: item.id,
-                expectedVersion: item.version,
-                focus: false,
-                secondary: true,
-              })
+          ? () => today.mutate({ id: item.id, focus: false, secondary: true })
           : undefined
       }
       onSkip={
@@ -168,7 +160,7 @@ export function TodosPage() {
       }
       onToday={
         item.status === "active" && !item.inToday
-          ? () => today.mutate({ id: item.id, expectedVersion: item.version, focus: false })
+          ? () => today.mutate({ id: item.id, focus: false })
           : undefined
       }
     />
