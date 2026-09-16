@@ -9,20 +9,36 @@ import {
   startOfWeek,
 } from "date-fns"
 import { Plus, Target } from "lucide-react"
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import type { Habit } from "../../shared/habits.js"
 import { useAppTime } from "../components/AppContext.js"
 import { HabitCalendar, type HabitCalendarDay } from "../components/HabitCalendar.js"
 import { HabitCorrection } from "../components/HabitCorrection.js"
 import { HabitDialog } from "../components/HabitDialog.js"
 import { HabitRow } from "../components/HabitRow.js"
-import { HabitTrend } from "../components/HabitTrend.js"
 import { PageHeader, SectionHeader } from "../components/PageHeader.js"
 import { Button } from "../components/ui/Button.js"
 import { EmptyState } from "../components/ui/EmptyState.js"
 import { apiRequest, apiVoid } from "../lib/api.js"
 import { useHabitMutation } from "../lib/mutations.js"
 import { useHabits } from "../lib/queries.js"
+
+// recharts 只被趋势图用到，单独切出去，别让它跟着首屏进来。
+// 具名导出要转成 default 才能交给 lazy。
+const HabitTrend = lazy(() =>
+  import("../components/HabitTrend.js").then((module) => ({ default: module.HabitTrend })),
+)
+
+// 占位保持与图表一致的高度，避免懒加载完成时页面跳动。
+function TrendPlaceholder({ title }: { readonly title: string }) {
+  return (
+    <section aria-busy="true" className="chart-frame">
+      <SectionHeader title={title} />
+      <p className="trend-placeholder">正在加载图表…</p>
+    </section>
+  )
+}
+
 import { habitSchema, habitSummariesSchema } from "../lib/schemas.js"
 
 function makeTrend(start: Date, end: Date, summaries: ReadonlyMap<string, number>) {
@@ -163,8 +179,12 @@ export function HabitsPage() {
       </section>
       <div className="analytics-grid">
         <div className="trend-stack">
-          <HabitTrend data={weekTrend} title="本周趋势" />
-          <HabitTrend data={monthTrend} title="本月趋势" />
+          <Suspense fallback={<TrendPlaceholder title="本周趋势" />}>
+            <HabitTrend data={weekTrend} title="本周趋势" />
+          </Suspense>
+          <Suspense fallback={<TrendPlaceholder title="本月趋势" />}>
+            <HabitTrend data={monthTrend} title="本月趋势" />
+          </Suspense>
         </div>
         <HabitCalendar
           days={calendar}

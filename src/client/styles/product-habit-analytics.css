@@ -13,6 +13,15 @@
   display: grid;
   gap: var(--space-6);
 }
+/* 与 recharts 容器同高，懒加载接手时不产生位移 */
+.trend-placeholder {
+  display: grid;
+  min-block-size: 220px;
+  margin: 0;
+  place-items: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-meta);
+}
 .calendar-weekdays,
 .calendar-grid {
   display: grid;
