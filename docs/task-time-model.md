@@ -75,7 +75,7 @@ SQL 使用 snake_case，JSON 使用 camelCase。沿用 `status=active/completed/
 
 旧 `reminderMinutes` 映射为 due 提醒规则并保留兼容读写；兼容路径只能由一个转换函数维护，避免双调度。恢复后重建待触发调度，不重新投递已有投递身份。通知权限拒绝时应用内仍可见；应用休眠后补显并去重。
 
-M1 交付应用运行时及恢复后的提醒能力。完全退出后的平台定时通知需目标平台单独实现和实测；不以当前 Tauri 通知镜像宣称后台可靠送达。该限制在 UI/验收中明确记录，保留后续平台调度适配接口。
+M1 交付应用运行时及恢复后的提醒能力。平台投递通道已落地：服务端把「应用内横幅」和「平台投递」记成两条独立通道（`notification_events.delivered_at` 与 `platform_delivered_at`），桌面进程按 30 秒轮询领取后用系统通知弹出，所以关窗后（进程驻留托盘）仍然送达。完全退出后的定时投递仍未实现：`tauri-plugin-notification` 桌面端接受 `Schedule` 但不消费它，需要在 macOS 的 `UNUserNotificationCenter` 与 Windows 的 `ScheduledToastNotification` 上各写一份原生代码并真机实测。进程存活与完全退出是两条不同边界，UI 与验收只宣称前者。
 
 ## 5. 写入、版本与 AI 提案
 
