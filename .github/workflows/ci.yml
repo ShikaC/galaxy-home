@@ -19,6 +19,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run check:bundle
       - run: npm run eval -- --repetitions 3
       - uses: actions/upload-artifact@v4
         with:

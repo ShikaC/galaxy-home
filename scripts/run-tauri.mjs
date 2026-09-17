@@ -2,7 +2,12 @@
 import { spawn } from "node:child_process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { assertSupportedNodeRuntime, runtimeEnv, tauriCliPath, tauriInvocation } from "./node-runtime.mjs"
+import {
+  assertSupportedNodeRuntime,
+  runtimeEnv,
+  tauriCliPath,
+  tauriInvocation,
+} from "./node-runtime.mjs"
 
 assertSupportedNodeRuntime()
 

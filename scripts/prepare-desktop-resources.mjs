@@ -14,7 +14,10 @@ const dist = join(root, "dist")
 const readme = `此目录由 \`npm run desktop:prepare\` / \`tauri build\` 的 beforeBuildCommand 填充运行时 dist 与生产依赖。开发请用 \`npm run desktop\`。
 `
 
-if (!existsSync(join(dist, "server", "index.js")) || !existsSync(join(dist, "client", "index.html"))) {
+if (
+  !existsSync(join(dist, "server", "index.js")) ||
+  !existsSync(join(dist, "client", "index.html"))
+) {
   console.error("缺少 dist/server 或 dist/client，请先运行 npm run build")
   process.exit(1)
 }

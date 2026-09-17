@@ -121,6 +121,7 @@ AI 请求优先使用 `HTTP_PROXY`、`HTTPS_PROXY`、`NO_PROXY` 环境变量（�
 | `npm test` | 单元与集成测试 |
 | `npm run test:e2e` | Playwright 端到端 |
 | `npm run typecheck` | TypeScript 检查 |
+| `npm run check:bundle` | 首屏体积门禁（需先 `npm run build`），预算见 `bundle-budget.json` |
 | `npm run eval -- --repetitions 3` | 计划流程与检索的合成评测，默认不调用模型 |
 | `npm run desktop` | Tauri 桌面开发 |
 | `npm run desktop:build` | Tauri 桌面打包 |

@@ -9,9 +9,10 @@
   "scripts": {
     "dev": "npm run build:server && concurrently -k -n api,server-build,web -c green,yellow,cyan \"node --watch dist/server/index.js\" \"tsc -p tsconfig.server.json --watch --preserveWatchOutput\" \"vite --host 127.0.0.1 --strictPort\"",
     "build": "tsc -b && vite build",
+    "check:bundle": "node scripts/check-bundle-budget.mjs",
     "build:server": "tsc -p tsconfig.server.json",
     "typecheck": "tsc -b --pretty false",
-    "lint": "biome check src tests vite.config.ts vitest.config.ts",
+    "lint": "biome check src tests scripts vite.config.ts vitest.config.ts",
     "test": "vitest run --exclude 'tests/e2e/**'",
     "test:e2e": "node scripts/run-playwright.mjs",
     "doctor": "react-doctor --json",
