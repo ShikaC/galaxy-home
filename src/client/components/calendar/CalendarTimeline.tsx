@@ -84,7 +84,12 @@ export function CalendarTimeline({
   // 否则会在一次拖动里反复增删监听器。
   const [resizing, setResizing] = useState(false)
   const resizeHandler = useRef(onResizeItem)
-  resizeHandler.current = onResizeItem
+  // 同步最新回调：不能写在渲染期间，渲染可能被 React 重放或丢弃，
+  // 那时 ref 已经指向“未提交”的回调。放在无依赖 effect 里，提交后、
+  // 任何指针事件之前都会刷新一次。
+  useEffect(() => {
+    resizeHandler.current = onResizeItem
+  })
   const firstDate = dates[0]
   useEffect(() => {
     if (firstDate !== undefined && scrollRef.current !== null) scrollRef.current.scrollTop = 8 * 60
