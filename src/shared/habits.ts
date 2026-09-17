@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-export const habitIdSchema = z.string().uuid().brand("HabitId")
+export const habitIdSchema = z.uuid().brand("HabitId")
 export const habitTypeSchema = z.enum(["check", "count"])
 export const habitFrequencySchema = z.enum(["daily", "weekly"])
 export const habitLogStatusSchema = z.enum(["active", "leave"])

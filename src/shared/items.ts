@@ -9,9 +9,9 @@ import {
   taskPrioritySchema,
 } from "./taskCore.js"
 
-export const itemIdSchema = z.string().uuid().brand("ItemId")
-export const categoryIdSchema = z.string().uuid().brand("CategoryId")
-export const projectIdSchema = z.string().uuid().brand("ProjectId")
+export const itemIdSchema = z.uuid().brand("ItemId")
+export const categoryIdSchema = z.uuid().brand("CategoryId")
+export const projectIdSchema = z.uuid().brand("ProjectId")
 export const itemStatusSchema = z.enum(["active", "completed", "archived"])
 
 const todayPlacementSchema = z
@@ -40,7 +40,7 @@ export const createItemInputSchema = z
     isFixed: z.boolean().default(false),
     categoryIds: z.array(categoryIdSchema).max(20).default([]),
     projectIds: z.array(projectIdSchema).max(20).default([]),
-    requestId: z.string().uuid().optional(),
+    requestId: z.uuid().optional(),
     today: todayPlacementSchema.optional(),
   })
   .superRefine((value, context) => {
@@ -112,7 +112,7 @@ export const itemSchema = z
     completedAt: z.string().nullable(),
     categoryIds: z.array(categoryIdSchema).readonly(),
     projectIds: z.array(projectIdSchema).readonly(),
-    recurrenceSeriesId: z.string().uuid().nullable(),
+    recurrenceSeriesId: z.uuid().nullable(),
     recurrenceDate: z.string().nullable(),
     recurrenceStatus: z.enum(["active", "skipped"]).nullable(),
     subtaskCount: z.number().int().nonnegative(),

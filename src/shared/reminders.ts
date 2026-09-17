@@ -4,8 +4,8 @@ export const notificationKindSchema = z.enum(["morning", "deadline", "evening", 
 
 export const notificationSchema = z
   .object({
-    id: z.string().uuid(),
-    reminderId: z.string().uuid(),
+    id: z.uuid(),
+    reminderId: z.uuid(),
     kind: notificationKindSchema,
     title: z.string(),
     detail: z.string(),

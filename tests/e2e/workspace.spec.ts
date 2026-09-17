@@ -192,7 +192,7 @@ test.describe
         },
       })
       expect(projectResponse.ok()).toBe(true)
-      const project = z.object({ id: z.string().uuid() }).parse(await projectResponse.json())
+      const project = z.object({ id: z.uuid() }).parse(await projectResponse.json())
       for (const [name, path] of [
         ["home", "/"],
         ["tasks", "/todos"],

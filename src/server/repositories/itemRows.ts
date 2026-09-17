@@ -38,7 +38,7 @@ const todayRelationSchema = z
   .optional()
 const occurrenceSchema = z
   .object({
-    series_id: z.string().uuid(),
+    series_id: z.uuid(),
     occurrence_date: z.string(),
     status: z.enum(["active", "skipped"]),
   })

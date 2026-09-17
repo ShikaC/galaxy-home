@@ -32,8 +32,8 @@ export const proposedMemorySchema = z
 
 export const aiMessageSchema = z
   .object({
-    id: z.string().uuid(),
-    conversationId: z.string().uuid(),
+    id: z.uuid(),
+    conversationId: z.uuid(),
     role: z.enum(["user", "assistant", "system"]),
     content: z.string(),
     references: z.array(aiReferenceSchema).readonly(),
@@ -51,7 +51,7 @@ export const aiMemoryKindSchema = z.enum(["preference", "goal", "background"])
 export type AiMemoryKind = z.infer<typeof aiMemoryKindSchema>
 export const aiMemorySchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     content: z.string(),
     kind: aiMemoryKindSchema,
     confirmedAt: z.string(),
@@ -71,18 +71,18 @@ export const createAiMemoryInputSchema = z
 
 export const aiChatInputSchema = z
   .object({
-    conversationId: z.string().uuid().nullable(),
+    conversationId: z.uuid().nullable(),
     content: z.string().trim().min(1).max(20_000),
     currentPath: z.string().trim().min(1).max(300).default("/"),
     currentLabel: z.string().trim().min(1).max(40).default("当前页"),
-    focusItemId: z.string().uuid().optional(),
+    focusItemId: z.uuid().optional(),
   })
   .readonly()
 
 export type AiChatInput = z.infer<typeof aiChatInputSchema>
 
 export const aiChatResponseSchema = z
-  .object({ conversationId: z.string().uuid(), message: aiMessageSchema })
+  .object({ conversationId: z.uuid(), message: aiMessageSchema })
   .readonly()
 
 export const aiStreamEventSchema = z.discriminatedUnion("type", [
@@ -90,7 +90,7 @@ export const aiStreamEventSchema = z.discriminatedUnion("type", [
   z
     .object({
       type: z.literal("done"),
-      conversationId: z.string().uuid(),
+      conversationId: z.uuid(),
       message: aiMessageSchema,
     })
     .readonly(),
@@ -101,7 +101,7 @@ export type AiStreamEvent = z.infer<typeof aiStreamEventSchema>
 
 export const aiActionSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     actionType: z.string(),
     reason: z.string(),
     entityType: z.string(),

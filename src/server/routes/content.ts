@@ -29,10 +29,10 @@ const searchSchema = z.object({
 })
 const reviewSchema = z.object({ weekStart: z.string(), weekEnd: z.string() })
 const aiReviewSchema = reviewSchema.extend({ confirmed: z.boolean() })
-const idSchema = z.object({ id: z.string().uuid() })
+const idSchema = z.object({ id: z.uuid() })
 const suggestionParamsSchema = z.object({
-  reviewId: z.string().uuid(),
-  suggestionId: z.string().uuid(),
+  reviewId: z.uuid(),
+  suggestionId: z.uuid(),
 })
 const gainUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
 const quoteInputSchema = z.object({

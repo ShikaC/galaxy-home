@@ -8,7 +8,7 @@ export const noteInputSchema = z.object({
 
 export const noteSchema = noteInputSchema
   .extend({
-    id: z.string().uuid(),
+    id: z.uuid(),
     archived: z.boolean(),
     createdAt: z.string(),
     updatedAt: z.string(),

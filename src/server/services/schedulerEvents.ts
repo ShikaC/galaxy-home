@@ -2,8 +2,8 @@ import type { DatabaseSync } from "node:sqlite"
 import { z } from "zod"
 import type { notificationKindSchema } from "../../shared/reminders.js"
 
-const reminderRowSchema = z.object({ id: z.string().uuid() })
-const eventRowSchema = z.object({ id: z.string().uuid() })
+const reminderRowSchema = z.object({ id: z.uuid() })
+const eventRowSchema = z.object({ id: z.uuid() })
 export function ensureReminder(
   database: DatabaseSync,
   kind: z.infer<typeof notificationKindSchema>,

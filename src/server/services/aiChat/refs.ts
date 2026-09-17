@@ -16,9 +16,9 @@ export function resolveProjectRef(
   refs: ReadonlyMap<string, string>,
 ): z.infer<typeof projectIdSchema> {
   const resolved = resolveEntityRef(value, refs)
-  if (z.string().uuid().safeParse(resolved).success) return projectIdSchema.parse(resolved)
+  if (z.uuid().safeParse(resolved).success) return projectIdSchema.parse(resolved)
   const row = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .optional()
     .parse(
       database
@@ -37,9 +37,9 @@ export function resolveItemRef(
   refs: ReadonlyMap<string, string>,
 ): z.infer<typeof itemIdSchema> {
   const resolved = resolveEntityRef(value, refs)
-  if (z.string().uuid().safeParse(resolved).success) return itemIdSchema.parse(resolved)
+  if (z.uuid().safeParse(resolved).success) return itemIdSchema.parse(resolved)
   const row = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .optional()
     .parse(
       database
@@ -61,9 +61,9 @@ export function resolveCategoryRef(
   refs: ReadonlyMap<string, string>,
 ): z.infer<typeof categoryIdSchema> {
   const resolved = resolveEntityRef(value, refs)
-  if (z.string().uuid().safeParse(resolved).success) return categoryIdSchema.parse(resolved)
+  if (z.uuid().safeParse(resolved).success) return categoryIdSchema.parse(resolved)
   const row = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .optional()
     .parse(
       database
@@ -82,9 +82,9 @@ export function resolveHabitRef(
   refs: ReadonlyMap<string, string>,
 ): string {
   const resolved = resolveEntityRef(value, refs)
-  if (z.string().uuid().safeParse(resolved).success) return resolved
+  if (z.uuid().safeParse(resolved).success) return resolved
   const row = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .optional()
     .parse(
       database

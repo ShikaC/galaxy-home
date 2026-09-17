@@ -21,7 +21,7 @@ export type CreateProjectInput = z.infer<typeof createProjectInputSchema>
 
 export const projectTaskSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     title: z.string(),
     position: projectTaskPositionSchema,
     source: z.enum(["manual", "ai"]),
@@ -31,7 +31,7 @@ export const projectTaskSchema = z
 
 export const projectProgressSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     taskTitle: z.string().nullable(),
     outcome: z.string().nullable(),
     obstacle: z.string().nullable(),
@@ -41,7 +41,7 @@ export const projectProgressSchema = z
 
 export const projectStageSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     title: z.string(),
     outcome: z.string().nullable(),
     completedAt: z.string(),

@@ -16,7 +16,7 @@ import { freeSlots, intervalFor, overlaps, rangeInstants } from "./calendarInter
 export { validateScheduleChanges } from "./calendarValidation.js"
 
 const rowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   status: z.enum(["active", "completed", "archived"]),
   version: z.number().int(),
@@ -30,7 +30,7 @@ const rowSchema = z.object({
   series_id: z.string().nullable(),
   occurrence_date: z.string().nullable(),
 })
-const assignmentSchema = z.object({ item_id: z.string().uuid(), local_date: z.string() })
+const assignmentSchema = z.object({ item_id: z.uuid(), local_date: z.string() })
 
 function fingerprint(items: readonly CalendarItem[], query: CalendarQuery): string {
   const stable = [...items]

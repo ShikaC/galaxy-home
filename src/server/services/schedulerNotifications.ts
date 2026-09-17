@@ -11,8 +11,8 @@ import { dismissWeeklyReviewsBeforeOnboarding, runScheduler } from "./scheduler.
 import { localClock } from "./time.js"
 
 const dueRowSchema = z.object({
-  id: z.string().uuid(),
-  reminder_id: z.string().uuid(),
+  id: z.uuid(),
+  reminder_id: z.uuid(),
   kind: notificationKindSchema,
   scheduled_at: z.string(),
   entity_id: z.string().nullable(),
@@ -146,7 +146,7 @@ export function snoozeNotification(
   now = new Date(),
 ): void {
   const event = z
-    .object({ reminder_id: z.string().uuid() })
+    .object({ reminder_id: z.uuid() })
     .parse(database.prepare("SELECT reminder_id FROM notification_events WHERE id = ?").get(id))
   const updatedAt = now.toISOString()
   database

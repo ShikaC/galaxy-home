@@ -9,7 +9,7 @@ import {
 } from "../../shared/recurrence.js"
 
 const seriesRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   version: z.number().int().positive(),
   title: z.string(),
   notes: z.string().nullable(),
@@ -51,8 +51,8 @@ function readSeries(row: Record<string, SQLOutputValue>): TaskSeries {
     title: parsed.title,
     notes: parsed.notes,
     priority: parsed.priority,
-    categoryIds: z.array(z.string().uuid()).parse(parseJson(parsed.category_ids_json)),
-    projectIds: z.array(z.string().uuid()).parse(parseJson(parsed.project_ids_json)),
+    categoryIds: z.array(z.uuid()).parse(parseJson(parsed.category_ids_json)),
+    projectIds: z.array(z.uuid()).parse(parseJson(parsed.project_ids_json)),
     timezone: parsed.timezone,
     startDate: parsed.start_date,
     rule: recurrenceRuleSchema.parse(parseJson(parsed.rule_json)),

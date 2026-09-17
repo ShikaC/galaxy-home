@@ -72,7 +72,7 @@ describe("recurrence relation lifetime", () => {
     moveToTrash(database, "category", categoryId, "客户", new Date(now))
     moveToTrash(database, "project", projectId, "方案", new Date(now))
     const purgeIds = z
-      .array(z.object({ id: z.string().uuid() }))
+      .array(z.object({ id: z.uuid() }))
       .parse(database.prepare("SELECT id FROM trash_entries ORDER BY entity_type").all())
     purgeIds.forEach((entry) => {
       purgeTrash(database, entry.id)

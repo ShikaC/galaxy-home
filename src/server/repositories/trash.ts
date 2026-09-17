@@ -29,9 +29,9 @@ const entityTable: Readonly<Record<TrashEntity, string>> = {
 }
 
 export const trashEntrySchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   entity_type: entitySchema,
-  entity_id: z.string().uuid(),
+  entity_id: z.uuid(),
   display_name: z.string(),
   deleted_at: z.string(),
   purge_after: z.string(),
@@ -114,7 +114,7 @@ export function purgeTrash(database: DatabaseSync, trashId: string): void {
 
 export function purgeExpiredTrash(database: DatabaseSync, now = new Date()): number {
   const entries = z
-    .array(z.object({ id: z.string().uuid() }))
+    .array(z.object({ id: z.uuid() }))
     .parse(
       database
         .prepare("SELECT id FROM trash_entries WHERE purge_after <= ? ORDER BY purge_after")

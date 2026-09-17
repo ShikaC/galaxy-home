@@ -15,7 +15,7 @@ import { assertFreshContext } from "./retrieval.js"
 import { readTaskPlan, saveTaskPlan, TaskPlanError } from "./store.js"
 import { assertConfirmable, deriveReplanProposal } from "./validate.js"
 
-const taskRow = z.object({ id: z.string().uuid().brand("ItemId"), title: z.string() })
+const taskRow = z.object({ id: z.uuid().brand("ItemId"), title: z.string() })
 
 export function confirmTaskPlan(
   context: AppContext,

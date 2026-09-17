@@ -50,7 +50,7 @@ function TaskEditorDialog({
       apiRequest(
         "/api/ai/suggest-categories",
         z.object({
-          categoryIds: z.array(z.string().uuid()),
+          categoryIds: z.array(z.uuid()),
           suggestToday: z.boolean(),
           note: z.string().nullable(),
         }),

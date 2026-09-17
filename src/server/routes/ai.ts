@@ -19,10 +19,10 @@ import { completeAiChat, persistAiChat, prepareAiChat } from "../services/aiChat
 import { executeChatActions } from "../services/aiChatActions.js"
 import { getAiConfigStatus } from "../services/secrets.js"
 
-const idSchema = z.object({ id: z.string().uuid() })
+const idSchema = z.object({ id: z.uuid() })
 const titleSchema = z.object({ title: z.string().trim().min(1).max(80) })
-const messageIdSchema = z.object({ messageId: z.string().uuid() })
-const suggestBodySchema = z.object({ itemId: z.string().uuid() })
+const messageIdSchema = z.object({ messageId: z.uuid() })
+const suggestBodySchema = z.object({ itemId: z.uuid() })
 
 export function registerAiRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)

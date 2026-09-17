@@ -11,7 +11,7 @@ import { identifyReviewSuggestions } from "./reviewSuggestionIdentity.js"
 import { listReviewSuggestionConversions } from "./reviewSuggestions.js"
 
 const reviewRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   week_start: z.string(),
   summary: z.string(),
   completed_json: z.string(),
@@ -19,7 +19,7 @@ const reviewRowSchema = z.object({
   suggestions_json: z.string(),
   source: z.enum(["manual", "ai"]),
 })
-const reviewIdentitySchema = z.object({ id: z.string().uuid() }).optional()
+const reviewIdentitySchema = z.object({ id: z.uuid() }).optional()
 
 function reviewIdForWeek(database: DatabaseSync, weekStart: string): string {
   return (

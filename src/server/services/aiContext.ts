@@ -13,14 +13,14 @@ type ContextEntry = {
   readonly detail: unknown
 }
 
-const memoryRowSchema = z.object({ id: z.string().uuid(), content: z.string() })
+const memoryRowSchema = z.object({ id: z.uuid(), content: z.string() })
 const itemStatusSchema = z.object({ status: z.enum(["active", "completed", "archived"]) })
 const MAX_OPEN_REFERENCES = 24
 const MAX_CONTEXT_CHARS = 40_000
 
 function currentPageEntry(database: DatabaseSync, path: string, label: string): ContextEntry {
   const projectMatch = /^\/projects\/([^/]+)$/.exec(path)
-  const projectId = z.string().uuid().safeParse(projectMatch?.[1])
+  const projectId = z.uuid().safeParse(projectMatch?.[1])
   if (projectId.success) {
     let project: Project
     try {

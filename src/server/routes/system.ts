@@ -26,7 +26,7 @@ import { completeOnboarding } from "../services/onboarding.js"
 import { dismissNotification, listDueNotifications } from "../services/scheduler.js"
 import { getAiConfigStatus, writeSecretConfig } from "../services/secrets.js"
 
-const idSchema = z.object({ id: z.string().uuid() })
+const idSchema = z.object({ id: z.uuid() })
 const memoryUpdateSchema = z.object({ content: z.string().trim().min(1).max(5_000) })
 
 export function registerSystemRoutes(app: FastifyInstance, context: AppContext): void {

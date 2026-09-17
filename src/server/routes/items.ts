@@ -30,19 +30,19 @@ const querySchema = z.object({
   view: itemViewSchema.default("active"),
   localDate: calendarDateSchema,
   timezone: ianaTimezoneSchema.optional(),
-  categoryId: z.string().uuid().optional(),
-  projectId: z.string().uuid().optional(),
+  categoryId: z.uuid().optional(),
+  projectId: z.uuid().optional(),
 })
-const idSchema = z.object({ id: z.string().uuid() })
+const idSchema = z.object({ id: z.uuid() })
 const todaySchema = z.object({
   localDate: calendarDateSchema,
   isFocus: z.boolean(),
   isSecondary: z.boolean(),
   expectedVersion: z.number().int().positive().optional(),
 })
-const reorderSchema = z.object({ localDate: z.string(), itemIds: z.array(z.string().uuid()) })
-const categoryReorderSchema = z.object({ categoryIds: z.array(z.string().uuid()) })
-const itemReorderSchema = z.object({ itemIds: z.array(z.string().uuid()) })
+const reorderSchema = z.object({ localDate: z.string(), itemIds: z.array(z.uuid()) })
+const categoryReorderSchema = z.object({ categoryIds: z.array(z.uuid()) })
+const itemReorderSchema = z.object({ itemIds: z.array(z.uuid()) })
 const localDateSchema = z.object({
   localDate: calendarDateSchema,
   expectedVersion: z.coerce.number().int().positive().optional(),
@@ -110,7 +110,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
     const body = todaySchema.parse(request.body)
     if (body.isSecondary)
       setTodayItem(context.database, {
-        itemId: z.string().uuid().brand("ItemId").parse(id),
+        itemId: z.uuid().brand("ItemId").parse(id),
         localDate: body.localDate,
         isFocus: false,
         isSecondary: true,
@@ -118,7 +118,7 @@ export function registerItemRoutes(app: FastifyInstance, context: AppContext): v
       })
     else
       setTodayItem(context.database, {
-        itemId: z.string().uuid().brand("ItemId").parse(id),
+        itemId: z.uuid().brand("ItemId").parse(id),
         localDate: body.localDate,
         isFocus: body.isFocus,
         isSecondary: false,

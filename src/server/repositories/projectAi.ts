@@ -167,7 +167,7 @@ export function applyProjectAiPlan(database: DatabaseSync, rawProjectId: string)
     throw new ProjectAiPlanStaleError("项目现状已更新，请重新澄清后再采用")
   }
   const stage = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .parse(
       database
         .prepare("SELECT id FROM project_stages WHERE project_id = ? AND status = 'current'")

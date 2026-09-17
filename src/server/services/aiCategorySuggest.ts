@@ -8,7 +8,7 @@ import { localClock } from "./time.js"
 
 const suggestionSchema = z
   .object({
-    categoryIds: z.array(z.string().uuid()).max(20),
+    categoryIds: z.array(z.uuid()).max(20),
     suggestToday: z.boolean().default(false),
     note: z.string().max(500).optional(),
   })

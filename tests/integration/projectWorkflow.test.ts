@@ -79,7 +79,7 @@ describe("project HTTP workflow", () => {
         nextTask: "空空间晨间提醒改口",
       },
     })
-    const projectId = z.object({ id: z.string().uuid() }).parse(created.json()).id
+    const projectId = z.object({ id: z.uuid() }).parse(created.json()).id
     const added = await app.inject({
       method: "POST",
       url: `/api/projects/${projectId}/current-task/today`,
@@ -116,7 +116,7 @@ describe("project HTTP workflow", () => {
         url: "/api/items",
         payload: { title, categoryIds: [], projectIds: [] },
       })
-      const itemId = z.object({ id: z.string().uuid() }).parse(created.json()).id
+      const itemId = z.object({ id: z.uuid() }).parse(created.json()).id
       expect(
         (
           await app.inject({
@@ -136,7 +136,7 @@ describe("project HTTP workflow", () => {
         currentTask: "今日满员时加入今日仍能放下",
       },
     })
-    const projectId = z.object({ id: z.string().uuid() }).parse(project.json()).id
+    const projectId = z.object({ id: z.uuid() }).parse(project.json()).id
     const added = await app.inject({
       method: "POST",
       url: `/api/projects/${projectId}/current-task/today`,
@@ -176,13 +176,13 @@ describe("project HTTP workflow", () => {
         nextTask: "空空间晨间提醒改口",
       },
     })
-    const projectId = z.object({ id: z.string().uuid() }).parse(created.json()).id
+    const projectId = z.object({ id: z.uuid() }).parse(created.json()).id
     const added = await app.inject({
       method: "POST",
       url: `/api/projects/${projectId}/current-task/today`,
       payload: { localDate: "2026-09-07" },
     })
-    const itemId = z.object({ id: z.string().uuid() }).parse(added.json()).id
+    const itemId = z.object({ id: z.uuid() }).parse(added.json()).id
     expect(
       (
         await app.inject({
@@ -228,7 +228,7 @@ describe("project HTTP workflow", () => {
         currentTask: "清掉桌面",
       },
     })
-    const projectId = z.object({ id: z.string().uuid() }).parse(created.json()).id
+    const projectId = z.object({ id: z.uuid() }).parse(created.json()).id
     await app.inject({
       method: "POST",
       url: `/api/projects/${projectId}/advance`,
@@ -270,7 +270,7 @@ describe("project HTTP workflow", () => {
         nextTask: "清扫地面",
       },
     })
-    const projectId = z.object({ id: z.string().uuid() }).parse(created.json()).id
+    const projectId = z.object({ id: z.uuid() }).parse(created.json()).id
     const edited = await app.inject({
       method: "PATCH",
       url: `/api/projects/${projectId}`,

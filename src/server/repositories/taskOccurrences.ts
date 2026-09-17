@@ -2,9 +2,9 @@ import type { DatabaseSync, SQLOutputValue } from "node:sqlite"
 import { z } from "zod"
 
 const occurrenceRowSchema = z.object({
-  series_id: z.string().uuid(),
+  series_id: z.uuid(),
   occurrence_date: z.string(),
-  item_id: z.string().uuid().nullable(),
+  item_id: z.uuid().nullable(),
   status: z.enum(["active", "skipped"]),
   is_exception: z.number().int(),
 })

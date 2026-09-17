@@ -26,7 +26,7 @@ export function runCreateItem(
     resolveProjectRef(context.database, id, context.refs),
   )
   const existingId = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .optional()
     .parse(
       context.database
@@ -148,7 +148,7 @@ export function runTrashItem(
   const item = getItem(context.database, itemId, context.localDate)
   moveToTrash(context.database, "item", itemId, item.title)
   const trashId = z
-    .object({ id: z.string().uuid() })
+    .object({ id: z.uuid() })
     .parse(
       context.database
         .prepare("SELECT id FROM trash_entries WHERE entity_type = 'item' AND entity_id = ?")

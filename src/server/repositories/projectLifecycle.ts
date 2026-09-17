@@ -8,8 +8,8 @@ import type {
 } from "../../shared/projects.js"
 import { getProject } from "./projects.js"
 
-const stageRowSchema = z.object({ id: z.string().uuid(), sort_order: z.number().int() })
-const taskRowSchema = z.object({ id: z.string().uuid() }).optional()
+const stageRowSchema = z.object({ id: z.uuid(), sort_order: z.number().int() })
+const taskRowSchema = z.object({ id: z.uuid() }).optional()
 
 function setTask(
   database: DatabaseSync,

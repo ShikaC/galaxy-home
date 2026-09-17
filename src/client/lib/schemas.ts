@@ -33,7 +33,7 @@ export const aiStatusSchema = z.object({
 })
 
 export const conversationSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   updated_at: z.string(),
 })

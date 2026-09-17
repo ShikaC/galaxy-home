@@ -19,7 +19,7 @@ const projectRowSchema = z.object({
   deleted_at: z.string().nullable(),
 })
 const stageRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   project_id: projectIdSchema,
   title: z.string(),
   outcome: z.string().nullable(),
@@ -30,9 +30,9 @@ const stageRowSchema = z.object({
   updated_at: z.string(),
 })
 const taskRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   project_id: projectIdSchema,
-  stage_id: z.string().uuid().nullable(),
+  stage_id: z.uuid().nullable(),
   title: z.string(),
   position: z.string(),
   source: z.string(),
@@ -41,9 +41,9 @@ const taskRowSchema = z.object({
   updated_at: z.string(),
 })
 const feedbackRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   project_id: projectIdSchema,
-  task_id: z.string().uuid().nullable(),
+  task_id: z.uuid().nullable(),
   outcome: z.string().nullable(),
   obstacle: z.string().nullable(),
   created_at: z.string(),

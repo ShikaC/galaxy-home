@@ -126,7 +126,7 @@ export function advanceProjectRows(
   now: string,
 ): void {
   if (project.currentTask === null) return
-  const linkedItems = z.array(z.object({ id: z.string().uuid() })).parse(
+  const linkedItems = z.array(z.object({ id: z.uuid() })).parse(
     database
       .prepare(
         `SELECT id FROM items WHERE deleted_at IS NULL AND status = 'active' AND title = ?

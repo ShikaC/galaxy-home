@@ -5,10 +5,10 @@ import { recordReviewConvertAction } from "./aiActions.js"
 
 const reviewRowSchema = z.object({ suggestions_json: z.string() })
 const conversionRowSchema = z.object({
-  review_id: z.string().uuid(),
+  review_id: z.uuid(),
   suggestion_id: z.string(),
   entity_type: z.enum(["item", "habit", "project"]),
-  entity_id: z.string().uuid(),
+  entity_id: z.uuid(),
   created_at: z.string(),
 })
 

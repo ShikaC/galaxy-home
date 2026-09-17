@@ -9,13 +9,13 @@ import {
 import { pendingChatActionSchema } from "../../shared/aiChatActions.js"
 
 const conversationSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   updated_at: z.string(),
 })
 const messageSchema = z.object({
-  id: z.string().uuid(),
-  conversation_id: z.string().uuid(),
+  id: z.uuid(),
+  conversation_id: z.uuid(),
   role: z.enum(["user", "assistant", "system"]),
   content: z.string(),
   references_json: z.string(),

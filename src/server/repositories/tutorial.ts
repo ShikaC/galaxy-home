@@ -3,8 +3,8 @@ import { z } from "zod"
 import { moveToTrash } from "./trash.js"
 
 const countSchema = z.object({ count: z.number() })
-const tutorialItemSchema = z.object({ id: z.string().uuid(), title: z.string() })
-const tutorialHabitSchema = z.object({ id: z.string().uuid(), name: z.string() })
+const tutorialItemSchema = z.object({ id: z.uuid(), title: z.string() })
+const tutorialHabitSchema = z.object({ id: z.uuid(), name: z.string() })
 
 export type TutorialState = {
   readonly exampleCount: number

@@ -10,7 +10,7 @@ import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
 const quotesSchema = z
   .array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       content: z.string(),
       enabled: z.number(),
       is_system: z.number(),

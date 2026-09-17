@@ -5,7 +5,7 @@ import { ERROR_CODES } from "../../shared/errorCodes.js"
 import { noteInputSchema, noteSchema } from "../../shared/notes.js"
 import { type AppContext, getAppClock } from "../context.js"
 
-const parametersSchema = z.object({ id: z.string().uuid() })
+const parametersSchema = z.object({ id: z.uuid() })
 const updateSchema = z.object({
   title: z.string().trim().min(1).max(240).optional(),
   content: z.string().max(50_000).optional(),

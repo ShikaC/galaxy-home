@@ -15,7 +15,7 @@ import { WorkspaceDataPath } from "./WorkspaceDataPath.js"
 const trashSchema = z
   .array(
     z.object({
-      id: z.string().uuid(),
+      id: z.uuid(),
       entity_type: z.string(),
       entity_id: z.string(),
       display_name: z.string(),

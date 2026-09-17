@@ -3,7 +3,7 @@ import { z } from "zod"
 import { type AiMemoryKind, aiMemoryKindSchema, aiMemorySchema } from "../../shared/ai.js"
 
 const memoryRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   content: z.string(),
   kind: aiMemoryKindSchema,
   confirmed_at: z.string(),

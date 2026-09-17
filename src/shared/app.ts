@@ -26,7 +26,7 @@ export type UpdateSettingsInput = z.infer<typeof updateSettingsInputSchema>
 
 export const gainSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     localDate: z.iso.date(),
     content: z.string(),
     createdAt: z.string(),
@@ -38,7 +38,7 @@ export const createGainInputSchema = z
   .object({ localDate: z.iso.date(), content: z.string().trim().min(1).max(5_000) })
   .readonly()
 
-export const quoteSchema = z.object({ id: z.string().uuid(), content: z.string() }).readonly()
+export const quoteSchema = z.object({ id: z.uuid(), content: z.string() }).readonly()
 export type Quote = z.infer<typeof quoteSchema>
 
 export const reviewSuggestionSchema = z
@@ -53,17 +53,17 @@ export type ReviewSuggestion = z.infer<typeof reviewSuggestionSchema>
 
 export const reviewSuggestionConversionSchema = z
   .object({
-    reviewId: z.string().uuid(),
+    reviewId: z.uuid(),
     suggestionId: z.string(),
     entityType: z.enum(["item", "habit", "project"]),
-    entityId: z.string().uuid(),
+    entityId: z.uuid(),
     createdAt: z.string(),
   })
   .readonly()
 
 export const weeklyReviewSchema = z
   .object({
-    id: z.string().uuid(),
+    id: z.uuid(),
     weekStart: z.iso.date(),
     summary: z.string(),
     completed: z.array(z.string()).readonly(),
@@ -94,10 +94,10 @@ export type AiWeeklyReviewResult = z.infer<typeof aiWeeklyReviewResultSchema>
 
 export const aiConfigInputSchema = z
   .object({
-    chatBaseUrl: z.string().url().or(z.literal("")),
+    chatBaseUrl: z.url().or(z.literal("")),
     chatModel: z.string().trim().max(100),
     apiKey: z.string().max(500),
-    transcriptionBaseUrl: z.string().url().or(z.literal("")),
+    transcriptionBaseUrl: z.url().or(z.literal("")),
     transcriptionModel: z.string().trim().max(100),
   })
   .readonly()

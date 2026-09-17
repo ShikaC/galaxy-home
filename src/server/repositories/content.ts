@@ -3,12 +3,12 @@ import { z } from "zod"
 import { type Gain, gainSchema, type Quote, quoteSchema } from "../../shared/app.js"
 
 const gainRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   local_date: z.string(),
   content: z.string(),
   created_at: z.string(),
 })
-const quoteRowSchema = z.object({ id: z.string().uuid(), content: z.string() })
+const quoteRowSchema = z.object({ id: z.uuid(), content: z.string() })
 
 export function createGain(database: DatabaseSync, localDate: string, content: string): Gain {
   const id = crypto.randomUUID()

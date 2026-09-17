@@ -48,7 +48,7 @@ import { localClock } from "../services/time.js"
 const dateQuerySchema = z.object({ localDate: z.string() })
 const localDateInputSchema = z.object({ localDate: z.iso.date() })
 const rangeQuerySchema = z.object({ start: z.string(), end: z.string() })
-const idSchema = z.object({ id: z.string().uuid() })
+const idSchema = z.object({ id: z.uuid() })
 
 export function registerDomainRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)

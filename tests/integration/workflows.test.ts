@@ -59,7 +59,7 @@ describe("daily workflows", () => {
     const { app, database } = await createTestApp()
     seedTutorialExamples(database)
     const tutorial = z
-      .object({ id: z.string().uuid() })
+      .object({ id: z.uuid() })
       .optional()
       .parse(database.prepare("SELECT id FROM items WHERE is_tutorial = 1").get())
     expect(tutorial).toBeDefined()
@@ -81,7 +81,7 @@ describe("daily workflows", () => {
     const { app, database } = await createTestApp()
     seedTutorialExamples(database)
     const tutorial = z
-      .object({ id: z.string().uuid() })
+      .object({ id: z.uuid() })
       .optional()
       .parse(database.prepare("SELECT id FROM habits WHERE is_tutorial = 1").get())
     expect(tutorial).toBeDefined()
@@ -89,9 +89,7 @@ describe("daily workflows", () => {
 
     const copied = await app.inject({ method: "POST", url: `/api/habits/${tutorial.id}/copy` })
     expect(copied.statusCode).toBe(201)
-    const copiedHabit = z
-      .object({ id: z.string().uuid(), isTutorial: z.boolean() })
-      .parse(copied.json())
+    const copiedHabit = z.object({ id: z.uuid(), isTutorial: z.boolean() }).parse(copied.json())
     expect(copiedHabit.isTutorial).toBe(false)
 
     const edited = await app.inject({

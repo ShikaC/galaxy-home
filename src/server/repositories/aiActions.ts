@@ -13,7 +13,7 @@ import { clearTodayItem, setTodayItem } from "./todayItems.js"
 import { restoreTrash } from "./trash.js"
 
 const actionRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   action_type: z.string(),
   reason: z.string(),
   entity_type: z.string(),
@@ -24,7 +24,7 @@ const actionRowSchema = z.object({
 })
 
 export const reviewSnapshotSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   week_start: z.string(),
   summary: z.string(),
   completed_json: z.string(),
@@ -43,7 +43,7 @@ const reviewUndoPayloadSchema = z.object({
 })
 const createHabitUndoPayloadSchema = z.object({
   kind: z.literal("create_habit"),
-  habitId: z.string().uuid(),
+  habitId: z.uuid(),
   name: z.string(),
 })
 const completeHabitUndoPayloadSchema = z.object({
@@ -65,18 +65,18 @@ const createCategoryUndoPayloadSchema = z.object({
 })
 const createItemUndoPayloadSchema = z.object({
   kind: z.literal("create_item"),
-  itemId: z.string().uuid(),
+  itemId: z.uuid(),
   title: z.string(),
 })
 const updateItemUndoPayloadSchema = z.object({
   kind: z.literal("update_item"),
-  itemId: z.string().uuid(),
+  itemId: z.uuid(),
   previousTitle: z.string(),
   previousNotes: z.string().nullable(),
 })
 const setTodayUndoPayloadSchema = z.object({
   kind: z.literal("set_today"),
-  itemId: z.string().uuid(),
+  itemId: z.uuid(),
   localDate: z.string(),
   previous: z.object({
     inToday: z.boolean(),
@@ -86,37 +86,37 @@ const setTodayUndoPayloadSchema = z.object({
 })
 const trashItemUndoPayloadSchema = z.object({
   kind: z.literal("trash_item"),
-  itemId: z.string().uuid(),
-  trashId: z.string().uuid(),
+  itemId: z.uuid(),
+  trashId: z.uuid(),
   title: z.string(),
 })
 const setCategoriesUndoPayloadSchema = z.object({
   kind: z.literal("set_item_categories"),
-  itemId: z.string().uuid(),
-  previousCategoryIds: z.array(z.string().uuid()),
+  itemId: z.uuid(),
+  previousCategoryIds: z.array(z.uuid()),
 })
 const itemStatusUndoPayloadSchema = z.object({
   kind: z.literal("item_status"),
-  itemId: z.string().uuid(),
+  itemId: z.uuid(),
   previousStatus: itemStatusSchema,
   previousCompletedAt: z.string().nullable(),
 })
 const projectProgressUndoPayloadSchema = z.object({
   kind: z.literal("update_project_progress"),
-  projectId: z.string().uuid(),
+  projectId: z.uuid(),
   previousProgress: z.number().int(),
 })
 const createProjectUndoPayloadSchema = z.object({
   kind: z.literal("create_project"),
-  projectId: z.string().uuid(),
+  projectId: z.uuid(),
   name: z.string(),
 })
 const reviewConvertUndoPayloadSchema = z.object({
   kind: z.literal("review_suggestion_convert"),
-  reviewId: z.string().uuid(),
+  reviewId: z.uuid(),
   suggestionId: z.string(),
   entityType: z.enum(["item", "habit", "project"]),
-  entityId: z.string().uuid(),
+  entityId: z.uuid(),
 })
 
 const undoPayloadSchema = z.discriminatedUnion("kind", [
@@ -279,7 +279,7 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
   const payload = undoPayloadSchema.parse(JSON.parse(row.undo_payload_json))
   database.exec("BEGIN IMMEDIATE")
   try {
-    const latest = z.object({ id: z.string().uuid() }).parse(
+    const latest = z.object({ id: z.uuid() }).parse(
       database
         .prepare(
           `SELECT id FROM ai_action_log
@@ -303,7 +303,7 @@ export function undoAiAction(database: DatabaseSync, actionId: string): void {
       if (row.action_type !== "create_habit")
         throw new AiActionUnavailableError("操作记录与撤销数据不匹配")
       const habit = z
-        .object({ id: z.string().uuid(), name: z.string(), deleted_at: z.string().nullable() })
+        .object({ id: z.uuid(), name: z.string(), deleted_at: z.string().nullable() })
         .optional()
         .parse(
           database

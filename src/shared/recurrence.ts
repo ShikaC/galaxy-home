@@ -46,7 +46,7 @@ export const recurrenceRuleSchema = z.discriminatedUnion("frequency", [
 export type RecurrenceRule = z.infer<typeof recurrenceRuleSchema>
 
 const prioritySchema = z.enum(["none", "low", "medium", "high"])
-const idSchema = z.string().uuid()
+const idSchema = z.uuid()
 const timezoneSchema = z
   .string()
   .trim()

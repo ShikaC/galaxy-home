@@ -574,7 +574,7 @@ describe("AI chat habit actions", () => {
     expect(response.json().message.content).toContain("已实际创建项目「学习React」")
     expect(response.json().message.content).toContain("已实际创建待办「安装开发环境」")
     const project = z
-      .object({ id: z.string().uuid() })
+      .object({ id: z.uuid() })
       .parse(
         database
           .prepare("SELECT id FROM projects WHERE name = ? AND deleted_at IS NULL")

@@ -17,7 +17,7 @@ import {
 } from "../services/recurrence.js"
 import { localClock } from "../services/time.js"
 
-const idParamsSchema = z.object({ id: z.string().uuid() })
+const idParamsSchema = z.object({ id: z.uuid() })
 
 export function registerTaskSeriesRoutes(app: FastifyInstance, context: AppContext): void {
   const clock = getAppClock(context)

@@ -12,7 +12,7 @@ export const entityRefSchema = z
   .max(200)
   .refine(
     (value) =>
-      z.string().uuid().safeParse(value).success ||
+      z.uuid().safeParse(value).success ||
       /^\$[a-zA-Z][a-zA-Z0-9_]{0,31}$/.test(value) ||
       !value.startsWith("$"),
     { message: "须为 UUID、$别名，或可解析的标题/名称" },

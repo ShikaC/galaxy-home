@@ -25,14 +25,14 @@ const projectRowSchema = z.object({
 const stageRowSchema = z.object({ title: z.string() }).optional()
 const countRowSchema = z.object({ value: z.number().int() })
 const progressRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   taskTitle: z.string().nullable(),
   outcome: z.string().nullable(),
   obstacle: z.string().nullable(),
   createdAt: z.string(),
 })
 const completedStageRowSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   title: z.string(),
   outcome: z.string().nullable(),
   completedAt: z.string(),
