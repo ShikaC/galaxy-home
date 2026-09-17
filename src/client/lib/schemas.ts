@@ -1,10 +1,5 @@
 import { z } from "zod"
-import {
-  aiChatResponseSchema,
-  aiMemorySchema,
-  aiMessageSchema,
-  aiMessagesSchema,
-} from "../../shared/ai.js"
+import { aiMemorySchema, aiMessagesSchema } from "../../shared/ai.js"
 import { gainSchema, quoteSchema, weeklyReviewSchema } from "../../shared/app.js"
 import { habitSchema } from "../../shared/habits.js"
 import { categorySchema, itemDetailSchema, itemSchema } from "../../shared/items.js"
@@ -42,7 +37,6 @@ export const conversationSchema = z.object({
   title: z.string(),
   updated_at: z.string(),
 })
-export const messageSchema = aiMessageSchema
 export const messagesSchema = aiMessagesSchema
 
 export const metaSchema = z.object({
@@ -85,4 +79,3 @@ export const searchResultsSchema = z
 export const habitSummariesSchema = z
   .array(z.object({ localDate: z.string(), completedHabits: z.number() }))
   .readonly()
-export const chatResponseSchema = aiChatResponseSchema

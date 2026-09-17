@@ -1,4 +1,4 @@
-export const THEME_NAMES = ["night", "dawn"] as const
+const THEME_NAMES = ["night", "dawn"] as const
 export type ThemeName = (typeof THEME_NAMES)[number]
 
 export const THEME_STORAGE_KEY = "galaxy:theme"
