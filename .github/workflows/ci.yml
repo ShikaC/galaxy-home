@@ -39,3 +39,30 @@ jobs:
             .omo/evidence/task-core/scenario/
           include-hidden-files: true
           if-no-files-found: ignore
+
+  # 桌面壳的 Rust 代码（服务生命周期、端口探测、托盘、平台投递）在此之前从未被 CI 编译过。
+  # `cargo test` 不需要前端产物：`frontendDist` 是 URL，静态资源由 desktop-build 另起服务。
+  desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      # tray-icon 在 Linux 上要连锁 gtk/webkit/appindicator，这是 Tauri v2 的标准依赖集。
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl wget file libssl-dev libgtk-3-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: cargo-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock', 'src-tauri/rust-toolchain.toml') }}
+          restore-keys: cargo-${{ runner.os }}-
+      # 按 src-tauri/rust-toolchain.toml 装 stable，不额外引入第三方 action。
+      - run: rustup show
+        working-directory: src-tauri
+      - run: cargo test --all-targets
+        working-directory: src-tauri
