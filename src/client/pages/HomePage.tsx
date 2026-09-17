@@ -25,6 +25,7 @@ import { OrganizeDialog } from "../components/OrganizeDialog.js"
 import { ProjectDialog } from "../components/ProjectDialog.js"
 import { TaskRow } from "../components/TaskRow.js"
 import { Button } from "../components/ui/Button.js"
+import { greetingForHour, greetingLine, hourInTimeZone } from "../lib/greeting.js"
 import { useHabitMutation, useItemStatusMutation, useTodayMutation } from "../lib/mutations.js"
 import { useHabits, useItems, useMeta, useNotes, useProjects } from "../lib/queries.js"
 
@@ -51,20 +52,14 @@ export function HomePage() {
   const todayHabits = habits.data?.filter((habit) => habit.scheduledToday) ?? []
   const visibleTasks =
     view === "inbox" ? (inbox.data ?? []) : view === "completed" ? completed : activeToday
+  const now = new Date()
   const date = new Intl.DateTimeFormat("zh-CN", {
     timeZone: timezone,
     month: "long",
     day: "numeric",
     weekday: "long",
-  }).format(new Date())
-  const hour = Number(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: timezone,
-      hour: "numeric",
-      hourCycle: "h23",
-    }).format(new Date()),
-  )
-  const greeting = hour < 6 ? "夜深了" : hour < 12 ? "上午好" : hour < 18 ? "下午好" : "晚上好"
+  }).format(now)
+  const greeting = greetingForHour(hourInTimeZone(now, timezone))
   const userName = meta.data?.settings.userName
   const taskError = today.error ?? inbox.error ?? itemStatus.error ?? addToday.error
   return (
@@ -77,8 +72,7 @@ export function HomePage() {
             <span>YOUR SPACE, YOUR PACE</span>
           </div>
           <h1>
-            {greeting}
-            {userName && userName !== "你" ? `，${userName}` : "，欢迎回到你的空间"}
+            {greetingLine(greeting, userName)}
             <span className="greeting-dot">.</span>
           </h1>
           <p>
