@@ -14,7 +14,9 @@ Warm editorial software for an independent knowledge worker. A deep ink navigati
 
 ## 2. Palette
 
-Canvas #f8f7f4; surface #ffffff; subtle #f1efea; hover #eeece6; selected #f6e9df. Ink #292b29; muted #73736d; faint #8a8880; border #e5e2db; strong #cbc7bd. Action #b6532d; hover #954323; soft #f8eade. Success #47715a. Sidebar #242824; sidebar text #e9eae4; sidebar muted #a3aaa0; sidebar hover #333932. Dark focus surface #303b32. Contrast and readable long Chinese copy outrank decoration.
+Canvas #f8f7f4; surface #ffffff; subtle #f1efea; hover #eeece6; selected #f6e9df. Ink #292b29; muted #6d6d68; faint #73726a; border #e5e2db; strong #cbc7bd. Action #ac4f2b; hover #954323; soft #f8eade. Success #47715a. Sidebar #242824; sidebar text #e9eae4; sidebar muted #a3aaa0; sidebar hover #333932. Dark focus surface #303b32. Contrast and readable long Chinese copy outrank decoration.
+
+文字色必须在它会出现的每一层底色上达到 WCAG AA 的 4.5:1。这要求把两层安静文字都调深，代价是 muted 与 faint 的层级差从 ΔL* 8.4 压到 2.0——在浅色纸面上，比 muted 更浅的文字不可能同时满足 AA。默认用 muted；faint 保留给最次要的辅助文字，它仍然合规，但不应再被当成一个独立的视觉层级。faint 不落在 surface-subtle 及更深的底色上，那里用 muted。
 
 ## 3. Typography
 

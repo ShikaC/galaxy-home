@@ -45,7 +45,7 @@
   flex-shrink: 0;
 }
 .daily-heading kbd {
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
   margin-left: 8px;
 }
 .ai-launchpad {

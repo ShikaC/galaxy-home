@@ -65,7 +65,7 @@ export function CalendarTimeline({
   readonly onResizeItem: (item: CalendarItem, endLocal: string) => void
   readonly timezone: string
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLElement>(null)
   // 拖动只在手势期间存在，不入库；松手才提交一次。
   const [resizePreview, setResizePreview] = useState<{
     readonly key: string
@@ -146,7 +146,16 @@ export function CalendarTimeline({
     if (itemId !== "") onDropItem(itemId, date, hour)
   }
   return (
-    <div className="calendar-timeline-scroll" ref={scrollRef}>
+    // 日历时间轴是可滚动区域（overflow: auto，高度上限 720px），WCAG 2.1.1 要求它键盘可达。
+    // 内部的下拉目标是 tabIndex={-1} 的拖放按钮，区域里没有可聚焦内容，所以只能让容器
+    // 自己可聚焦；axe 的 scrollable-region-focusable 同样要求这一点。
+    <section
+      aria-label="日历时间轴"
+      className="calendar-timeline-scroll"
+      ref={scrollRef}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: 滚动容器需可聚焦才能键盘滚动
+      tabIndex={0}
+    >
       <div className="calendar-timeline" style={timelineStyle}>
         <div className="calendar-timeline__corner" />
         {dates.map((date) => (
@@ -257,6 +266,6 @@ export function CalendarTimeline({
           })
         })}
       </div>
-    </div>
+    </section>
   )
 }
