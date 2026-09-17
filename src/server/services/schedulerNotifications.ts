@@ -100,34 +100,59 @@ function notificationCopy(
   })
 }
 
-export function listDueNotifications(
+const DUE_NOTIFICATION_SELECT = `SELECT notification_events.id, notification_events.reminder_id, notification_events.kind,
+     notification_events.scheduled_at, reminders.entity_id, items.title AS item_title,
+     CASE WHEN rules.anchor = 'scheduled' THEN items.scheduled_start_at ELSE items.due_at END AS item_due_at, rules.anchor AS reminder_anchor
+   FROM notification_events
+   JOIN reminders ON reminders.id = notification_events.reminder_id
+   LEFT JOIN items ON items.id = reminders.entity_id AND reminders.kind = 'deadline'
+   LEFT JOIN task_reminder_rules rules ON rules.id = reminders.task_rule_id
+   WHERE notification_events.dismissed_at IS NULL AND notification_events.scheduled_at <= ?
+     AND reminders.enabled = 1`
+
+// 应用内横幅每次轮询都要重新拿到同一条未处理提醒，否则横幅会在下一次轮询时消失，
+// 所以它不按投递时间过滤；平台投递是一次性的，标记过就不再弹系统通知。
+const channels = {
+  inApp: { column: "delivered_at", limit: 10, onlyUnclaimed: false },
+  platform: { column: "platform_delivered_at", limit: 20, onlyUnclaimed: true },
+} as const satisfies Record<
+  string,
+  {
+    readonly column: "delivered_at" | "platform_delivered_at"
+    readonly limit: number
+    readonly onlyUnclaimed: boolean
+  }
+>
+
+type Channel = keyof typeof channels
+
+function readDueRows(database: DatabaseSync, channel: Channel, now: Date) {
+  const { column, limit, onlyUnclaimed } = channels[channel]
+  // 列名来自上面的字面量联合类型，不来自请求，拼进 SQL 是安全的。
+  const unclaimedClause = onlyUnclaimed ? ` AND notification_events.${column} IS NULL` : ""
+  return database
+    .prepare(
+      `${DUE_NOTIFICATION_SELECT}${unclaimedClause} ORDER BY notification_events.scheduled_at LIMIT ?`,
+    )
+    .all(now.toISOString(), limit)
+    .map((row) => dueRowSchema.parse(row))
+}
+
+function claimNotifications(
   database: DatabaseSync,
-  now = new Date(),
+  channel: Channel,
+  now: Date,
 ): readonly Notification[] {
   runScheduler(database, now)
   dismissWeeklyReviewsBeforeOnboarding(database, now)
   const timezone = getSettings(database).timezone
-  const rows = database
-    .prepare(
-      `SELECT notification_events.id, notification_events.reminder_id, notification_events.kind,
-         notification_events.scheduled_at, reminders.entity_id, items.title AS item_title,
-         CASE WHEN rules.anchor = 'scheduled' THEN items.scheduled_start_at ELSE items.due_at END AS item_due_at, rules.anchor AS reminder_anchor
-       FROM notification_events
-       JOIN reminders ON reminders.id = notification_events.reminder_id
-       LEFT JOIN items ON items.id = reminders.entity_id AND reminders.kind = 'deadline'
-       LEFT JOIN task_reminder_rules rules ON rules.id = reminders.task_rule_id
-       WHERE notification_events.dismissed_at IS NULL AND notification_events.scheduled_at <= ?
-         AND reminders.enabled = 1
-       ORDER BY notification_events.scheduled_at LIMIT 10`,
-    )
-    .all(now.toISOString())
-    .map((row) => dueRowSchema.parse(row))
-  const deliveredAt = now.toISOString()
-  const markDelivered = database.prepare(
-    "UPDATE notification_events SET delivered_at = COALESCE(delivered_at, ?) WHERE id = ?",
+  const rows = readDueRows(database, channel, now)
+  const markClaimed = database.prepare(
+    `UPDATE notification_events SET ${channels[channel].column} = COALESCE(${channels[channel].column}, ?) WHERE id = ?`,
   )
+  const claimedAt = now.toISOString()
   return rows.map((row) => {
-    markDelivered.run(deliveredAt, row.id)
+    markClaimed.run(claimedAt, row.id)
     return notificationSchema.parse({
       id: row.id,
       reminderId: row.reminder_id,
@@ -137,6 +162,24 @@ export function listDueNotifications(
       entityId: row.entity_id,
     })
   })
+}
+
+export function listDueNotifications(
+  database: DatabaseSync,
+  now = new Date(),
+): readonly Notification[] {
+  return claimNotifications(database, "inApp", now)
+}
+
+/**
+ * 桌面进程的投递通道。返回的提醒已标记为平台投递，调用方必须在同一次响应后立即弹系统
+ * 通知；崩溃在两个动作之间会丢掉这一批（标记在前、弹窗在后，更保守的一侧留给重复）。
+ */
+export function claimPlatformNotifications(
+  database: DatabaseSync,
+  now = new Date(),
+): readonly Notification[] {
+  return claimNotifications(database, "platform", now)
 }
 
 export function snoozeNotification(

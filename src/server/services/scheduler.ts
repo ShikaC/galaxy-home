@@ -141,6 +141,7 @@ export function runScheduler(
 }
 
 export {
+  claimPlatformNotifications,
   dismissNotification,
   listDueNotifications,
   snoozeNotification,

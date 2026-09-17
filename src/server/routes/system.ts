@@ -23,7 +23,11 @@ import {
   requestNotificationSnooze,
 } from "../services/notificationSnooze.js"
 import { completeOnboarding } from "../services/onboarding.js"
-import { dismissNotification, listDueNotifications } from "../services/scheduler.js"
+import {
+  claimPlatformNotifications,
+  dismissNotification,
+  listDueNotifications,
+} from "../services/scheduler.js"
 import { getAiConfigStatus, writeSecretConfig } from "../services/secrets.js"
 
 const idSchema = z.object({ id: z.uuid() })
@@ -62,6 +66,11 @@ export function registerSystemRoutes(app: FastifyInstance, context: AppContext):
     return reply.code(204).send()
   })
   app.get("/api/notifications", () => listDueNotifications(context.database, clock.now()))
+  // 桌面进程用自己的能力令牌调用，领取一批提醒并弹系统通知。应用内横幅走上面的 GET，
+  // 两条通道各自记投递时间，互不吞掉对方的提醒。
+  app.post("/api/notifications/platform", () =>
+    claimPlatformNotifications(context.database, clock.now()),
+  )
   app.post("/api/notifications/:id/snooze", (request, reply) => {
     const { id } = idSchema.parse(request.params)
     const input = snoozeNotificationInputSchema.parse(request.body)

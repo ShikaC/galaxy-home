@@ -85,6 +85,157 @@ describe("notification routes", () => {
     database.close()
   })
 
+  it("平台投递与应用内横幅各记各的，互不吞掉对方的提醒", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-platform-channel-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', morning_reminder_enabled = 1, evening_reminder_enabled = 0, weekly_review_enabled = 0",
+      )
+      .run()
+    const now = new Date("2026-08-04T02:00:00.000Z")
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+      clock: { now: () => now },
+    })
+
+    const firstClaim = await app.inject({ method: "POST", url: "/api/notifications/platform" })
+    expect(firstClaim.statusCode).toBe(200)
+    const claimed = firstClaim.json<readonly { id: string; kind: string; title: string }[]>()
+    expect(claimed.length).toBeGreaterThan(0)
+    expect(claimed.every((notification) => notification.title.length > 0)).toBe(true)
+
+    // 再次领取为空：平台投递是一次性的，重启轮询不会重复弹同一批系统通知。
+    expect(
+      (await app.inject({ method: "POST", url: "/api/notifications/platform" })).json<
+        readonly { id: string }[]
+      >(),
+    ).toEqual([])
+
+    // 应用内横幅不受平台投递影响，仍然拿得到同一条未处理提醒。
+    const banner = (await app.inject({ method: "GET", url: "/api/notifications" })).json<
+      readonly { id: string }[]
+    >()
+    expect(banner.map((notification) => notification.id)).toEqual([...claimed.map((row) => row.id)])
+
+    // 反过来也不成立：横幅已经领过，平台通道仍然要能领到，否则关掉窗口就永远收不到了。
+    const otherDirectory = mkdtempSync(join(tmpdir(), "galaxy-home-platform-channel-b-"))
+    directories.push(otherDirectory)
+    const otherDatabase = openDatabase(join(otherDirectory, "app.sqlite"))
+    migrateDatabase(otherDatabase)
+    otherDatabase
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', morning_reminder_enabled = 1, evening_reminder_enabled = 0, weekly_review_enabled = 0",
+      )
+      .run()
+    const otherApp = await buildApp({
+      database: otherDatabase,
+      dataDirectory: otherDirectory,
+      backupDirectory: join(otherDirectory, "backups"),
+      secretPath: join(otherDirectory, "secrets.json"),
+      clock: { now: () => now },
+    })
+    const seenByBanner = (await otherApp.inject({ method: "GET", url: "/api/notifications" })).json<
+      readonly { id: string }[]
+    >()
+    expect(seenByBanner.length).toBeGreaterThan(0)
+    expect(
+      (await otherApp.inject({ method: "POST", url: "/api/notifications/platform" }))
+        .json<readonly { id: string }[]>()
+        .map((notification) => notification.id),
+    ).toEqual(seenByBanner.map((notification) => notification.id))
+
+    await otherApp.close()
+    otherDatabase.close()
+    await app.close()
+    database.close()
+  })
+
+  it("桌面进程只用能力 Cookie 就能领取，不必先走 /api/session 引导", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-platform-capability-"))
+    directories.push(directory)
+    const database = openDatabase(join(directory, "app.sqlite"))
+    migrateDatabase(database)
+    database
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', morning_reminder_enabled = 1, evening_reminder_enabled = 0, weekly_review_enabled = 0",
+      )
+      .run()
+    const capability = "desktop-token-abc123"
+    const app = await buildApp({
+      database,
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+      clock: { now: () => new Date("2026-08-04T02:00:00.000Z") },
+      apiCapability: capability,
+    })
+
+    // 这是 Rust 端的请求形状：只带 Cookie，不带头部令牌、也没有 Origin。
+    const withCookie = await app.inject({
+      method: "POST",
+      url: "/api/notifications/platform",
+      headers: { cookie: `galaxy_capability=${capability}` },
+    })
+    expect(withCookie.statusCode).toBe(200)
+    expect(withCookie.json<readonly { id: string }[]>().length).toBeGreaterThan(0)
+
+    // 令牌不匹配时必须被拦：这是只绑回环地址但仍需保护的读取入口。
+    const withoutCookie = await app.inject({
+      method: "POST",
+      url: "/api/notifications/platform",
+    })
+    expect(withoutCookie.statusCode).toBe(401)
+    expect(withoutCookie.json<{ code: string }>().code).toBe("API_CAPABILITY_REQUIRED")
+
+    await app.close()
+    database.close()
+  })
+
+  it("平台投递在应用重启后不重复，且只领取未延期到未来的提醒", async () => {
+    const directory = mkdtempSync(join(tmpdir(), "galaxy-home-platform-restart-"))
+    directories.push(directory)
+    const path = join(directory, "app.sqlite")
+    const now = new Date("2026-08-04T02:00:00.000Z")
+    const context = {
+      dataDirectory: directory,
+      backupDirectory: join(directory, "backups"),
+      secretPath: join(directory, "secrets.json"),
+      clock: { now: () => now },
+    }
+
+    const firstDatabase = openDatabase(path)
+    migrateDatabase(firstDatabase)
+    firstDatabase
+      .prepare(
+        "UPDATE workspace_settings SET timezone = 'Asia/Shanghai', morning_reminder_time = '09:00', morning_reminder_enabled = 1, evening_reminder_enabled = 0, weekly_review_enabled = 0",
+      )
+      .run()
+    const firstApp = await buildApp({ database: firstDatabase, ...context })
+    const claimed = (
+      await firstApp.inject({ method: "POST", url: "/api/notifications/platform" })
+    ).json<readonly { id: string }[]>()
+    expect(claimed.length).toBeGreaterThan(0)
+    await firstApp.close()
+    firstDatabase.close()
+
+    const secondDatabase = openDatabase(path)
+    migrateDatabase(secondDatabase)
+    const secondApp = await buildApp({ database: secondDatabase, ...context })
+    expect(
+      (await secondApp.inject({ method: "POST", url: "/api/notifications/platform" })).json<
+        readonly { id: string }[]
+      >(),
+    ).toEqual([])
+    await secondApp.close()
+    secondDatabase.close()
+  })
+
   it("switches morning reminder copy when today focus is set", async () => {
     const directory = mkdtempSync(join(tmpdir(), "galaxy-home-morning-focus-"))
     directories.push(directory)
