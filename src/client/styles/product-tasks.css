@@ -81,6 +81,7 @@
   padding: var(--space-3);
   background: var(--color-surface-subtle);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: .task-toggle 在整理弹窗里，.task-check 在任务行里，两者不可能嵌套，规则是在比较两棵不相交的子树。 */
 .task-toggle > span {
   display: grid;
   gap: var(--space-1);
@@ -90,6 +91,7 @@
   color: var(--color-text-muted);
   font-size: var(--font-size-meta);
 }
+/* biome-ignore lint/style/noDescendingSpecificity: 同上，.series-origin 与 .task-check / .task-toggle 分属不同子树。 */
 .series-origin > span {
   min-inline-size: 0;
   flex: 1;
