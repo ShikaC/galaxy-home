@@ -155,11 +155,6 @@
   display: grid;
   gap: var(--space-2);
 }
-.linked-items__empty {
-  margin: 0;
-  color: var(--color-text-muted);
-  font-size: var(--font-size-meta);
-}
 .linked-items__list {
   display: grid;
   gap: var(--space-2);
@@ -222,9 +217,6 @@
 }
 .project-editor > .form-stack {
   margin-block-start: var(--space-5);
-}
-.form-grid--three {
-  grid-template-columns: minmax(160px, 1fr) minmax(120px, 0.7fr) minmax(160px, 1fr);
 }
 .feedback-panel > p,
 .timeline-band p {

@@ -326,15 +326,9 @@ kbd {
 .page-header {
   margin-bottom: 28px;
 }
-.page-header__subtitle {
-  font-size: 13px;
-}
 .section-band,
 .project-card {
   background: transparent;
-}
-.quote-band {
-  background: var(--color-action-soft);
 }
 .app-shell--sidebar-collapsed .sidebar-label,
 .app-shell--sidebar-collapsed .sidebar-projects,

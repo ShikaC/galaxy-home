@@ -1,5 +1,4 @@
 @media (max-width: 1120px) {
-  .home-grid,
   .review-grid,
   .analytics-grid,
   .project-detail-grid {
@@ -7,14 +6,6 @@
   }
 }
 @media (max-width: 900px) {
-  .quick-start-guide {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: var(--space-2);
-  }
-  .quick-start-guide > p {
-    grid-column: 1 / 3;
-    grid-row: 2;
-  }
   .quick-start-guide > .icon-button {
     grid-column: 3;
     grid-row: 1 / 3;
@@ -28,9 +19,6 @@
     gap: var(--space-4);
   }
   .correction-form {
-    grid-template-columns: 1fr 1fr;
-  }
-  .form-grid--three {
     grid-template-columns: 1fr 1fr;
   }
   .project-ai-preview dl {
@@ -86,17 +74,8 @@
     flex: 0 0 auto;
     white-space: nowrap;
   }
-  .quote-band {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-2);
-    padding: var(--space-3);
-  }
-  .quote-band > svg {
-    display: none;
-  }
   .correction-form,
-  .form-grid,
-  .form-grid--three {
+  .form-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .task-detail-dialog .form-disclosure .form-grid {
@@ -143,11 +122,6 @@
   }
   .progress-timeline > li {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .yesterday-review > article,
-  .yesterday-review > article > div {
-    align-items: stretch;
-    flex-direction: column;
   }
 }
 

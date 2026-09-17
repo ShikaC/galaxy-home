@@ -334,11 +334,6 @@
 .task-plan-edit-card > .button {
   justify-self: start;
 }
-.task-plan-item-id {
-  font-family: var(--font-family-mono);
-  font-size: var(--font-size-meta);
-  overflow-wrap: anywhere;
-}
 .task-plan-before {
   display: flex;
   gap: var(--space-2);

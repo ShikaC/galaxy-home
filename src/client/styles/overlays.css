@@ -71,22 +71,6 @@
   align-items: center;
   gap: var(--space-3);
 }
-.manual-plan {
-  display: grid;
-  gap: var(--space-3);
-  border-inline-start: 3px solid var(--color-action);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-subtle);
-}
-.manual-plan p {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.manual-plan__note {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-meta);
-}
 .choice-group,
 .weekday-picker {
   display: flex;
@@ -381,9 +365,6 @@
 .ai-unavailable p,
 .ai-welcome span {
   color: var(--color-text-muted);
-}
-.cjk-keep {
-  white-space: nowrap;
 }
 .chat-message {
   display: grid;
