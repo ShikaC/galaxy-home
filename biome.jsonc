@@ -27,6 +27,12 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        // 与 tsconfig 的 noPropertyAccessFromIndexSignature 直接冲突：该规则会把
+        // obj["key"] 改成 obj.key，而后者对索引签名类型是 TS4111 编译错误。
+        // 本项目选择保留编译器的保护，因此关掉这条规则（它的 fix 也被标为 unsafe）。
+        "useLiteralKeys": "off"
+      },
       "correctness": {
         "noUnusedImports": "error",
         "noUnusedVariables": "error"
