@@ -149,8 +149,7 @@ describe("local API", () => {
     const exported = unzipSync(createManualExport(database))["galaxy-home.json"]
     if (exported === undefined) throw new Error("测试导出缺少 JSON")
     const payload = z
-      .object({ tables: z.record(z.string(), z.unknown()) })
-      .passthrough()
+      .looseObject({ tables: z.record(z.string(), z.unknown()) })
       .parse(JSON.parse(strFromU8(exported)))
     const tables = Object.fromEntries(
       Object.entries(payload.tables).filter(([table]) => table !== "workspace_settings"),
