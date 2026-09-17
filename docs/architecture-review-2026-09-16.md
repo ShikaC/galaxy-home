@@ -122,9 +122,15 @@ CREATE TABLE task_plan_runs (id, state_json, created_at, updated_at, owner_pid, 
 
 `item_ai_suggestions` 表未删除——删表需要迁移，且 `backupSchema.ts` 还要用它读旧备份。表变成纯历史数据。
 
-### P3 — `app.ts` 的 27 个 `instanceof` 分支
+### ✅ 已解决 — `app.ts` 的 27 个 `instanceof` 分支
 
-87 行的 if-else 链把错误类映射为 HTTP 语义。功能正确、位置正确，但新增错误类型要改这个文件。可换成映射表，收益中等、风险低。优先级不高。
+**2026-09-16 完成**。映射搬到 `src/server/errorResponses.ts` 的规则数组，`app.ts` 的处理器从 121 行降到 12 行，文件本身 283 → 144 行。
+
+比"少改一个文件"更实在的收益是**顺序不再决定正确性**。链式写法里，若某个错误类继承另一个，谁排在前面会静默改变行为，而这一点从链上看不出来。当前恰好没有这种继承关系（`AiInvalidEndpointError` 并不继承 `AiServiceError`），但那是巧合。
+
+每条规则内部仍用 `instanceof` 收窄一次，类型安全与原来一致，未引入断言。规则表不兜底——认不出的错误返回 `null`，由 `app.ts` 记原始堆栈后落 500。
+
+`tests/unit/errorResponses.test.ts` 锁住七种形态。
 
 ### P3 — UI 基础组件只有 9 个
 

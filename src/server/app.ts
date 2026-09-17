@@ -2,23 +2,9 @@ import { resolve } from "node:path"
 import multipart from "@fastify/multipart"
 import staticPlugin from "@fastify/static"
 import Fastify from "fastify"
-import { ZodError } from "zod"
 import { ERROR_CODES } from "../shared/errorCodes.js"
-import { RecurrenceLocalTimeError } from "../shared/recurrence.js"
 import type { AppContext } from "./context.js"
-import { AiActionUnavailableError } from "./repositories/aiActions.js"
-import { HabitRestDayError } from "./repositories/habitLogs.js"
-import { ProjectAiPlanStaleError, ProjectAiSessionNotFoundError } from "./repositories/projectAi.js"
-import { ProjectTaskNotRecommendedError } from "./repositories/projectRecommendations.js"
-import { ReviewSuggestionUnavailableError } from "./repositories/reviewSuggestions.js"
-import {
-  ItemCreateRequestConflictError,
-  ItemHasOpenSubtasksError,
-  ItemNotFoundError,
-  ItemParentConflictError,
-  ItemVersionConflictError,
-} from "./repositories/taskErrors.js"
-import { TaskSeriesNotFoundError } from "./repositories/taskSeries.js"
+import { toErrorResponse } from "./errorResponses.js"
 import { registerAiRoutes } from "./routes/ai.js"
 import { registerCalendarRoutes } from "./routes/calendar.js"
 import { registerContentRoutes } from "./routes/content.js"
@@ -28,22 +14,6 @@ import { registerNoteRoutes } from "./routes/notes.js"
 import { registerSystemRoutes } from "./routes/system.js"
 import { registerTaskPlanningRoutes } from "./routes/taskPlanning.js"
 import { registerTaskSeriesRoutes } from "./routes/taskSeries.js"
-import { AiServiceError } from "./services/ai.js"
-import { AiInvalidEndpointError } from "./services/aiEndpoint.js"
-import { AiConfirmationRequiredError } from "./services/aiReview.js"
-import {
-  ImportArchiveInvalidError,
-  ImportArchiveMalformedError,
-  ImportArchiveTooLargeError,
-} from "./services/backup.js"
-import {
-  OccurrenceRequiredError,
-  ItemVersionConflictError as RecurrenceItemVersionConflictError,
-  RecurrenceRequestConflictError,
-  SeriesVersionConflictError,
-  TaskSeriesRelationNotFoundError,
-} from "./services/recurrence.js"
-import { TaskPlanError } from "./services/taskPlanning/store.js"
 
 function localBrowserOrigins(production: boolean): ReadonlySet<string> {
   const defaultPort = production ? "4173" : "5173"
@@ -151,124 +121,15 @@ export async function buildApp(context: AppContext, production = false) {
   registerNoteRoutes(app, context)
   registerAiRoutes(app, context)
 
-  app.setErrorHandler((error, _request, reply) => {
-    if (error instanceof ZodError) {
-      return reply.code(400).send({
-        code: ERROR_CODES.VALIDATION_ERROR,
-        message: error.issues[0]?.message ?? "输入内容无效",
-      })
+  app.setErrorHandler((error, request, reply) => {
+    const mapped = toErrorResponse(error)
+    if (mapped === null) {
+      app.log.error(error)
+      return reply.code(500).send({ code: ERROR_CODES.INTERNAL_ERROR, message: "服务暂时不可用" })
     }
-    if (error instanceof ItemVersionConflictError)
-      return reply.code(409).send({
-        code: ERROR_CODES.ITEM_VERSION_CONFLICT,
-        entityId: error.itemId,
-        currentVersion: error.currentVersion,
-        message: error.message,
-      })
-    if (error instanceof ItemCreateRequestConflictError)
-      return reply.code(409).send({
-        code: ERROR_CODES.ITEM_CREATE_REQUEST_CONFLICT,
-        entityId: error.requestId,
-        message: error.message,
-      })
-    if (error instanceof ItemParentConflictError)
-      return reply.code(409).send({
-        code: ERROR_CODES.ITEM_PARENT_CONFLICT,
-        entityId: error.itemId,
-        message: error.message,
-      })
-    if (error instanceof ItemHasOpenSubtasksError)
-      return reply.code(409).send({
-        code: ERROR_CODES.ITEM_HAS_OPEN_SUBTASKS,
-        entityId: error.itemId,
-        message: error.message,
-      })
-    if (error instanceof ItemNotFoundError)
-      return reply
-        .code(404)
-        .send({ code: ERROR_CODES.ITEM_NOT_FOUND, entityId: error.itemId, message: error.message })
-    if (error instanceof SeriesVersionConflictError)
-      return reply.code(409).send({
-        code: error.code,
-        entityId: error.entityId,
-        currentVersion: error.currentVersion,
-        message: error.message,
-      })
-    if (error instanceof RecurrenceRequestConflictError)
-      return reply
-        .code(409)
-        .send({ code: error.code, entityId: error.entityId, message: error.message })
-    if (error instanceof TaskSeriesRelationNotFoundError)
-      return reply
-        .code(409)
-        .send({ code: error.code, entityId: error.entityId, message: error.message })
-    if (error instanceof RecurrenceItemVersionConflictError)
-      return reply.code(409).send({
-        code: error.code,
-        entityId: error.entityId,
-        currentVersion: error.currentVersion,
-        message: error.message,
-      })
-    if (error instanceof OccurrenceRequiredError)
-      return reply
-        .code(409)
-        .send({ code: error.code, entityId: error.itemId, message: error.message })
-    if (error instanceof TaskSeriesNotFoundError)
-      return reply.code(404).send({
-        code: ERROR_CODES.TASK_SERIES_NOT_FOUND,
-        entityId: error.seriesId,
-        message: error.message,
-      })
-    if (error instanceof RecurrenceLocalTimeError)
-      return reply
-        .code(400)
-        .send({ code: ERROR_CODES.RECURRENCE_LOCAL_TIME_INVALID, message: error.message })
-    if (error instanceof TaskPlanError)
-      return reply.code(error.statusCode).send({ code: error.code, message: error.message })
-    if (error instanceof HabitRestDayError)
-      return reply.code(409).send({ code: ERROR_CODES.HABIT_REST_DAY, message: error.message })
-    if (error instanceof ProjectAiPlanStaleError)
-      return reply.code(409).send({ code: ERROR_CODES.PROJECT_AI_STALE, message: error.message })
-    if (error instanceof ProjectAiSessionNotFoundError)
-      return reply
-        .code(409)
-        .send({ code: ERROR_CODES.PROJECT_AI_SESSION_MISSING, message: error.message })
-    if (error instanceof ProjectTaskNotRecommendedError)
-      return reply
-        .code(409)
-        .send({ code: ERROR_CODES.PROJECT_TASK_NOT_RECOMMENDED, message: error.message })
-    if (error instanceof ReviewSuggestionUnavailableError)
-      return reply
-        .code(409)
-        .send({ code: ERROR_CODES.REVIEW_SUGGESTION_UNAVAILABLE, message: error.message })
-    if (error instanceof AiConfirmationRequiredError)
-      return reply
-        .code(409)
-        .send({ code: ERROR_CODES.AI_CONFIRMATION_REQUIRED, message: error.message })
-    if (error instanceof AiActionUnavailableError)
-      return reply
-        .code(409)
-        .send({ code: ERROR_CODES.AI_ACTION_UNAVAILABLE, message: error.message })
-    if (error instanceof ImportArchiveTooLargeError)
-      return reply
-        .code(413)
-        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_TOO_LARGE, message: error.message })
-    if (error instanceof ImportArchiveMalformedError)
-      return reply
-        .code(400)
-        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_INVALID, message: error.message })
-    if (error instanceof ImportArchiveInvalidError)
-      return reply
-        .code(400)
-        .send({ code: ERROR_CODES.IMPORT_ARCHIVE_INVALID, message: "导入文件字段无效" })
-    if (error instanceof AiInvalidEndpointError)
-      return reply.code(400).send({ code: error.code, message: error.message })
-    if (error instanceof AiServiceError) {
-      _request.log.error({ code: error.code, message: error.message }, "ai.request.failed")
-      return reply.code(503).send({ code: error.code, message: error.message })
-    }
-    app.log.error(error)
-    return reply.code(500).send({ code: ERROR_CODES.INTERNAL_ERROR, message: "服务暂时不可用" })
+    if (mapped.log !== undefined)
+      request.log.error({ code: mapped.body.code, message: mapped.body.message }, mapped.log)
+    return reply.code(mapped.status).send(mapped.body)
   })
 
   if (production) {
