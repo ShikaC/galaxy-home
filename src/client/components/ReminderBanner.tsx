@@ -1,9 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Bell, Clock3, X } from "lucide-react"
-import { useEffect } from "react"
 import { MORNING_FOCUS_CLAUSE } from "../../shared/morningReminder.js"
 import { apiRequest, apiVoid, jsonBody } from "../lib/api.js"
-import { mirrorDueReminderToSystem } from "../lib/desktopNotify.js"
 import { clearPendingSnooze, snoozeRequestId } from "../lib/notificationSnooze.js"
 import { notificationsSchema } from "../lib/schemas.js"
 import { Button } from "./ui/Button.js"
@@ -51,11 +49,9 @@ export function ReminderBanner() {
       return client.invalidateQueries({ queryKey: ["notifications"] })
     },
   })
+  // 系统通知由桌面进程自己领取并投递（见 src-tauri/src/notifications.rs），
+  // 这里只负责应用内横幅；两边各记各的投递时间，不会互相吞掉提醒。
   const reminder = reminders.data?.[0]
-  useEffect(() => {
-    if (reminder === undefined) return
-    void mirrorDueReminderToSystem(reminder)
-  }, [reminder])
   if (reminder === undefined) return null
   return (
     <aside className="reminder-banner" role="status">

@@ -84,7 +84,7 @@ fn wait_for_http(port: u16, path: &str) -> bool {
     false
 }
 
-fn configured_port(name: &str, fallback: u16) -> Result<u16, String> {
+pub(crate) fn configured_port(name: &str, fallback: u16) -> Result<u16, String> {
     match std::env::var(name) {
         Ok(value) => value
             .parse()
